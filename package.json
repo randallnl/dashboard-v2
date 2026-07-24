@@ -1,0 +1,38 @@
+{
+	"name": "dashboard-v2",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"lint": "eslint . && prettier --check .",
+		"format": "prettier --write .",
+		"test": "vitest run",
+		"deploy": "npm run build && wrangler deploy",
+		"deploy:dry-run": "npm run build && wrangler deploy --dry-run",
+		"cf-types": "wrangler types --include-runtime false"
+	},
+	"devDependencies": {
+		"@eslint/js": "latest",
+		"@sveltejs/adapter-cloudflare": "latest",
+		"@sveltejs/kit": "latest",
+		"@sveltejs/vite-plugin-svelte": "latest",
+		"@cloudflare/workers-types": "latest",
+		"eslint": "latest",
+		"eslint-plugin-svelte": "latest",
+		"globals": "latest",
+		"prettier": "latest",
+		"prettier-plugin-svelte": "latest",
+		"svelte": "latest",
+		"svelte-check": "latest",
+		"typescript-eslint": "latest",
+		"typescript": "latest",
+		"vite": "latest",
+		"vitest": "latest",
+		"wrangler": "latest"
+	}
+}

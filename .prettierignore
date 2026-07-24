@@ -1,0 +1,8 @@
+.svelte-kit
+build
+node_modules
+package-lock.json
+worker-configuration.d.ts
+Here’s a practical project brief you can.md
+PHASED_IMPLEMENTATION_PLAN.md
+
