@@ -30,7 +30,7 @@ npm run deploy:dry-run
 
 ## Cloudflare setup
 
-`wrangler.jsonc` contains the Worker runtime, assets, environment variables, compatibility settings, and observability configuration. D1, Email Service, and Secrets Store entries must be added after the actual Cloudflare resources are created or selected.
+`wrangler.jsonc` contains the Worker runtime, assets, environment variables, compatibility settings, observability configuration, and production bindings.
 
 Required production bindings:
 
@@ -40,7 +40,7 @@ Required production bindings:
 - `LOGIN_FROM_EMAIL`: non-secret environment variable
 - `LOGIN_FROM_NAME`: non-secret environment variable
 
-After adding the binding configuration, regenerate types:
+After changing the binding configuration, regenerate types:
 
 ```sh
 npm run cf-types
