@@ -12,6 +12,9 @@
 		"lint": "eslint . && prettier --check .",
 		"format": "prettier --write .",
 		"test": "vitest run",
+		"db:migrate:local": "wrangler d1 migrations apply queerlective-dashboard --local",
+		"db:migrate:remote": "wrangler d1 migrations apply queerlective-dashboard --remote",
+		"db:migrations:list": "wrangler d1 migrations list queerlective-dashboard --remote",
 		"deploy": "npm run build && wrangler deploy",
 		"deploy:dry-run": "npm run build && wrangler deploy --dry-run",
 		"cf-types": "wrangler types --include-runtime false"

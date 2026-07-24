@@ -56,6 +56,20 @@ npm run deploy
 
 Deployment requires authenticated Wrangler access and provisioned Cloudflare resources.
 
+## Database migrations
+
+Apply migrations to the local D1 simulator before applying them remotely:
+
+```sh
+npm run db:migrate:local
+npm run db:migrations:list
+npm run db:migrate:remote
+```
+
+Migration files are committed in `migrations/`. See
+[`docs/data-ownership.md`](./docs/data-ownership.md) for source-of-truth and
+retention decisions.
+
 ## Project documents
 
 - [Project brief](./Here%E2%80%99s%20a%20practical%20project%20brief%20you%20can.md)
