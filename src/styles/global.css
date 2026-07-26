@@ -1979,6 +1979,18 @@ h2 {
 	opacity: 0.75;
 }
 
+.admin-sync-controls {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	justify-content: end;
+	gap: 0.75rem;
+}
+
+.admin-sync-controls button {
+	white-space: nowrap;
+}
+
 .shift-panel .automatic-sync-note {
 	color: #b9c9c0;
 }
@@ -2371,6 +2383,11 @@ h2 {
 
 	.section-heading,
 	.admin-card {
+		align-items: start;
+		flex-direction: column;
+	}
+
+	.admin-sync-controls {
 		align-items: start;
 		flex-direction: column;
 	}

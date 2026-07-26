@@ -29,6 +29,9 @@
 	let failed = $state(false);
 	let brokenPosters = $state<Record<string, boolean>>({});
 	let detailElement = $state<HTMLDivElement>();
+	let syncing = $state(false);
+	let syncMessage = $state('');
+	let syncFailed = $state(false);
 
 	const totalPages = $derived(Math.max(1, Math.ceil(total / pageSize)));
 
@@ -133,6 +136,40 @@
 		void load(1);
 	}
 
+	async function syncNow() {
+		syncing = true;
+		syncMessage = '';
+		syncFailed = false;
+		try {
+			const response = await fetch('/api/admin/sync/all', { method: 'POST' });
+			const result = (await response.json()) as {
+				ok?: boolean;
+				message?: string;
+				failures?: string[];
+				results?: Record<
+					string,
+					{ count?: number; failed?: number; removed?: number; error?: string }
+				>;
+			};
+			if (!response.ok) throw new Error(result.message || 'Could not synchronize D1.');
+			syncFailed = result.ok === false;
+			const counts = Object.entries(result.results ?? {})
+				.filter(([, value]) => typeof value.count === 'number')
+				.map(
+					([name, value]) =>
+						`${name} ${value.count}${value.failed ? ` (${value.failed} failed)` : ''}`
+				)
+				.join(' · ');
+			syncMessage = `${result.message || 'D1 sync completed.'}${counts ? ` ${counts}.` : ''}`;
+			await load(1);
+		} catch (cause) {
+			syncFailed = true;
+			syncMessage = cause instanceof Error ? cause.message : 'Could not synchronize D1.';
+		} finally {
+			syncing = false;
+		}
+	}
+
 	onMount(() => {
 		void load(1);
 	});
@@ -144,8 +181,19 @@
 			<p class="eyebrow">Administrator workspace</p>
 			<h2 id="admin-projects-title">Projects and events</h2>
 		</div>
-		<p class="automatic-sync-note">Updates automatically from Monday every 15 minutes.</p>
+		<div class="admin-sync-controls">
+			<p class="automatic-sync-note">Updates automatically every 15 minutes.</p>
+			<button type="button" class="secondary-button" onclick={syncNow} disabled={syncing}>
+				{syncing ? 'Syncing D1…' : 'Sync D1 now'}
+			</button>
+		</div>
 	</div>
+
+	{#if syncMessage}
+		<p class="admin-message" class:error={syncFailed} role={syncFailed ? 'alert' : 'status'}>
+			{syncMessage}
+		</p>
+	{/if}
 
 	<form class="admin-filters" onsubmit={applyFilters}>
 		<label
