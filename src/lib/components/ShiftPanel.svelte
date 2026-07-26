@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ContentState from '$lib/components/ContentState.svelte';
 	import type { Shift } from '$lib/types/domain';
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 
 	let {
 		isAdmin,
@@ -24,6 +24,9 @@
 	let failed = $state(false);
 	let showAllAvailable = $state(false);
 	let showAllCovered = $state(false);
+	let memberOptions = $state<Array<{ id: string; label: string }>>([]);
+	let hostSelections = $state<Record<string, string>>({});
+	let reassigningId = $state('');
 	const visibleShifts = $derived(showAllAvailable ? shifts : shifts.slice(0, 6));
 	const visibleCoveredShifts = $derived(showAllCovered ? coveredShifts : coveredShifts.slice(0, 6));
 
@@ -88,6 +91,51 @@
 			claimingId = '';
 		}
 	}
+
+	async function reassign(shift: Shift) {
+		const label = hostSelections[shift.id]?.trim() ?? '';
+		const member = memberOptions.find(
+			(option) => option.label.toLocaleLowerCase('en-US') === label.toLocaleLowerCase('en-US')
+		);
+		if (!member) {
+			failed = true;
+			message = 'Type and choose a member from the host suggestions.';
+			return;
+		}
+		reassigningId = shift.id;
+		try {
+			const response = await fetch('/api/admin/shifts/host', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ shiftId: shift.id, memberId: member.id })
+			});
+			const result = (await response.json()) as { shift?: Shift; message?: string };
+			if (!response.ok || !result.shift) {
+				throw new Error(result.message || 'Could not reassign this shift.');
+			}
+			coveredShifts = coveredShifts.map((candidate) =>
+				candidate.id === shift.id ? result.shift! : candidate
+			);
+			message = result.message || 'Shift reassigned.';
+			failed = false;
+		} catch (cause) {
+			failed = true;
+			message = cause instanceof Error ? cause.message : 'Could not reassign this shift.';
+		} finally {
+			reassigningId = '';
+		}
+	}
+
+	onMount(async () => {
+		if (!isAdmin) return;
+		const response = await fetch('/api/members/mentions');
+		if (response.ok) {
+			const result = (await response.json()) as {
+				members?: Array<{ id: string; label: string }>;
+			};
+			memberOptions = result.members ?? [];
+		}
+	});
 </script>
 
 <section class="shift-panel" aria-labelledby="available-shifts-title">
@@ -168,9 +216,35 @@
 					<li>
 						<span><strong>{shift.dateLabel || shift.dateValue}</strong> · {shift.timeLabel}</span>
 						<span>{shift.title} — covered by {shift.coveredBy || 'a member'}</span>
+						{#if isAdmin}
+							<div class="shift-reassign">
+								<label>
+									<span class="sr-only">New host for {shift.title}</span>
+									<input
+										list="shift-host-members"
+										bind:value={hostSelections[shift.id]}
+										placeholder="Type a new host"
+									/>
+								</label>
+								<button
+									type="button"
+									onclick={() => reassign(shift)}
+									disabled={reassigningId === shift.id}
+								>
+									{reassigningId === shift.id ? 'Saving…' : 'Change host'}
+								</button>
+							</div>
+						{/if}
 					</li>
 				{/each}
 			</ul>
+			{#if isAdmin}
+				<datalist id="shift-host-members">
+					{#each memberOptions as member (member.id)}
+						<option value={member.label}></option>
+					{/each}
+				</datalist>
+			{/if}
 			{#if coveredShifts.length > 6}
 				<button
 					class="show-more-button"

@@ -10,14 +10,42 @@
 	}: { source: ProjectEventSource; eventId: string; readOnly?: boolean } = $props();
 
 	let comments = $state<ProjectEventComment[]>([]);
-	let members = $state<Array<{ id: string; label: string }>>([]);
 	let body = $state('');
-	let mentionIds = $state<string[]>([]);
 	let loading = $state(true);
 	let submitting = $state(false);
 	let message = $state('');
+	let commentForm = $state<HTMLFormElement>();
 	let showAllComments = $state(false);
 	const visibleComments = $derived(showAllComments ? comments : comments.slice(-5));
+	const memberTaggerMarkup = `
+		<div class="member-tagger" x-data="memberTagger()" x-on:clear-member-tags.window="selected = []">
+			<label>
+				<span>Tag members (optional)</span>
+				<input
+					type="search"
+					name="q"
+					placeholder="Type a member’s name"
+					hx-get="/api/members/mentions"
+					hx-trigger="input changed delay:250ms"
+					hx-target="next .member-search-results"
+				/>
+			</label>
+			<div class="member-search-results" aria-live="polite"></div>
+			<div class="member-tag-chips">
+				<template x-for="member in selected" x-bind:key="member.id">
+					<span>
+						<span x-text="'@' + member.label"></span>
+						<button
+							type="button"
+							x-on:click="removeMember(member.id)"
+							x-bind:aria-label="'Remove ' + member.label"
+						>×</button>
+						<input type="hidden" name="mentionIds" x-bind:value="member.id" />
+					</span>
+				</template>
+			</div>
+		</div>
+	`;
 
 	function dateLabel(value: string): string {
 		const date = new Date(value);
@@ -33,21 +61,13 @@
 		loading = true;
 		const params = new SvelteURLSearchParams({ source, eventId });
 		try {
-			const requests = [fetch(`/api/events/comments?${params}`)];
-			if (!readOnly) requests.push(fetch('/api/members/mentions'));
-			const responses = await Promise.all(requests);
+			const responses = await Promise.all([fetch(`/api/events/comments?${params}`)]);
 			const commentResult = (await responses[0].json()) as {
 				comments?: ProjectEventComment[];
 				message?: string;
 			};
 			if (!responses[0].ok) throw new Error(commentResult.message || 'Could not load comments.');
 			comments = commentResult.comments ?? [];
-			if (responses[1]) {
-				const memberResult = (await responses[1].json()) as {
-					members?: Array<{ id: string; label: string }>;
-				};
-				if (responses[1].ok) members = memberResult.members ?? [];
-			}
 		} catch (cause) {
 			message = cause instanceof Error ? cause.message : 'Could not load comments.';
 		} finally {
@@ -57,6 +77,9 @@
 
 	async function submit() {
 		if (!body.trim()) return;
+		const mentionIds = commentForm
+			? new FormData(commentForm).getAll('mentionIds').map(String)
+			: [];
 		submitting = true;
 		message = '';
 		try {
@@ -74,7 +97,7 @@
 			}
 			comments = [...comments, result.comment];
 			body = '';
-			mentionIds = [];
+			window.dispatchEvent(new CustomEvent('clear-member-tags'));
 			message = 'Comment posted.';
 		} catch (cause) {
 			message = cause instanceof Error ? cause.message : 'Could not post comment.';
@@ -122,19 +145,15 @@
 
 	{#if !readOnly}
 		<form
+			bind:this={commentForm}
 			onsubmit={(event) => {
 				event.preventDefault();
 				void submit();
 			}}
 		>
-			<label>
-				<span>Tag members (optional)</span>
-				<select multiple bind:value={mentionIds} size={Math.min(5, Math.max(2, members.length))}>
-					{#each members as member (member.id)}
-						<option value={member.id}>@{member.label}</option>
-					{/each}
-				</select>
-			</label>
+			<!-- Static, application-owned markup lets Alpine and HTMX own this small enhancement island. -->
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+			{@html memberTaggerMarkup}
 			<label>
 				<span>Add a comment</span>
 				<textarea bind:value={body} maxlength="2000" rows="3" required></textarea>

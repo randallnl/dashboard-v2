@@ -195,6 +195,9 @@
 					<button type="button" class="text-button" onclick={() => (selected = null)}>Close</button>
 				</div>
 				<h3 id="event-dialog-title">{selected.title}</h3>
+				{#if safeUrl(selected.imageUrl)}
+					<img class="event-preview-image" src={safeUrl(selected.imageUrl)} alt="" />
+				{/if}
 				<dl>
 					<div>
 						<dt>Date</dt>
@@ -254,6 +257,10 @@
 						<a href={safeUrl(selected.url)} target="_blank" rel="noreferrer"
 							>Registration/details ↗</a
 						>
+					{/if}
+					{#if selected.pageUrl}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={selected.pageUrl}>Open project dashboard →</a>
 					{/if}
 				</div>
 				{#if signupMessage}<p role="status" class="calendar-message">{signupMessage}</p>{/if}

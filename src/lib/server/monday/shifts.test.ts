@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { coveredByLabel, isShiftCovered, mapMondayShift, shiftTime } from './shifts';
+import {
+	coveredByLabel,
+	isShiftCovered,
+	mapMondayShift,
+	shiftPersonValue,
+	shiftTime
+} from './shifts';
 
 describe('shiftTime', () => {
 	it('uses Sunday and weekday coverage hours', () => {
@@ -13,6 +19,14 @@ describe('coveredByLabel', () => {
 		expect(coveredByLabel('Alex Morgan | member-1')).toBe('Alex M.');
 		expect(coveredByLabel('Rae')).toBe('Rae');
 		expect(coveredByLabel('')).toBe('A member');
+	});
+});
+
+describe('shiftPersonValue', () => {
+	it('stores a privacy-safe label and the stable member ID in Monday', () => {
+		expect(shiftPersonValue({ id: 'member-1', preferredName: 'Alex Morgan' })).toBe(
+			'Alex M. | member-1'
+		);
 	});
 });
 

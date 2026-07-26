@@ -296,6 +296,10 @@
 				{/each}
 			</div>
 			<p class="last-synced">Last synchronized {selected.syncedAt}</p>
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a class="project-dashboard-link" href={`/items/${selected.source}/${selected.id}`}>
+				Open project dashboard →
+			</a>
 			<ItemComments source={selected.source} eventId={selected.id} />
 		</div>
 	{/if}

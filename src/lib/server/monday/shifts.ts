@@ -1,4 +1,4 @@
-import type { Shift } from '$lib/types/domain';
+import type { Member, Shift } from '$lib/types/domain';
 import { MondayClient } from './client';
 
 export const COLAB_CALENDAR_BOARD_ID = '8374554428';
@@ -117,6 +117,10 @@ export function coveredByLabel(value: string): string {
 	const first = parts[0];
 	const last = parts.length > 1 ? parts.at(-1)?.replace(/[^\p{L}]/gu, '') : '';
 	return last ? `${first} ${last.charAt(0).toUpperCase()}.` : first;
+}
+
+export function shiftPersonValue(member: Pick<Member, 'id' | 'preferredName'>): string {
+	return `${coveredByLabel(member.preferredName)} | ${member.id}`;
 }
 
 export function isShiftCovered(coverageStatus: string, memberId: string, person: string): boolean {

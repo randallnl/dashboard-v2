@@ -2,6 +2,7 @@ import type { ProjectEventRecord, Shift } from '$lib/types/domain';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthRepository } from './auth-repository';
 import { CommentRepository } from './comment-repository';
+import { HostRepository } from './host-repository';
 import { ProjectEventRepository } from './project-repository';
 import { ShiftRepository } from './shift-repository';
 import type { Database } from './types';
@@ -110,6 +111,41 @@ describe('CommentRepository', () => {
 			'I can help with setup.',
 			'["Rae J."]',
 			'2026-07-26T21:30:00.000Z'
+		);
+	});
+});
+
+describe('HostRepository', () => {
+	it('upserts a member host and records who made the change', async () => {
+		const mock = createDatabaseMock();
+		const repository = new HostRepository(mock.db);
+
+		await expect(
+			repository.upsert(
+				'project',
+				'project-1',
+				'member-2',
+				'Casey R.',
+				'admin-1',
+				'2026-07-26T22:00:00.000Z'
+			)
+		).resolves.toEqual({
+			source: 'project',
+			eventId: 'project-1',
+			memberId: 'member-2',
+			hostLabel: 'Casey R.',
+			updatedAt: '2026-07-26T22:00:00.000Z'
+		});
+		expect(mock.prepare).toHaveBeenCalledWith(
+			expect.stringContaining('ON CONFLICT(source, event_id) DO UPDATE')
+		);
+		expect(mock.bind).toHaveBeenCalledWith(
+			'project',
+			'project-1',
+			'member-2',
+			'Casey R.',
+			'admin-1',
+			'2026-07-26T22:00:00.000Z'
 		);
 	});
 });

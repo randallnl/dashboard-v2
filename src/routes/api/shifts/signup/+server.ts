@@ -1,17 +1,10 @@
 import { loadMemberContext, requireWritableMemberView } from '$lib/server/auth/member-context';
 import { ShiftRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
-import { ShiftDirectory } from '$lib/server/monday/shifts';
+import { shiftPersonValue, ShiftDirectory } from '$lib/server/monday/shifts';
 import type { Member, Shift } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-
-function shiftPerson(member: Member): string {
-	const parts = member.preferredName.trim().split(/\s+/u);
-	const first = parts[0] || 'Member';
-	const lastInitial = parts.length > 1 ? `${parts.at(-1)?.charAt(0).toUpperCase()}.` : '';
-	return `${first} ${lastInitial} | ${member.id}`.replace(/\s+/gu, ' ').trim();
-}
 
 function coveredShift(shift: Shift, member: Member, person: string, syncedAt: string): Shift {
 	return {
@@ -45,7 +38,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		error(404, 'Shift not found. Ask an admin to synchronize shifts.');
 	}
 
-	const person = shiftPerson(context.viewer);
+	const person = shiftPersonValue(context.viewer);
 	const reservedAt = new Date().toISOString();
 	const reserved = await repository.claimIfOpen(shiftId, context.viewer.id, person, reservedAt);
 	if (!reserved) {

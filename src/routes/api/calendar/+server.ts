@@ -66,7 +66,9 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 				url: '',
 				canVolunteer: false,
 				isVolunteering: false,
-				fields: []
+				fields: [],
+				imageUrl: '',
+				pageUrl: ''
 			})),
 		...records
 			.filter((record) => !(context.capabilities.isRetailOnly && record.source === 'community'))
@@ -82,7 +84,9 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 				url: recordString(record.record, 'registrationUrl') || recordString(record.record, 'link'),
 				canVolunteer: !record.adminOnly,
 				isVolunteering: volunteerKeys.has(`${record.source}:${record.id}`),
-				fields: recordFields(record.record, context.viewerCapabilities.isAdmin)
+				fields: recordFields(record.record, context.viewerCapabilities.isAdmin),
+				imageUrl: recordString(record.record, 'posterUrl'),
+				pageUrl: `/items/${record.source}/${record.id}`
 			}))
 	];
 

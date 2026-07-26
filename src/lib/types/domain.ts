@@ -121,4 +121,6 @@ export type CalendarEvent = {
 	canVolunteer: boolean;
 	isVolunteering: boolean;
 	fields: Array<{ label: string; value: string; url: boolean }>;
+	imageUrl: string;
+	pageUrl: string;
 };
