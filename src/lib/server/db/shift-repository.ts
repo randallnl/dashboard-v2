@@ -70,6 +70,18 @@ export class ShiftRepository {
 		return result.results.map(mapShiftRow);
 	}
 
+	async listBetween(fromDate: string, throughDate: string): Promise<Shift[]> {
+		const result = await this.db
+			.prepare(
+				`SELECT * FROM colab_shifts
+				 WHERE date_value >= ?1 AND date_value <= ?2
+				 ORDER BY date_value ASC, title ASC`
+			)
+			.bind(fromDate, throughDate)
+			.all<ColabShiftRow>();
+		return result.results.map(mapShiftRow);
+	}
+
 	async claimIfOpen(
 		id: string,
 		memberId: string,

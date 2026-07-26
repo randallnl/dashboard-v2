@@ -1,3 +1,4 @@
+import { syncEventsFromMonday } from '$lib/server/events/sync';
 import { syncShiftsFromMonday } from '$lib/server/shifts/sync';
 
 export async function runScheduledShiftSync(
@@ -7,14 +8,18 @@ export async function runScheduledShiftSync(
 ): Promise<void> {
 	const startedAt = Date.now();
 	try {
-		const result = await syncShiftsFromMonday(env);
+		const [shifts, events] = await Promise.all([
+			syncShiftsFromMonday(env),
+			syncEventsFromMonday(env)
+		]);
 		console.log(
 			JSON.stringify({
 				event: 'scheduled_shift_sync_completed',
 				cron,
 				scheduledTime,
-				count: result.count,
-				syncedAt: result.syncedAt,
+				shiftCount: shifts.count,
+				eventCount: events.count,
+				syncedAt: shifts.syncedAt > events.syncedAt ? shifts.syncedAt : events.syncedAt,
 				durationMs: Date.now() - startedAt
 			})
 		);

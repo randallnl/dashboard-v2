@@ -97,3 +97,15 @@ export type Order = {
 	orderDate: string;
 	fulfillmentStatus: string;
 };
+
+export type CalendarEvent = {
+	id: string;
+	source: 'shift' | ProjectEventSource;
+	title: string;
+	startDate: string;
+	endDate: string;
+	status: string;
+	location: string;
+	details: string;
+	url: string;
+};

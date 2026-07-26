@@ -1,4 +1,5 @@
 <script lang="ts">
+	import CalendarPanel from '$lib/components/CalendarPanel.svelte';
 	import ContentState from '$lib/components/ContentState.svelte';
 	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
 	import type { Member, MemberCapabilities } from '$lib/types/domain';
@@ -40,7 +41,7 @@
 		<nav aria-label="Member navigation">
 			<a class="nav-active" href="#overview">Overview</a>
 			{#if capabilities.canViewShifts}<a href="#portal-areas">Shifts</a>{/if}
-			{#if capabilities.canViewCalendar}<a href="#portal-areas">Calendar</a>{/if}
+			{#if capabilities.canViewCalendar}<a href="#calendar">Calendar</a>{/if}
 			<a href="#resources">Resources</a>
 			{#if capabilities.canViewAdminTools}<a href="#admin">Admin</a>{/if}
 		</nav>
@@ -110,6 +111,10 @@
 
 		{#if capabilities.canViewShifts}
 			<ShiftPanel isAdmin={capabilities.isAdmin} />
+		{/if}
+
+		{#if capabilities.canViewCalendar}
+			<CalendarPanel />
 		{/if}
 
 		<section class="member-details-grid" aria-label="Member identity and resources">
@@ -195,6 +200,7 @@
 	<nav class="mobile-nav" aria-label="Mobile member navigation">
 		<a href="#overview">Overview</a>
 		<a href="#portal-areas">Tools</a>
+		<a href="#calendar">Calendar</a>
 		<a href="#resources">Resources</a>
 		{#if capabilities.canViewAdminTools}<a href="#admin">Admin</a>{/if}
 	</nav>

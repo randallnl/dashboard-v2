@@ -79,4 +79,22 @@ export class ProjectEventRepository {
 
 		return result.results.map(mapProjectEventRow);
 	}
+
+	async listForCalendar(
+		fromDate: string,
+		throughDate: string,
+		includeAdminOnly: boolean
+	): Promise<ProjectEventRecord[]> {
+		const result = await this.db
+			.prepare(
+				`SELECT * FROM project_event_records
+				 WHERE date_value <= ?2
+				   AND (end_date_value = '' OR end_date_value >= ?1)
+				   AND (?3 = 1 OR admin_only = 0)
+				 ORDER BY date_value ASC, title ASC`
+			)
+			.bind(fromDate, throughDate, includeAdminOnly ? 1 : 0)
+			.all<ProjectEventRecordRow>();
+		return result.results.map(mapProjectEventRow);
+	}
 }
