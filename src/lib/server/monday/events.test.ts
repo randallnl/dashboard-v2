@@ -38,6 +38,35 @@ describe('Monday event mapping', () => {
 		});
 	});
 
+	it('prefers the original public asset URL over Monday’s small thumbnail', () => {
+		const event = mapProjectEvent(
+			{
+				id: 'event-poster',
+				name: 'Poster event',
+				column_values: [
+					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-08-01"}' },
+					{ id: 'dropdown_mknqezw8', text: 'CoLab', value: null },
+					{
+						id: 'file_mknscbex',
+						text: 'poster.jpg',
+						value: null,
+						files: [
+							{
+								asset: {
+									public_url: 'https://cdn.monday.com/original/poster.jpg',
+									url_thumbnail: 'https://cdn.monday.com/thumbnail/poster.jpg'
+								}
+							}
+						]
+					}
+				]
+			},
+			'2026-07-26T16:00:00.000Z'
+		);
+
+		expect(event.record.posterUrl).toBe('https://cdn.monday.com/original/poster.jpg');
+	});
+
 	it('defaults community submissions to pending and member-visible', () => {
 		const event = mapCommunityEvent(
 			{

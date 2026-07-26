@@ -6,7 +6,7 @@
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
-	let { readOnly = false }: { readOnly?: boolean } = $props();
+	let { isAdmin = false, readOnly = false }: { isAdmin?: boolean; readOnly?: boolean } = $props();
 	const today = new Date().toISOString().slice(0, 10);
 	let month = $state(today.slice(0, 7));
 	let events = $state<CalendarEvent[]>([]);
@@ -15,6 +15,8 @@
 	let selected = $state<CalendarEvent | null>(null);
 	let signingUp = $state(false);
 	let signupMessage = $state('');
+	let memberOptions = $state<Array<{ id: string; label: string }>>([]);
+	let shiftHostSelection = $state('');
 
 	const bounds = $derived(monthBounds(month)!);
 	const monthDate = $derived(new Date(`${month}-01T12:00:00Z`));
@@ -106,7 +108,90 @@
 		}
 	}
 
-	onMount(load);
+	async function coverShift() {
+		if (!selected || selected.source !== 'shift') return;
+		signingUp = true;
+		signupMessage = '';
+		try {
+			const response = await fetch('/api/shifts/signup', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ shiftId: selected.id })
+			});
+			const result = (await response.json()) as {
+				shift?: { coveredBy: string };
+				message?: string;
+			};
+			if (!response.ok || !result.shift) {
+				throw new Error(result.message || 'Could not cover this shift.');
+			}
+			selected.status = 'Covered';
+			selected.canVolunteer = false;
+			selected.details = `${selected.details.split(' · ')[0]} · ${result.shift.coveredBy}`;
+			events = events.map((event) =>
+				event.source === 'shift' && event.id === selected?.id
+					? { ...event, status: 'Covered', canVolunteer: false, details: selected.details }
+					: event
+			);
+			signupMessage = 'You’re now covering this shift.';
+		} catch (cause) {
+			signupMessage = cause instanceof Error ? cause.message : 'Could not cover this shift.';
+		} finally {
+			signingUp = false;
+		}
+	}
+
+	async function reassignShift() {
+		if (!selected || selected.source !== 'shift') return;
+		const member = memberOptions.find(
+			(option) =>
+				option.label.toLocaleLowerCase('en-US') ===
+				shiftHostSelection.trim().toLocaleLowerCase('en-US')
+		);
+		if (!member) {
+			signupMessage = 'Type and choose a member from the suggestions.';
+			return;
+		}
+		signingUp = true;
+		try {
+			const response = await fetch('/api/admin/shifts/host', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ shiftId: selected.id, memberId: member.id })
+			});
+			const result = (await response.json()) as {
+				shift?: { coveredBy: string };
+				message?: string;
+			};
+			if (!response.ok || !result.shift) {
+				throw new Error(result.message || 'Could not reassign this shift.');
+			}
+			selected.details = `${selected.details.split(' · ')[0]} · ${result.shift.coveredBy}`;
+			events = events.map((event) =>
+				event.source === 'shift' && event.id === selected?.id
+					? { ...event, details: selected.details }
+					: event
+			);
+			shiftHostSelection = '';
+			signupMessage = result.message || 'Shift reassigned.';
+		} catch (cause) {
+			signupMessage = cause instanceof Error ? cause.message : 'Could not reassign this shift.';
+		} finally {
+			signingUp = false;
+		}
+	}
+
+	onMount(async () => {
+		await load();
+		if (!isAdmin) return;
+		const response = await fetch('/api/members/mentions');
+		if (response.ok) {
+			const result = (await response.json()) as {
+				members?: Array<{ id: string; label: string }>;
+			};
+			memberOptions = result.members ?? [];
+		}
+	});
 </script>
 
 <section class="calendar-panel" id="calendar" aria-labelledby="calendar-title">
@@ -237,7 +322,11 @@
 					</dl>
 				{/if}
 				<div class="event-dialog-actions">
-					{#if selected.canVolunteer}
+					{#if selected.source === 'shift' && selected.canVolunteer}
+						<button type="button" onclick={coverShift} disabled={signingUp || readOnly}>
+							{readOnly ? 'View only' : signingUp ? 'Saving…' : 'Cover this shift'}
+						</button>
+					{:else if selected.canVolunteer}
 						<button
 							type="button"
 							onclick={volunteer}
@@ -263,6 +352,26 @@
 						<a href={selected.pageUrl}>Open project dashboard →</a>
 					{/if}
 				</div>
+				{#if isAdmin && selected.source === 'shift' && selected.status === 'Covered'}
+					<div class="calendar-shift-reassign">
+						<label>
+							<span>Change shift coverage</span>
+							<input
+								list="calendar-shift-members"
+								bind:value={shiftHostSelection}
+								placeholder="Type a member’s name"
+							/>
+						</label>
+						<button type="button" onclick={reassignShift} disabled={signingUp}>
+							{signingUp ? 'Saving…' : 'Assign new person'}
+						</button>
+						<datalist id="calendar-shift-members">
+							{#each memberOptions as member (member.id)}
+								<option value={member.label}></option>
+							{/each}
+						</datalist>
+					</div>
+				{/if}
 				{#if signupMessage}<p role="status" class="calendar-message">{signupMessage}</p>{/if}
 				{#if selected.source !== 'shift'}
 					<ItemComments source={selected.source} eventId={selected.id} {readOnly} />

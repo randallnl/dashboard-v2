@@ -120,7 +120,7 @@ function date(columns: Map<string, Column>, id: string): string {
 function safeUrl(columns: Map<string, Column>, id: string): string {
 	const column = columns.get(id);
 	const file = column?.files?.[0];
-	const fileUrl = file?.asset?.url_thumbnail || file?.asset?.public_url || file?.url;
+	const fileUrl = file?.asset?.public_url || file?.asset?.url_thumbnail || file?.url;
 	if (fileUrl) return fileUrl;
 	if (column?.value) {
 		try {

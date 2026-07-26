@@ -1,7 +1,7 @@
 import { loadMemberContext, requireWritableMemberView } from '$lib/server/auth/member-context';
 import { ShiftRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
-import { shiftPersonValue, ShiftDirectory } from '$lib/server/monday/shifts';
+import { coveredByLabel, shiftPersonValue, ShiftDirectory } from '$lib/server/monday/shifts';
 import type { Member, Shift } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -61,7 +61,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		await directory.cover(live, context.viewer.id, person);
 		const canonical = coveredShift(live, context.viewer, person, new Date().toISOString());
 		await repository.upsert(canonical);
-		return json({ ok: true, shift: canonical });
+		return json({
+			ok: true,
+			shift: { ...canonical, person: '', coveredBy: coveredByLabel(context.viewer.preferredName) }
+		});
 	} catch (cause) {
 		if (cause && typeof cause === 'object' && 'status' in cause) throw cause;
 		await repository.releaseClaim(shiftId, context.viewer.id, new Date().toISOString());

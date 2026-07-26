@@ -22,7 +22,6 @@
 		viewerCapabilities={data.viewerCapabilities}
 		isViewingAs={data.isViewingAs}
 		initialAvailableShifts={data.initialAvailableShifts}
-		initialCoveredShifts={data.initialCoveredShifts}
 	/>
 {:else}
 	<LoginSplash authStatus={data.authStatus} />

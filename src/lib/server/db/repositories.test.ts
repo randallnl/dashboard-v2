@@ -276,6 +276,9 @@ describe('ProjectEventRepository', () => {
 
 		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('LIMIT ?7 OFFSET ?8'));
 		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('instr(lower'));
+		expect(mock.prepare).toHaveBeenCalledWith(
+			expect.stringContaining("CASE WHEN date_value >= date('now') THEN 0 ELSE 1 END")
+		);
 		expect(mock.bind).toHaveBeenCalledWith(
 			'project',
 			'Scheduled',

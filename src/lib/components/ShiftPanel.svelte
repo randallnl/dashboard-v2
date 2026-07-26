@@ -6,29 +6,20 @@
 	let {
 		isAdmin,
 		readOnly = false,
-		initialAvailableShifts = [],
-		initialCoveredShifts = []
+		initialAvailableShifts = []
 	}: {
 		isAdmin: boolean;
 		readOnly?: boolean;
 		initialAvailableShifts?: Shift[];
-		initialCoveredShifts?: Shift[];
 	} = $props();
 
 	let shifts = $state<Shift[]>(untrack(() => initialAvailableShifts));
-	let coveredShifts = $state<Shift[]>(untrack(() => initialCoveredShifts));
 	let loading = $state(false);
-	let syncing = $state(false);
 	let claimingId = $state('');
 	let message = $state('');
 	let failed = $state(false);
-	let showAllAvailable = $state(false);
-	let showAllCovered = $state(false);
-	let memberOptions = $state<Array<{ id: string; label: string }>>([]);
-	let hostSelections = $state<Record<string, string>>({});
-	let reassigningId = $state('');
-	const visibleShifts = $derived(showAllAvailable ? shifts : shifts.slice(0, 6));
-	const visibleCoveredShifts = $derived(showAllCovered ? coveredShifts : coveredShifts.slice(0, 6));
+	let showShiftPicker = $state(false);
+	const visibleShifts = $derived(shifts.slice(0, 3));
 
 	async function loadShifts() {
 		loading = true;
@@ -42,29 +33,11 @@
 			};
 			if (!response.ok) throw new Error(result.message || 'Could not load shifts.');
 			shifts = result.available ?? [];
-			coveredShifts = result.covered ?? [];
 		} catch (cause) {
 			failed = true;
 			message = cause instanceof Error ? cause.message : 'Could not load shifts.';
 		} finally {
 			loading = false;
-		}
-	}
-
-	async function syncShifts() {
-		syncing = true;
-		message = '';
-		try {
-			const response = await fetch('/api/admin/sync/shifts', { method: 'POST' });
-			const result = (await response.json()) as { count?: number; message?: string };
-			if (!response.ok) throw new Error(result.message || 'Could not synchronize shifts.');
-			message = `${result.count ?? 0} shifts synchronized from Monday.`;
-			await loadShifts();
-		} catch (cause) {
-			failed = true;
-			message = cause instanceof Error ? cause.message : 'Could not synchronize shifts.';
-		} finally {
-			syncing = false;
 		}
 	}
 
@@ -80,9 +53,9 @@
 			const result = (await response.json()) as { shift?: Shift; message?: string };
 			if (!response.ok) throw new Error(result.message || 'Could not claim this shift.');
 			shifts = shifts.filter((candidate) => candidate.id !== shift.id);
-			if (result.shift) coveredShifts = [...coveredShifts, result.shift];
 			message = `You’re covering ${shift.title} on ${shift.dateLabel || shift.dateValue}.`;
 			failed = false;
+			if (shifts.length === 0) showShiftPicker = false;
 		} catch (cause) {
 			failed = true;
 			message = cause instanceof Error ? cause.message : 'Could not claim this shift.';
@@ -92,50 +65,7 @@
 		}
 	}
 
-	async function reassign(shift: Shift) {
-		const label = hostSelections[shift.id]?.trim() ?? '';
-		const member = memberOptions.find(
-			(option) => option.label.toLocaleLowerCase('en-US') === label.toLocaleLowerCase('en-US')
-		);
-		if (!member) {
-			failed = true;
-			message = 'Type and choose a member from the host suggestions.';
-			return;
-		}
-		reassigningId = shift.id;
-		try {
-			const response = await fetch('/api/admin/shifts/host', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ shiftId: shift.id, memberId: member.id })
-			});
-			const result = (await response.json()) as { shift?: Shift; message?: string };
-			if (!response.ok || !result.shift) {
-				throw new Error(result.message || 'Could not reassign this shift.');
-			}
-			coveredShifts = coveredShifts.map((candidate) =>
-				candidate.id === shift.id ? result.shift! : candidate
-			);
-			message = result.message || 'Shift reassigned.';
-			failed = false;
-		} catch (cause) {
-			failed = true;
-			message = cause instanceof Error ? cause.message : 'Could not reassign this shift.';
-		} finally {
-			reassigningId = '';
-		}
-	}
-
-	onMount(async () => {
-		if (!isAdmin) return;
-		const response = await fetch('/api/members/mentions');
-		if (response.ok) {
-			const result = (await response.json()) as {
-				members?: Array<{ id: string; label: string }>;
-			};
-			memberOptions = result.members ?? [];
-		}
-	});
+	onMount(loadShifts);
 </script>
 
 <section class="shift-panel" aria-labelledby="available-shifts-title">
@@ -144,11 +74,7 @@
 			<p class="eyebrow">Studio coverage</p>
 			<h2 id="available-shifts-title">Available shifts</h2>
 		</div>
-		{#if isAdmin}
-			<button class="secondary-button" type="button" onclick={syncShifts} disabled={syncing}>
-				{syncing ? 'Syncing…' : 'Sync from Monday'}
-			</button>
-		{/if}
+		{#if isAdmin}<p class="automatic-sync-note">Updates automatically every 15 minutes.</p>{/if}
 	</div>
 
 	{#if message}
@@ -171,7 +97,7 @@
 			kind="empty"
 			title="No open shifts"
 			message={isAdmin
-				? 'Everything is covered, or synchronize Monday to refresh the list.'
+				? 'Everything is covered. Monday refreshes automatically every 15 minutes.'
 				: 'Everything currently listed is covered. Check back soon.'}
 		/>
 	{:else}
@@ -197,65 +123,48 @@
 				</article>
 			{/each}
 		</div>
-		{#if shifts.length > 6}
-			<button
-				class="show-more-button"
-				type="button"
-				onclick={() => (showAllAvailable = !showAllAvailable)}
-			>
-				{showAllAvailable ? 'Show fewer shifts' : `Show ${shifts.length - 6} more shifts`}
+		{#if shifts.length > 3}
+			<button class="show-more-button" type="button" onclick={() => (showShiftPicker = true)}>
+				See all {shifts.length} open shifts
 			</button>
 		{/if}
 	{/if}
 
-	{#if !loading && coveredShifts.length}
-		<div class="covered-shifts">
-			<h3>Covered shifts</h3>
-			<ul>
-				{#each visibleCoveredShifts as shift (shift.id)}
-					<li>
-						<span><strong>{shift.dateLabel || shift.dateValue}</strong> · {shift.timeLabel}</span>
-						<span>{shift.title} — covered by {shift.coveredBy || 'a member'}</span>
-						{#if isAdmin}
-							<div class="shift-reassign">
-								<label>
-									<span class="sr-only">New host for {shift.title}</span>
-									<input
-										list="shift-host-members"
-										bind:value={hostSelections[shift.id]}
-										placeholder="Type a new host"
-									/>
-								</label>
-								<button
-									type="button"
-									onclick={() => reassign(shift)}
-									disabled={reassigningId === shift.id}
-								>
-									{reassigningId === shift.id ? 'Saving…' : 'Change host'}
-								</button>
+	{#if showShiftPicker}
+		<div class="event-dialog-backdrop" role="presentation">
+			<div
+				class="event-dialog shift-picker-dialog"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="shift-picker-title"
+			>
+				<div class="card-heading">
+					<div>
+						<p class="eyebrow">Upcoming coverage</p>
+						<h3 id="shift-picker-title">Choose an open CoLab shift</h3>
+					</div>
+					<button type="button" class="text-button" onclick={() => (showShiftPicker = false)}>
+						Close
+					</button>
+				</div>
+				<div class="shift-picker-list">
+					{#each shifts as shift (shift.id)}
+						<article>
+							<div>
+								<strong>{shift.dateLabel || shift.dateValue} · {shift.timeLabel}</strong>
+								<span>{shift.title}{shift.month ? ` · ${shift.month}` : ''}</span>
 							</div>
-						{/if}
-					</li>
-				{/each}
-			</ul>
-			{#if isAdmin}
-				<datalist id="shift-host-members">
-					{#each memberOptions as member (member.id)}
-						<option value={member.label}></option>
+							<button
+								type="button"
+								onclick={() => claim(shift)}
+								disabled={Boolean(claimingId) || readOnly}
+							>
+								{claimingId === shift.id ? 'Claiming…' : readOnly ? 'View only' : 'Select'}
+							</button>
+						</article>
 					{/each}
-				</datalist>
-			{/if}
-			{#if coveredShifts.length > 6}
-				<button
-					class="show-more-button"
-					type="button"
-					onclick={() => (showAllCovered = !showAllCovered)}
-				>
-					{showAllCovered
-						? 'Show fewer covered shifts'
-						: `Show ${coveredShifts.length - 6} more covered shifts`}
-				</button>
-			{/if}
+				</div>
+			</div>
 		</div>
 	{/if}
 </section>

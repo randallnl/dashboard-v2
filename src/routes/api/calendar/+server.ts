@@ -52,24 +52,22 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 	]);
 
 	const events: CalendarEvent[] = [
-		...shifts
-			.filter((shift) => shift.isCovered)
-			.map((shift) => ({
-				id: shift.id,
-				source: 'shift' as const,
-				title: shift.title,
-				startDate: shift.dateValue,
-				endDate: shift.dateValue,
-				status: 'Covered',
-				location: 'CoLab',
-				details: `${shift.timeLabel}${shift.coveredBy ? ` · ${coveredByLabel(shift.coveredBy)}` : ''}`,
-				url: '',
-				canVolunteer: false,
-				isVolunteering: false,
-				fields: [],
-				imageUrl: '',
-				pageUrl: ''
-			})),
+		...(context.capabilities.canViewShifts ? shifts : []).map((shift) => ({
+			id: shift.id,
+			source: 'shift' as const,
+			title: shift.title,
+			startDate: shift.dateValue,
+			endDate: shift.dateValue,
+			status: shift.isCovered ? 'Covered' : 'Open',
+			location: 'CoLab',
+			details: `${shift.timeLabel}${shift.coveredBy ? ` · ${coveredByLabel(shift.coveredBy)}` : ''}`,
+			url: '',
+			canVolunteer: !shift.isCovered,
+			isVolunteering: false,
+			fields: [],
+			imageUrl: '',
+			pageUrl: ''
+		})),
 		...records
 			.filter((record) => !(context.capabilities.isRetailOnly && record.source === 'community'))
 			.map((record) => ({

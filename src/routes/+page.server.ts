@@ -1,5 +1,4 @@
 import { ShiftRepository } from '$lib/server/db';
-import { coveredByLabel } from '$lib/server/monday/shifts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, platform, url }) => {
@@ -32,9 +31,6 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
 		capabilities: layout.capabilities,
 		viewerCapabilities: layout.viewerCapabilities,
 		isViewingAs: layout.isViewingAs,
-		initialAvailableShifts: shifts.filter((shift) => !shift.isCovered),
-		initialCoveredShifts: shifts
-			.filter((shift) => shift.isCovered)
-			.map((shift) => ({ ...shift, person: '', coveredBy: coveredByLabel(shift.coveredBy) }))
+		initialAvailableShifts: shifts.filter((shift) => !shift.isCovered)
 	};
 };

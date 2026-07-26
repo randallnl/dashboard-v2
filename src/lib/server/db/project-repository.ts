@@ -117,7 +117,11 @@ export class ProjectEventRepository {
 				.prepare(
 					`SELECT * FROM project_event_records
 					 ${where}
-					 ORDER BY date_value ASC, title ASC
+					 ORDER BY
+					   CASE WHEN date_value >= date('now') THEN 0 ELSE 1 END ASC,
+					   CASE WHEN date_value >= date('now') THEN date_value END ASC,
+					   CASE WHEN date_value < date('now') THEN date_value END DESC,
+					   title ASC
 					 LIMIT ?7 OFFSET ?8`
 				)
 				.bind(...bindings, safePageSize, offset)

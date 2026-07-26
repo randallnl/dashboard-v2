@@ -2,6 +2,7 @@
 	import ContentState from '$lib/components/ContentState.svelte';
 	import ItemComments from '$lib/components/ItemComments.svelte';
 	import type { ProjectEventRecord } from '$lib/types/domain';
+	import { onMount } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	type Page = {
@@ -18,16 +19,14 @@
 	let search = $state('');
 	let source = $state('');
 	let status = $state('');
-	let from = $state('');
+	let from = $state(new Date().toISOString().slice(0, 10));
 	let through = $state('');
 	let page = $state(1);
 	let pageSize = $state(24);
 	let total = $state(0);
 	let loading = $state(false);
-	let syncing = $state(false);
 	let message = $state('');
 	let failed = $state(false);
-	let loaded = $state(false);
 	let brokenPosters = $state<Record<string, boolean>>({});
 
 	const totalPages = $derived(Math.max(1, Math.ceil(total / pageSize)));
@@ -88,7 +87,6 @@
 			total = result.total;
 			page = result.page;
 			pageSize = result.pageSize;
-			loaded = true;
 			failed = false;
 		} catch (cause) {
 			failed = true;
@@ -121,33 +119,14 @@
 		}
 	}
 
-	async function sync() {
-		syncing = true;
-		message = '';
-		try {
-			const response = await fetch('/api/admin/sync/projects', { method: 'POST' });
-			const result = (await response.json()) as {
-				count?: number;
-				failed?: number;
-				syncedAt?: string;
-				message?: string;
-			};
-			if (!response.ok) throw new Error(result.message || 'Project sync failed.');
-			failed = false;
-			message = `Synced ${result.count ?? 0} records${result.failed ? `; ${result.failed} failed` : ''}.`;
-			await load(1);
-		} catch (cause) {
-			failed = true;
-			message = cause instanceof Error ? cause.message : 'Project sync failed.';
-		} finally {
-			syncing = false;
-		}
-	}
-
 	function applyFilters(event: SubmitEvent) {
 		event.preventDefault();
 		void load(1);
 	}
+
+	onMount(() => {
+		void load(1);
+	});
 </script>
 
 <section class="admin-projects" id="admin" aria-labelledby="admin-projects-title">
@@ -156,9 +135,7 @@
 			<p class="eyebrow">Administrator workspace</p>
 			<h2 id="admin-projects-title">Projects and events</h2>
 		</div>
-		<button type="button" onclick={sync} disabled={syncing}>
-			{syncing ? 'Synchronizing…' : 'Sync from Monday'}
-		</button>
+		<p class="automatic-sync-note">Updates automatically from Monday every 15 minutes.</p>
 	</div>
 
 	<form class="admin-filters" onsubmit={applyFilters}>
@@ -193,12 +170,7 @@
 		<p class="admin-message" class:error={failed} role={failed ? 'alert' : 'status'}>{message}</p>
 	{/if}
 
-	{#if !loaded && !loading}
-		<div class="admin-load-prompt">
-			<p>Load synchronized records, or run a fresh Monday sync first.</p>
-			<button type="button" onclick={() => load(1)}>Load projects</button>
-		</div>
-	{:else if loading && !records.length}
+	{#if loading && !records.length}
 		<ContentState kind="loading" title="Loading projects" message="Reading filtered D1 records." />
 	{:else if failed && !records.length}
 		<ContentState kind="error" title="Projects unavailable" {message} />
@@ -206,7 +178,7 @@
 		<ContentState
 			kind="empty"
 			title="No matching projects"
-			message="Adjust the filters or synchronize the latest Monday records."
+			message="Adjust the filters. Monday records refresh automatically every 15 minutes."
 		/>
 	{:else}
 		<p class="result-count">{total} matching record{total === 1 ? '' : 's'}</p>

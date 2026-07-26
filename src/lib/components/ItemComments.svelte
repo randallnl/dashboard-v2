@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ProjectEventComment, ProjectEventSource } from '$lib/types/domain';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	let {
@@ -14,38 +14,13 @@
 	let loading = $state(true);
 	let submitting = $state(false);
 	let message = $state('');
-	let commentForm = $state<HTMLFormElement>();
 	let showAllComments = $state(false);
+	let suggestions = $state<Array<{ id: string; label: string }>>([]);
+	let selectedMentions = $state<Array<{ id: string; label: string }>>([]);
+	let commentTextarea = $state<HTMLTextAreaElement>();
+	let suggestionRequest = 0;
+	let suggestionTimer: ReturnType<typeof setTimeout> | undefined;
 	const visibleComments = $derived(showAllComments ? comments : comments.slice(-5));
-	const memberTaggerMarkup = `
-		<div class="member-tagger" x-data="memberTagger()" x-on:clear-member-tags.window="selected = []">
-			<label>
-				<span>Tag members (optional)</span>
-				<input
-					type="search"
-					name="q"
-					placeholder="Type a member’s name"
-					hx-get="/api/members/mentions"
-					hx-trigger="input changed delay:250ms"
-					hx-target="next .member-search-results"
-				/>
-			</label>
-			<div class="member-search-results" aria-live="polite"></div>
-			<div class="member-tag-chips">
-				<template x-for="member in selected" x-bind:key="member.id">
-					<span>
-						<span x-text="'@' + member.label"></span>
-						<button
-							type="button"
-							x-on:click="removeMember(member.id)"
-							x-bind:aria-label="'Remove ' + member.label"
-						>×</button>
-						<input type="hidden" name="mentionIds" x-bind:value="member.id" />
-					</span>
-				</template>
-			</div>
-		</div>
-	`;
 
 	function dateLabel(value: string): string {
 		const date = new Date(value);
@@ -77,16 +52,18 @@
 
 	async function submit() {
 		if (!body.trim()) return;
-		const mentionIds = commentForm
-			? new FormData(commentForm).getAll('mentionIds').map(String)
-			: [];
 		submitting = true;
 		message = '';
 		try {
 			const response = await fetch('/api/events/comments', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ source, eventId, body, mentionIds })
+				body: JSON.stringify({
+					source,
+					eventId,
+					body,
+					mentionIds: selectedMentions.map((member) => member.id)
+				})
 			});
 			const result = (await response.json()) as {
 				comment?: ProjectEventComment;
@@ -97,13 +74,57 @@
 			}
 			comments = [...comments, result.comment];
 			body = '';
-			window.dispatchEvent(new CustomEvent('clear-member-tags'));
+			selectedMentions = [];
+			suggestions = [];
 			message = 'Comment posted.';
 		} catch (cause) {
 			message = cause instanceof Error ? cause.message : 'Could not post comment.';
 		} finally {
 			submitting = false;
 		}
+	}
+
+	function mentionQuery(value: string, caret: number): string {
+		const match = value.slice(0, caret).match(/(?:^|\s)@([\p{L}\p{N}.' -]{1,40})$/u);
+		return match?.[1]?.trim() ?? '';
+	}
+
+	function updateSuggestions() {
+		selectedMentions = selectedMentions.filter((member) => body.includes(`@${member.label}`));
+		const query = mentionQuery(body, commentTextarea?.selectionStart ?? body.length);
+		const requestId = ++suggestionRequest;
+		if (!query) {
+			suggestions = [];
+			return;
+		}
+		if (suggestionTimer) clearTimeout(suggestionTimer);
+		suggestionTimer = setTimeout(async () => {
+			const response = await fetch(`/api/members/mentions?q=${encodeURIComponent(query)}`);
+			if (!response.ok || requestId !== suggestionRequest) return;
+			const result = (await response.json()) as {
+				members?: Array<{ id: string; label: string }>;
+			};
+			suggestions = result.members ?? [];
+		}, 180);
+	}
+
+	async function selectMention(member: { id: string; label: string }) {
+		const caret = commentTextarea?.selectionStart ?? body.length;
+		const before = body.slice(0, caret);
+		const match = before.match(/(?:^|\s)@([\p{L}\p{N}.' -]{1,40})$/u);
+		if (!match || match.index === undefined) return;
+		const prefix = before.slice(0, match.index);
+		const leadingSpace = match[0].startsWith(' ') ? ' ' : '';
+		const inserted = `${leadingSpace}@${member.label} `;
+		body = `${prefix}${inserted}${body.slice(caret)}`;
+		if (!selectedMentions.some((candidate) => candidate.id === member.id)) {
+			selectedMentions = [...selectedMentions, member];
+		}
+		suggestions = [];
+		await tick();
+		const nextCaret = prefix.length + inserted.length;
+		commentTextarea?.focus();
+		commentTextarea?.setSelectionRange(nextCaret, nextCaret);
 	}
 
 	onMount(load);
@@ -145,18 +166,43 @@
 
 	{#if !readOnly}
 		<form
-			bind:this={commentForm}
 			onsubmit={(event) => {
 				event.preventDefault();
 				void submit();
 			}}
 		>
-			<!-- Static, application-owned markup lets Alpine and HTMX own this small enhancement island. -->
-			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-			{@html memberTaggerMarkup}
-			<label>
+			<label class="inline-mention-composer">
 				<span>Add a comment</span>
-				<textarea bind:value={body} maxlength="2000" rows="3" required></textarea>
+				<textarea
+					bind:this={commentTextarea}
+					bind:value={body}
+					oninput={updateSuggestions}
+					onkeyup={updateSuggestions}
+					maxlength="2000"
+					rows="3"
+					placeholder="Write a comment. Type @ and a member’s name to tag them."
+					aria-autocomplete="list"
+					aria-controls={`mention-suggestions-${source}-${eventId}`}
+					required></textarea>
+				{#if suggestions.length}
+					<div
+						class="inline-mention-suggestions"
+						id={`mention-suggestions-${source}-${eventId}`}
+						role="listbox"
+						aria-label="Matching members"
+					>
+						{#each suggestions as member (member.id)}
+							<button
+								type="button"
+								role="option"
+								aria-selected="false"
+								onclick={() => selectMention(member)}
+							>
+								@{member.label}
+							</button>
+						{/each}
+					</div>
+				{/if}
 			</label>
 			<button type="submit" disabled={submitting || !body.trim()}>
 				{submitting ? 'Posting…' : 'Post comment'}
