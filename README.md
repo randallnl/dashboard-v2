@@ -28,6 +28,12 @@ npm run build
 npm run deploy:dry-run
 ```
 
+Run the complete local release gate with:
+
+```sh
+npm run validate
+```
+
 ## Cloudflare setup
 
 `wrangler.jsonc` contains the Worker runtime, assets, environment variables, compatibility settings, observability configuration, and production bindings.
@@ -55,6 +61,9 @@ npm run deploy
 ```
 
 Deployment requires authenticated Wrangler access and provisioned Cloudflare resources.
+See the [production operations runbook](./docs/operations.md) for the release
+checklist, binding verification, monitoring, backups, secret rotation, and
+rollback procedures.
 
 ## Database migrations
 
@@ -74,3 +83,4 @@ retention decisions.
 
 - [Project brief](./Here%E2%80%99s%20a%20practical%20project%20brief%20you%20can.md)
 - [Phased implementation plan](./PHASED_IMPLEMENTATION_PLAN.md)
+- [Production operations runbook](./docs/operations.md)

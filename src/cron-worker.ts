@@ -18,7 +18,9 @@ export async function runScheduledShiftSync(
 				cron,
 				scheduledTime,
 				shiftCount: shifts.count,
+				shiftFailed: shifts.failed,
 				eventCount: events.count,
+				eventFailed: events.failed,
 				syncedAt: shifts.syncedAt > events.syncedAt ? shifts.syncedAt : events.syncedAt,
 				durationMs: Date.now() - startedAt
 			})

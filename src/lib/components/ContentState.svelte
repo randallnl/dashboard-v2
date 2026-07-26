@@ -16,6 +16,8 @@
 	class="content-state"
 	class:state-error={kind === 'error'}
 	role={kind === 'error' ? 'alert' : 'status'}
+	aria-live={kind === 'error' ? 'assertive' : 'polite'}
+	aria-busy={kind === 'loading'}
 >
 	{#if kind === 'loading'}
 		<span class="state-spinner" aria-hidden="true"></span>

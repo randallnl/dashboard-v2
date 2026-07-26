@@ -14,6 +14,7 @@ describe('syncShifts', () => {
 
 		await expect(syncShifts(source, store)).resolves.toEqual({
 			count: 2,
+			failed: 0,
 			syncedAt: shift.syncedAt
 		});
 		expect(store.upsert).toHaveBeenCalledTimes(2);
@@ -24,6 +25,17 @@ describe('syncShifts', () => {
 		const result = await syncShifts({ list: vi.fn().mockResolvedValue([]) }, { upsert: vi.fn() });
 
 		expect(result.count).toBe(0);
+		expect(result.failed).toBe(0);
 		expect(Number.isNaN(Date.parse(result.syncedAt))).toBe(false);
+	});
+
+	it('continues after an individual shift fails to persist', async () => {
+		const source = { list: vi.fn().mockResolvedValue([shift, { ...shift, id: 'shift-2' }]) };
+		const store = {
+			upsert: vi.fn().mockRejectedValueOnce(new Error('bad row')).mockResolvedValueOnce(undefined)
+		};
+
+		await expect(syncShifts(source, store)).resolves.toMatchObject({ count: 1, failed: 1 });
+		expect(store.upsert).toHaveBeenCalledTimes(2);
 	});
 });

@@ -78,8 +78,8 @@
 		<ViewAsControl {viewer} {member} {isViewingAs} />
 	{/if}
 
-	<main class="dashboard-main" id="overview">
-		<section class="welcome-card">
+	<main class="dashboard-main" id="main-content">
+		<section class="welcome-card" id="overview">
 			<div>
 				<p class="eyebrow">Member overview</p>
 				<h1>Hi, {firstName}.</h1>

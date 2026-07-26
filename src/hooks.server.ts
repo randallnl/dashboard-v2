@@ -2,15 +2,32 @@ import { SESSION_COOKIE_NAME, SESSION_TOUCH_INTERVAL_MS } from '$lib/server/auth
 import type { AuthenticatedSession } from '$lib/server/auth/types';
 import { AuthRepository } from '$lib/server/db';
 import { hashToken } from '$lib/server/security/tokens';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit';
+
+const SECURITY_HEADERS = {
+	'referrer-policy': 'strict-origin-when-cross-origin',
+	'x-content-type-options': 'nosniff',
+	'x-frame-options': 'DENY',
+	'permissions-policy': 'camera=(), microphone=(), geolocation=()'
+} as const;
+
+export function applyResponseHeaders(response: Response, requestId: string): Response {
+	response.headers.set('x-request-id', requestId);
+	for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+		response.headers.set(name, value);
+	}
+	return response;
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
+	const requestId = crypto.randomUUID();
+	event.locals.requestId = requestId;
 	event.locals.session = null;
 	const token = event.cookies.get(SESSION_COOKIE_NAME);
 	const env = event.platform?.env;
 
 	if (!token || !env?.DB) {
-		return resolve(event);
+		return applyResponseHeaders(await resolve(event), requestId);
 	}
 
 	const sessionHash = await hashToken(token);
@@ -25,7 +42,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			secure: true,
 			sameSite: 'lax'
 		});
-		return resolve(event);
+		return applyResponseHeaders(await resolve(event), requestId);
 	}
 
 	const session: AuthenticatedSession = {
@@ -53,5 +70,23 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	return resolve(event);
+	return applyResponseHeaders(await resolve(event), requestId);
+};
+
+export const handleError: HandleServerError = ({ error, event, status, message }) => {
+	const requestId = event.locals.requestId || crypto.randomUUID();
+	console.error(
+		JSON.stringify({
+			event: 'request_failed',
+			requestId,
+			method: event.request.method,
+			path: event.url.pathname,
+			status,
+			message: error instanceof Error ? error.message : message
+		})
+	);
+	return {
+		message: status >= 500 ? 'Something went wrong. Please try again.' : message,
+		requestId
+	};
 };

@@ -38,7 +38,7 @@
 	}
 </script>
 
-<main class="auth-layout">
+<main class="auth-layout" id="main-content">
 	<section class="auth-panel" aria-labelledby="login-title">
 		<div class="brand">
 			<span class="brand-mark" aria-hidden="true">Q</span>
