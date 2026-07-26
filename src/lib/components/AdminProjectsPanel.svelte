@@ -265,18 +265,33 @@
 				</div>
 				<button type="button" class="text-button" onclick={() => (selected = null)}>Close</button>
 			</div>
+			<div class="project-pills project-record-pills" aria-label="Project attributes">
+				{#if selected.status}
+					<span class="project-pill pill-status">Status · {selected.status}</span>
+				{/if}
+				{#if field(selected, 'goal') || field(selected, 'category')}
+					<span class="project-pill pill-goal">
+						Goal · {field(selected, 'goal') || field(selected, 'category')}
+					</span>
+				{/if}
+				{#if selected.location}
+					<span class="project-pill pill-location">Location · {selected.location}</span>
+				{/if}
+				{#if field(selected, 'strategicGoal')}
+					<span class="project-pill pill-strategic">
+						Strategic goal · {field(selected, 'strategicGoal')}
+					</span>
+				{/if}
+				{#if field(selected, 'priority')}
+					<span class="project-pill pill-priority">
+						Priority · {field(selected, 'priority')}
+					</span>
+				{/if}
+			</div>
 			<dl>
-				<div>
-					<dt>Status</dt>
-					<dd>{selected.status || 'Not set'}</dd>
-				</div>
 				<div>
 					<dt>Date</dt>
 					<dd>{dateLabel(selected.dateValue)}</dd>
-				</div>
-				<div>
-					<dt>Location</dt>
-					<dd>{selected.location || 'Not set'}</dd>
 				</div>
 				<div>
 					<dt>Owner</dt>
@@ -287,7 +302,7 @@
 					{field(selected, 'description')}
 				</p>{/if}
 			<dl class="event-extra-fields">
-				{#each Object.entries(selected.record).filter(([key, value]) => key !== 'description' && typeof value === 'string' && value && !validUrl(value)) as entry (entry[0])}
+				{#each Object.entries(selected.record).filter(([key, value]) => !['description', 'goal', 'category', 'strategicGoal', 'priority'].includes(key) && typeof value === 'string' && value && !validUrl(value)) as entry (entry[0])}
 					<div>
 						<dt>{fieldLabel(entry[0])}</dt>
 						<dd>{String(entry[1])}</dd>

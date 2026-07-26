@@ -490,7 +490,14 @@ h2 {
 	gap: 2rem;
 	padding: clamp(2rem, 5vw, 4.5rem);
 	border-radius: 1.5rem;
-	background: #194639;
+	background:
+		linear-gradient(
+			105deg,
+			rgb(8 31 23 / 88%) 0%,
+			rgb(11 42 31 / 68%) 55%,
+			rgb(8 25 19 / 42%) 100%
+		),
+		url('/images/colab-studio-hero.jpg') center 52% / cover no-repeat;
 	color: #f7f2e8;
 }
 
@@ -1952,6 +1959,15 @@ h2 {
 	color: #843c28;
 }
 
+.project-record-pills {
+	margin-top: 1rem;
+}
+
+.project-record-pills > span {
+	padding: 0.4rem 0.65rem;
+	font-size: 0.68rem;
+}
+
 .pagination {
 	display: flex;
 	align-items: center;
@@ -1978,7 +1994,7 @@ h2 {
 
 .project-detail dl {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	margin: 1.5rem 0 0;
 }
 
