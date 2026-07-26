@@ -8,9 +8,27 @@ type Store = { upsert(event: ProjectEventRecord): Promise<void> };
 
 export async function syncEvents(source: Source, store: Store) {
 	const events = await source.list();
-	for (const event of events) await store.upsert(event);
+	let count = 0;
+	let failed = 0;
+	for (const event of events) {
+		try {
+			await store.upsert(event);
+			count += 1;
+		} catch (cause) {
+			failed += 1;
+			console.error(
+				JSON.stringify({
+					event: 'project_event_upsert_failed',
+					source: event.source,
+					itemId: event.id,
+					message: cause instanceof Error ? cause.message : 'Unknown error'
+				})
+			);
+		}
+	}
 	return {
-		count: events.length,
+		count,
+		failed,
 		syncedAt: events[0]?.syncedAt ?? new Date().toISOString()
 	};
 }

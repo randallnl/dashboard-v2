@@ -33,7 +33,8 @@ describe('Monday event mapping', () => {
 		expect(event).toMatchObject({
 			adminOnly: false,
 			dateValue: '2026-07-30',
-			endDateValue: '2026-08-02'
+			endDateValue: '2026-08-02',
+			record: { mondayUrl: 'https://queerlective.monday.com/boards/8390893779/pulses/event-2' }
 		});
 	});
 
@@ -46,6 +47,14 @@ describe('Monday event mapping', () => {
 			},
 			'2026-07-26T16:00:00.000Z'
 		);
-		expect(event).toMatchObject({ source: 'community', status: 'Pending', adminOnly: false });
+		expect(event).toMatchObject({
+			source: 'community',
+			status: 'Pending',
+			adminOnly: false,
+			record: {
+				itemId: 'community-1',
+				mondayUrl: 'https://queerlective.monday.com/boards/8052311890/pulses/community-1'
+			}
+		});
 	});
 });

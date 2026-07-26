@@ -1000,6 +1000,240 @@ h2 {
 	color: #665d4d;
 }
 
+.admin-projects {
+	margin-top: 4rem;
+	padding: clamp(1.5rem, 4vw, 2.5rem);
+	border: 1px solid #d5b46e;
+	border-radius: 1.2rem;
+	background: #f4e7c9;
+	scroll-margin-top: 2rem;
+}
+
+.admin-projects .section-heading h2 {
+	color: #17251e;
+}
+
+.admin-projects button,
+.admin-filters input,
+.admin-filters select {
+	padding: 0.72rem 0.85rem;
+	border: 1px solid #c5ab76;
+	border-radius: 0.6rem;
+	font: inherit;
+}
+
+.admin-projects button {
+	cursor: pointer;
+	background: #194639;
+	color: #fff;
+	font-weight: 700;
+}
+
+.admin-projects button:disabled {
+	cursor: wait;
+	opacity: 0.55;
+}
+
+.admin-filters {
+	display: grid;
+	grid-template-columns: minmax(12rem, 2fr) repeat(4, minmax(8rem, 1fr)) auto;
+	align-items: end;
+	gap: 0.65rem;
+	margin-top: 2rem;
+}
+
+.admin-filters label {
+	display: grid;
+	gap: 0.35rem;
+	color: #665d4d;
+	font-size: 0.72rem;
+	font-weight: 700;
+}
+
+.admin-filters input,
+.admin-filters select {
+	min-width: 0;
+	background: #fffaf0;
+	color: #17251e;
+}
+
+.admin-message,
+.admin-load-prompt {
+	margin: 1.2rem 0 0;
+	padding: 0.9rem 1rem;
+	border-radius: 0.7rem;
+	background: #e3eddc;
+	color: #194639;
+}
+
+.admin-message.error {
+	background: #f1d8cf;
+	color: #843c28;
+}
+
+.admin-load-prompt {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	background: rgb(255 250 240 / 70%);
+}
+
+.admin-load-prompt p,
+.result-count {
+	margin: 0;
+}
+
+.result-count {
+	margin-top: 1.4rem;
+	color: #75674e;
+	font-size: 0.8rem;
+}
+
+.admin-project-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.8rem;
+	margin-top: 0.8rem;
+}
+
+.admin-projects .project-tile {
+	display: grid;
+	overflow: hidden;
+	grid-template-columns: 5.5rem 1fr;
+	padding: 0;
+	border-color: #d2bd94;
+	background: #fffaf0;
+	color: #17251e;
+	text-align: left;
+}
+
+.poster-frame {
+	display: grid;
+	min-height: 8rem;
+	place-items: center;
+	overflow: hidden;
+	background: #dce6dd;
+	color: #194639;
+	font-family: 'Manrope', sans-serif;
+	font-size: 2rem;
+}
+
+.poster-frame img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.project-tile-body {
+	min-width: 0;
+	padding: 0.9rem;
+}
+
+.project-tile h3 {
+	margin: 0.8rem 0 0.35rem;
+	overflow: hidden;
+	font-size: 1rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.project-tile p,
+.project-tile small {
+	margin: 0;
+	color: #746b5b;
+	font-size: 0.72rem;
+	line-height: 1.45;
+}
+
+.project-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+}
+
+.project-pills > span {
+	padding: 0.25rem 0.4rem;
+	border-radius: 999px;
+	background: #ebe5da;
+	color: #625b4f;
+	font-size: 0.58rem;
+	font-weight: 700;
+}
+
+.pagination {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 1rem;
+	margin-top: 1.2rem;
+	color: #665d4d;
+	font-size: 0.8rem;
+}
+
+.project-detail {
+	margin-top: 1.5rem;
+	padding: 1.5rem;
+	border: 1px solid #cdb686;
+	border-radius: 1rem;
+	background: #fffaf0;
+}
+
+.project-detail h3 {
+	margin: 0;
+	font-size: clamp(1.5rem, 3vw, 2.3rem);
+}
+
+.project-detail dl {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	margin: 1.5rem 0 0;
+}
+
+.project-detail dl div {
+	padding: 0.8rem;
+	border-top: 1px solid #ddd0b6;
+}
+
+.project-detail dt {
+	color: #7d725e;
+	font-size: 0.65rem;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.project-detail dd {
+	margin: 0.3rem 0 0;
+}
+
+.detail-description {
+	white-space: pre-wrap;
+	line-height: 1.6;
+}
+
+.detail-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-top: 1.2rem;
+}
+
+.detail-links a {
+	padding: 0.55rem 0.75rem;
+	border-radius: 0.5rem;
+	background: #194639;
+	color: #fff;
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.last-synced {
+	margin: 1.2rem 0 0;
+	color: #807663;
+	font-size: 0.7rem;
+}
+
 .content-state {
 	display: flex;
 	align-items: center;
@@ -1167,6 +1401,17 @@ h2 {
 
 	.history-card.activity-card {
 		grid-row: auto;
+	}
+
+	.admin-filters,
+	.admin-project-grid,
+	.project-detail dl {
+		grid-template-columns: 1fr;
+	}
+
+	.admin-load-prompt {
+		align-items: start;
+		flex-direction: column;
 	}
 
 	.history-list li {

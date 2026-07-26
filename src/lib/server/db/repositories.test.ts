@@ -180,4 +180,35 @@ describe('ProjectEventRepository', () => {
 			'2026-07-24T12:00:00.000Z'
 		);
 	});
+
+	it('applies search, date, and pagination filters in D1', async () => {
+		const mock = createDatabaseMock();
+		const repository = new ProjectEventRepository(mock.db);
+
+		await repository.listPage(
+			{
+				source: 'project',
+				status: 'Scheduled',
+				fromDate: '2026-08-01',
+				throughDate: '2026-08-31',
+				search: ' Open Studio ',
+				includeAdminOnly: true
+			},
+			2,
+			20
+		);
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('LIMIT ?7 OFFSET ?8'));
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('instr(lower'));
+		expect(mock.bind).toHaveBeenCalledWith(
+			'project',
+			'Scheduled',
+			'2026-08-01',
+			'2026-08-31',
+			'open studio',
+			1,
+			20,
+			20
+		);
+	});
 });

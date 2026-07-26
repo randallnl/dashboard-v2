@@ -6,7 +6,17 @@ export type ProjectEventFilters = {
 	source?: ProjectEventSource;
 	status?: string;
 	fromDate?: string;
+	throughDate?: string;
+	search?: string;
 	includeAdminOnly?: boolean;
+};
+
+export type ProjectEventPage = {
+	records: ProjectEventRecord[];
+	total: number;
+	page: number;
+	pageSize: number;
+	statuses: string[];
 };
 
 export class ProjectEventRepository {
@@ -78,6 +88,60 @@ export class ProjectEventRepository {
 			.all<ProjectEventRecordRow>();
 
 		return result.results.map(mapProjectEventRow);
+	}
+
+	async listPage(
+		filters: ProjectEventFilters = {},
+		page = 1,
+		pageSize = 24
+	): Promise<ProjectEventPage> {
+		const source = filters.source ?? '';
+		const status = filters.status ?? '';
+		const fromDate = filters.fromDate ?? '';
+		const throughDate = filters.throughDate ?? '';
+		const search = filters.search?.trim().toLocaleLowerCase('en-US') ?? '';
+		const safePageSize = Math.min(Math.max(pageSize, 1), 50);
+		const safePage = Math.max(page, 1);
+		const offset = (safePage - 1) * safePageSize;
+		const includeAdminOnly = filters.includeAdminOnly ? 1 : 0;
+		const where = `WHERE (?1 = '' OR source = ?1)
+				   AND (?2 = '' OR status = ?2)
+				   AND (?3 = '' OR date_value >= ?3)
+				   AND (?4 = '' OR date_value <= ?4)
+				   AND (?5 = '' OR instr(lower(title || ' ' || owner || ' ' || location), ?5) > 0)
+				   AND (?6 = 1 OR admin_only = 0)`;
+		const bindings = [source, status, fromDate, throughDate, search, includeAdminOnly] as const;
+
+		const [recordsResult, countRow, statusResult] = await Promise.all([
+			this.db
+				.prepare(
+					`SELECT * FROM project_event_records
+					 ${where}
+					 ORDER BY date_value ASC, title ASC
+					 LIMIT ?7 OFFSET ?8`
+				)
+				.bind(...bindings, safePageSize, offset)
+				.all<ProjectEventRecordRow>(),
+			this.db
+				.prepare(`SELECT COUNT(*) AS total FROM project_event_records ${where}`)
+				.bind(...bindings)
+				.first<{ total: number }>(),
+			this.db
+				.prepare(
+					`SELECT DISTINCT status FROM project_event_records
+					 WHERE status <> ''
+					 ORDER BY status ASC`
+				)
+				.all<{ status: string }>()
+		]);
+
+		return {
+			records: recordsResult.results.map(mapProjectEventRow),
+			total: countRow?.total ?? 0,
+			page: safePage,
+			pageSize: safePageSize,
+			statuses: statusResult.results.map((row) => row.status)
+		};
 	}
 
 	async listForCalendar(

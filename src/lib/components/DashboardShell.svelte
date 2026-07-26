@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CalendarPanel from '$lib/components/CalendarPanel.svelte';
+	import AdminProjectsPanel from '$lib/components/AdminProjectsPanel.svelte';
 	import ContentState from '$lib/components/ContentState.svelte';
 	import MemberHistoryPanel from '$lib/components/MemberHistoryPanel.svelte';
 	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
@@ -196,14 +197,7 @@
 		</section>
 
 		{#if capabilities.canViewAdminTools}
-			<section class="admin-card" id="admin">
-				<div>
-					<p class="eyebrow">Administrator access</p>
-					<h2>Admin workspace</h2>
-					<p>Your authoritative Monday member record grants access to protected admin tools.</p>
-				</div>
-				<span class="coming-soon">Project tools arrive in Phase 8</span>
-			</section>
+			<AdminProjectsPanel />
 		{/if}
 	</main>
 
