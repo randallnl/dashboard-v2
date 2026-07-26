@@ -65,6 +65,14 @@ See the [production operations runbook](./docs/operations.md) for the release
 checklist, binding verification, monitoring, backups, secret rotation, and
 rollback procedures.
 
+For pilot selection, Monday reconciliation, rollout stages, and general-release
+criteria, use the [Phase 11 launch plan](./docs/launch-plan.md). Run the
+read-only production smoke gate with:
+
+```sh
+npm run smoke:production
+```
+
 ## Database migrations
 
 Apply migrations to the local D1 simulator before applying them remotely:

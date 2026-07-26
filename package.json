@@ -13,6 +13,7 @@
 		"format": "prettier --write .",
 		"test": "vitest run",
 		"validate": "npm run lint && npm run check && npm test && npm run build",
+		"smoke:production": "node scripts/production-smoke.mjs",
 		"db:migrate:local": "wrangler d1 migrations apply queerlective-dashboard --local",
 		"db:migrate:remote": "wrangler d1 migrations apply queerlective-dashboard --remote",
 		"db:migrations:list": "wrangler d1 migrations list queerlective-dashboard --remote",

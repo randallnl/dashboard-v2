@@ -60,6 +60,7 @@ Record the dashboard and cron version IDs emitted by Wrangler. Then verify:
 
 ```sh
 curl -I 'https://dashboard-v2.randall-d53.workers.dev/?verify=release'
+npm run smoke:production
 npx wrangler deployments status
 npx wrangler deployments status --config wrangler.cron.jsonc
 ```
@@ -67,6 +68,10 @@ npx wrangler deployments status --config wrangler.cron.jsonc
 The homepage should return `200`. Protected endpoints should return `401` when
 called without a session. Responses include `x-request-id`; use that value to
 correlate a member report with Workers Logs.
+
+The smoke command is read-only. Follow the
+[Phase 11 launch plan](./launch-plan.md) for authenticated pilot testing,
+Monday reconciliation, rollout pauses, and general-release approval.
 
 ## Monitoring and sync recovery
 
