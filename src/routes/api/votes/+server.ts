@@ -1,7 +1,7 @@
 import { loadMemberContext } from '$lib/server/auth/member-context';
 import { ProjectEventRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
-import { hasDuplicateVote, VoteDirectory } from '$lib/server/monday/votes';
+import { voteLogForMember, VoteDirectory } from '$lib/server/monday/votes';
 import { communityConsentVotes } from '$lib/server/votes/eligibility';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -16,9 +16,14 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 		directory.listVoteLog(),
 		new ProjectEventRepository(env!.DB).list({ source: 'community' })
 	]);
-	const votes = [...motions, ...communityConsentVotes(community)].map((vote) => ({
-		...vote,
-		hasVoted: hasDuplicateVote(logs, context.member.id, vote)
-	}));
+	const votes = [...motions, ...communityConsentVotes(community)].map((vote) => {
+		const recorded = voteLogForMember(logs, context.member.id, vote);
+		return {
+			...vote,
+			hasVoted: Boolean(recorded),
+			recordedResponse: recorded?.response ?? '',
+			recordedComment: recorded?.comment ?? ''
+		};
+	});
 	return json({ votes }, { headers: { 'cache-control': 'private, no-store' } });
 };

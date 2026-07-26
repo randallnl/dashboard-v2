@@ -3,7 +3,11 @@
 	import type { Vote } from '$lib/types/domain';
 	import { onMount } from 'svelte';
 
-	type EligibleVote = Vote & { hasVoted: boolean };
+	type EligibleVote = Vote & {
+		hasVoted: boolean;
+		recordedResponse: string;
+		recordedComment: string;
+	};
 	const objection = "Don't Approve(With Comment)";
 	let { readOnly = false }: { readOnly?: boolean } = $props();
 
@@ -50,10 +54,17 @@
 					comment: comments[vote.id] ?? ''
 				})
 			});
-			const result = (await response.json()) as { message?: string };
+			const result = (await response.json()) as { response?: string; message?: string };
 			if (!response.ok) throw new Error(result.message || 'Could not record your vote.');
 			votes = votes.map((candidate) =>
-				candidate.id === vote.id ? { ...candidate, hasVoted: true } : candidate
+				candidate.id === vote.id
+					? {
+							...candidate,
+							hasVoted: true,
+							recordedResponse: result.response || responseValue,
+							recordedComment: comments[vote.id] ?? ''
+						}
+					: candidate
 			);
 			failed = false;
 			message = `Your response to “${vote.question}” was recorded.`;
@@ -110,7 +121,10 @@
 					<h3>{vote.question}</h3>
 					{#if vote.details}<p>{vote.details}</p>{/if}
 					{#if vote.hasVoted}
-						<span class="recorded-pill">Response recorded</span>
+						<div class="recorded-vote">
+							<span class="recorded-pill">Your vote: {vote.recordedResponse || 'Recorded'}</span>
+							{#if vote.recordedComment}<p>{vote.recordedComment}</p>{/if}
+						</div>
 					{:else}
 						<div class="vote-form">
 							<label>

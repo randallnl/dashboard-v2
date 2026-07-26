@@ -106,12 +106,29 @@ export function openOrdersForEmail(
 	email: string,
 	limit = 50
 ): Order[] {
-	const normalized = normalizeEmail(email);
+	return openOrdersForEmails(transactions, [email], limit);
+}
+
+export function openOrdersForEmails(
+	transactions: Transaction[],
+	emails: Iterable<string>,
+	limit = 50
+): Order[] {
+	const normalizedEmails = new Set(
+		Array.from(emails, normalizeEmail).filter((email) => email.length > 0)
+	);
+	return openOrders(
+		transactions.filter((transaction) => normalizedEmails.has(transaction.email)),
+		limit
+	);
+}
+
+export function openOrders(transactions: Transaction[], limit = 50): Order[] {
+	const closedStatuses = new Set(['fulfilled', 'cancelled', 'canceled', 'refunded']);
 	return transactions
 		.filter(
 			(transaction) =>
-				transaction.email === normalized &&
-				transaction.fulfillmentStatus.toLocaleLowerCase('en-US') === 'unfulfilled' &&
+				!closedStatuses.has(transaction.fulfillmentStatus.trim().toLocaleLowerCase('en-US')) &&
 				!isSubscription(transaction.details)
 		)
 		.sort((left, right) => right.orderDate.localeCompare(left.orderDate))

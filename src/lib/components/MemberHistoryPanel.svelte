@@ -138,7 +138,7 @@
 			{#if canViewOrders}
 				<article class="history-card">
 					<div class="card-heading">
-						<h3>Open orders</h3>
+						<h3>Community fulfillment queue</h3>
 						{#if shopifyAdminUrl}
 							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 							<a href={shopifyAdminUrl} target="_blank" rel="noreferrer">Shopify admin ↗</a>
@@ -160,7 +160,7 @@
 						<ContentState
 							kind="empty"
 							title="No open orders"
-							message="You do not have any unfulfilled non-subscription orders."
+							message="There are no unfulfilled non-subscription orders."
 						/>
 					{/if}
 				</article>

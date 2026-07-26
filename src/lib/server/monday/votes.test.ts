@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { consentDeadline, hasDuplicateVote, mapMotion } from './votes';
+import {
+	consentDeadline,
+	hasDuplicateVote,
+	mapMotion,
+	mapVoteLog,
+	voteLogForMember
+} from './votes';
 
 describe('vote motion mapping', () => {
 	it('maps eligible vote types and calculates a timezone-safe 48-day deadline', () => {
@@ -40,7 +46,16 @@ describe('duplicate vote checks', () => {
 	it('uses vote ID first and falls back to normalized question text', () => {
 		expect(
 			hasDuplicateVote(
-				[{ id: '1', memberId: 'member-1', voteId: 'vote-1', question: '', response: 'Approve' }],
+				[
+					{
+						id: '1',
+						memberId: 'member-1',
+						voteId: 'vote-1',
+						question: '',
+						response: 'Approve',
+						comment: ''
+					}
+				],
 				'member-1',
 				vote
 			)
@@ -53,12 +68,31 @@ describe('duplicate vote checks', () => {
 						memberId: 'member-1',
 						voteId: '',
 						question: '  FUND   the print studio ',
-						response: 'Approve'
+						response: 'Approve',
+						comment: ''
 					}
 				],
 				'member-1',
 				vote
 			)
 		).toBe(true);
+	});
+
+	it('returns the recorded response and comment for the member', () => {
+		const entry = mapVoteLog({
+			id: 'log-1',
+			name: 'Alex M.',
+			column_values: [
+				{ id: 'text_mm4vff42', text: 'member-1', value: null },
+				{ id: 'text_mm4ve8bt', text: 'vote-1', value: null },
+				{ id: 'color_mm4vbrwr', text: "Don't Approve(With Comment)", value: null },
+				{ id: 'long_texta8lzlxn7', text: 'Please revise the budget.', value: null }
+			]
+		});
+
+		expect(voteLogForMember([entry], 'member-1', vote)).toMatchObject({
+			response: "Don't Approve(With Comment)",
+			comment: 'Please revise the budget.'
+		});
 	});
 });

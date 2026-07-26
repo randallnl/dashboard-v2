@@ -90,6 +90,7 @@ export type VoteLogEntry = {
 	voteId: string;
 	question: string;
 	response: string;
+	comment: string;
 };
 
 export function mapVoteLog(item: Item): VoteLogEntry {
@@ -99,18 +100,27 @@ export function mapVoteLog(item: Item): VoteLogEntry {
 		memberId: text(columns, LOG_COLUMNS.memberId),
 		voteId: text(columns, LOG_COLUMNS.voteId),
 		question: text(columns, LOG_COLUMNS.question),
-		response: text(columns, LOG_COLUMNS.response)
+		response: text(columns, LOG_COLUMNS.response),
+		comment: text(columns, LOG_COLUMNS.comment)
 	};
 }
 
-export function hasDuplicateVote(logs: VoteLogEntry[], memberId: string, vote: Vote): boolean {
-	return logs.some(
+export function voteLogForMember(
+	logs: VoteLogEntry[],
+	memberId: string,
+	vote: Vote
+): VoteLogEntry | undefined {
+	return logs.find(
 		(entry) =>
 			entry.memberId === memberId &&
 			(entry.voteId
 				? entry.voteId === vote.id
 				: normalizedQuestion(entry.question) === normalizedQuestion(vote.question))
 	);
+}
+
+export function hasDuplicateVote(logs: VoteLogEntry[], memberId: string, vote: Vote): boolean {
+	return voteLogForMember(logs, memberId, vote) !== undefined;
 }
 
 function voterName(member: Member): string {

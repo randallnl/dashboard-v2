@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	mapTransaction,
+	openOrders,
 	openOrdersForEmail,
+	openOrdersForEmails,
 	paymentsForEmail,
 	paymentsForEmails
 } from './transactions';
@@ -44,6 +46,15 @@ const transactions = [
 		fulfillmentStatus: 'Fulfilled'
 	},
 	{
+		id: 'alternate-order',
+		name: 'Workshop materials',
+		amount: 18,
+		details: 'Paper and ink',
+		email: 'alternate@example.com',
+		orderDate: '2026-07-05',
+		fulfillmentStatus: ''
+	},
+	{
 		id: 'fulfilled',
 		name: 'Completed order',
 		amount: 8,
@@ -78,6 +89,22 @@ describe('transaction filters', () => {
 		expect(openOrdersForEmail(transactions, 'member@example.com').map((order) => order.id)).toEqual(
 			['order']
 		);
+	});
+
+	it('matches open orders across alternate emails and blank fulfillment states', () => {
+		expect(
+			openOrdersForEmails(transactions, ['member@example.com', ' ALTERNATE@example.com ']).map(
+				(order) => order.id
+			)
+		).toEqual(['alternate-order', 'order']);
+	});
+
+	it('returns the shared open-order queue across member emails', () => {
+		expect(openOrders(transactions).map((order) => order.id)).toEqual([
+			'alternate-order',
+			'other',
+			'order'
+		]);
 	});
 
 	it('maps currency-like amounts without returning NaN', () => {
