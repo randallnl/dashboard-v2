@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "dashboard-v2-shift-sync",
+	"name": "monday-d1-sync",
 	"main": "src/cron-worker.ts",
 	"compatibility_date": "2026-07-24",
 	"compatibility_flags": ["nodejs_compat"],
