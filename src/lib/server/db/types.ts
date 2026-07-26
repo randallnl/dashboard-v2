@@ -50,6 +50,7 @@ export type ProjectEventRecordRow = {
 export type CleanupResult = {
 	tokensDeleted: number;
 	sessionsDeleted: number;
+	rateLimitsDeleted: number;
 };
 
 export type Database = Pick<D1Database, 'prepare' | 'batch'>;

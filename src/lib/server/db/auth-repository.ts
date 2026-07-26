@@ -26,6 +26,17 @@ export class AuthRepository {
 			.run();
 	}
 
+	async invalidateLoginTokens(email: string, invalidatedAt: string): Promise<void> {
+		await this.db
+			.prepare(
+				`UPDATE magic_login_tokens
+				 SET used_at = ?2
+				 WHERE email = ?1 AND used_at = ''`
+			)
+			.bind(email, invalidatedAt)
+			.run();
+	}
+
 	async findValidLoginToken(tokenHash: string, now: string): Promise<MagicLoginTokenRow | null> {
 		return this.db
 			.prepare(
@@ -92,16 +103,48 @@ export class AuthRepository {
 	}
 
 	async cleanupExpired(now: string): Promise<CleanupResult> {
-		const [tokens, sessions] = await this.db.batch([
+		const rateLimitCutoff = new Date(new Date(now).getTime() - 24 * 60 * 60 * 1000).toISOString();
+		const [tokens, sessions, rateLimits] = await this.db.batch([
 			this.db
 				.prepare(`DELETE FROM magic_login_tokens WHERE expires_at <= ?1 OR used_at <> ''`)
 				.bind(now),
-			this.db.prepare('DELETE FROM magic_sessions WHERE expires_at <= ?1').bind(now)
+			this.db.prepare('DELETE FROM magic_sessions WHERE expires_at <= ?1').bind(now),
+			this.db
+				.prepare('DELETE FROM auth_request_limits WHERE updated_at <= ?1')
+				.bind(rateLimitCutoff)
 		]);
 
 		return {
 			tokensDeleted: tokens.meta.changes,
-			sessionsDeleted: sessions.meta.changes
+			sessionsDeleted: sessions.meta.changes,
+			rateLimitsDeleted: rateLimits.meta.changes
 		};
+	}
+
+	async recordAuthRequest(keyHash: string, now: string, windowCutoff: string): Promise<number> {
+		await this.db
+			.prepare(
+				`INSERT INTO auth_request_limits (key_hash, window_start, request_count, updated_at)
+				 VALUES (?1, ?2, 1, ?2)
+				 ON CONFLICT(key_hash) DO UPDATE SET
+				   window_start = CASE
+				     WHEN auth_request_limits.window_start <= ?3 THEN excluded.window_start
+				     ELSE auth_request_limits.window_start
+				   END,
+				   request_count = CASE
+				     WHEN auth_request_limits.window_start <= ?3 THEN 1
+				     ELSE auth_request_limits.request_count + 1
+				   END,
+				   updated_at = excluded.updated_at`
+			)
+			.bind(keyHash, now, windowCutoff)
+			.run();
+
+		const row = await this.db
+			.prepare('SELECT request_count FROM auth_request_limits WHERE key_hash = ?1 LIMIT 1')
+			.bind(keyHash)
+			.first<{ request_count: number }>();
+
+		return row?.request_count ?? 1;
 	}
 }
