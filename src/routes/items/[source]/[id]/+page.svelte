@@ -1,16 +1,33 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import ItemComments from '$lib/components/ItemComments.svelte';
+	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
 	import type { EventAttachment } from '$lib/types/domain';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	type MemberOption = { id: string; label: string };
+
 	let host = $state(untrack(() => data.host));
-	let members = $state<Array<{ id: string; label: string }>>([]);
-	let hostSelection = $state('');
+	let hostSelection = $state<MemberOption | null>(null);
 	let savingHost = $state(false);
 	let hostMessage = $state('');
+	let attendeeSelection = $state<MemberOption | null>(null);
+	let attendees = $state(
+		untrack(() => {
+			const value = data.record.record.attendees;
+			return typeof value === 'string'
+				? value
+						.split(/[,;\n]+/u)
+						.map((email) => email.trim())
+						.filter(Boolean)
+				: [];
+		})
+	);
+	let savingAttendee = $state(false);
+	let attendeeMessage = $state('');
+	let attendeePickerKey = $state(0);
 	let editTitle = $state(untrack(() => data.record.title));
 	let editDate = $state(untrack(() => data.record.dateValue));
 	let editEndDate = $state(untrack(() => data.record.endDateValue));
@@ -25,7 +42,9 @@
 	let editMessage = $state('');
 
 	const entries = $derived(
-		Object.entries(data.record.record).filter(([, value]) => typeof value === 'string' && value)
+		Object.entries(data.record.record).filter(
+			([key, value]) => key !== 'attendees' && typeof value === 'string' && value
+		)
 	);
 	const attachments = $derived(
 		Array.isArray(data.record.record.attachments)
@@ -55,26 +74,42 @@
 		return url && /\.(?:avif|gif|jpe?g|png|webp)(?:\?.*)?$/iu.test(url) ? url : '';
 	}
 
-	async function loadMembers() {
-		if (members.length) return;
-		const response = await fetch('/api/members/mentions');
-		if (response.ok) {
+	async function addAttendee() {
+		if (!attendeeSelection) {
+			attendeeMessage = 'Type and choose a member from the suggestions.';
+			return;
+		}
+		const member = attendeeSelection;
+		savingAttendee = true;
+		attendeeMessage = '';
+		try {
+			const response = await fetch('/api/admin/events/attendees', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ eventId: data.record.id, memberId: member.id })
+			});
 			const result = (await response.json()) as {
-				members?: Array<{ id: string; label: string }>;
+				attendees?: string[];
+				message?: string;
 			};
-			members = result.members ?? [];
+			if (!response.ok) throw new Error(result.message || 'Could not add attendee.');
+			attendees = result.attendees ?? attendees;
+			attendeeSelection = null;
+			attendeePickerKey += 1;
+			attendeeMessage = result.message || 'Attendee added.';
+		} catch (cause) {
+			attendeeMessage = cause instanceof Error ? cause.message : 'Could not add attendee.';
+		} finally {
+			savingAttendee = false;
 		}
 	}
 
 	async function saveHost() {
-		const member = members.find(
-			(option) =>
-				option.label.toLocaleLowerCase('en-US') === hostSelection.trim().toLocaleLowerCase('en-US')
-		);
-		if (!member) {
+		if (!hostSelection) {
 			hostMessage = 'Type and choose a member from the suggestions.';
 			return;
 		}
+		const member = hostSelection;
 		savingHost = true;
 		const response = await fetch('/api/admin/events/host', {
 			method: 'POST',
@@ -217,21 +252,48 @@
 		<section class="host-editor">
 			<h2>Change host</h2>
 			<div>
-				<input
-					list="event-host-members"
-					bind:value={hostSelection}
-					onfocus={loadMembers}
-					placeholder="Type a member’s name"
+				<MemberPredictivePicker
+					id="event-host-member"
+					placeholder="Type @ and a member’s name"
+					includeSelf={true}
+					bind:selection={hostSelection}
+					disabled={savingHost}
 				/>
 				<button type="button" onclick={saveHost} disabled={savingHost}>
 					{savingHost ? 'Saving…' : 'Assign host'}
 				</button>
 			</div>
-			<datalist id="event-host-members">
-				{#each members as member (member.id)}<option value={member.label}></option>{/each}
-			</datalist>
 			{#if hostMessage}<p role="status">{hostMessage}</p>{/if}
 		</section>
+
+		{#if data.record.source === 'project'}
+			<section class="attendee-editor">
+				<h2>Attendees and volunteers</h2>
+				{#if attendees.length}
+					<ul class="attendee-list">
+						{#each attendees as email (email)}<li>{email}</li>{/each}
+					</ul>
+				{:else}
+					<p>No attendees have been added yet.</p>
+				{/if}
+				<div>
+					{#key attendeePickerKey}
+						<MemberPredictivePicker
+							id="event-attendee-member"
+							placeholder="Type @ and a member’s name"
+							includeSelf={true}
+							bind:selection={attendeeSelection}
+							disabled={savingAttendee}
+						/>
+					{/key}
+					<button type="button" onclick={addAttendee} disabled={savingAttendee}>
+						{savingAttendee ? 'Adding…' : 'Add attendee'}
+					</button>
+				</div>
+				<p class="help">The member’s primary email is written to Monday’s attendees field.</p>
+				{#if attendeeMessage}<p role="status">{attendeeMessage}</p>{/if}
+			</section>
+		{/if}
 	{/if}
 
 	<ItemComments source={data.record.source} eventId={data.record.id} readOnly={data.readOnly} />

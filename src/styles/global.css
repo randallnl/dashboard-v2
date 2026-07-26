@@ -1255,7 +1255,8 @@ h2 {
 }
 
 .shift-reassign input,
-.host-editor input {
+.host-editor input,
+.attendee-editor input {
 	padding: 0.6rem 0.75rem;
 	border: 1px solid #c9c1b5;
 	border-radius: 0.55rem;
@@ -1328,6 +1329,7 @@ h2 {
 .item-dashboard-grid > article,
 .event-editor,
 .host-editor,
+.attendee-editor,
 .item-dashboard > .item-comments {
 	padding: clamp(1.4rem, 3vw, 2rem);
 	border: 1px solid #d8d1c5;
@@ -1398,14 +1400,84 @@ h2 {
 	font-size: 0.75rem;
 }
 
-.host-editor {
+.host-editor,
+.attendee-editor {
 	margin-top: 1rem;
 }
 
-.host-editor > div {
+.host-editor > div,
+.attendee-editor > div {
 	display: flex;
+	align-items: start;
 	flex-wrap: wrap;
 	gap: 0.7rem;
+}
+
+.member-predictive-picker {
+	position: relative;
+	flex: 1 1 18rem;
+}
+
+.member-picker-input {
+	position: relative;
+}
+
+.member-picker-input input {
+	width: 100%;
+	padding-right: 2.3rem;
+}
+
+.member-picker-clear {
+	position: absolute;
+	top: 50%;
+	right: 0.4rem;
+	padding: 0.2rem 0.45rem;
+	transform: translateY(-50%);
+	border: 0;
+	background: transparent;
+	color: #5f675f;
+	font-size: 1.1rem;
+}
+
+.member-picker-suggestions {
+	top: calc(100% + 0.25rem);
+	right: 0;
+	left: 0;
+	z-index: 20;
+}
+
+.member-picker-suggestions button {
+	width: 100%;
+	padding: 0.65rem 0.75rem;
+	border: 0;
+	border-bottom: 1px solid #e3ddd2;
+	border-radius: 0;
+	background: transparent;
+	color: #194639;
+	text-align: left;
+}
+
+.member-picker-suggestions button:hover,
+.member-picker-suggestions button:focus-visible {
+	background: #e8eee8;
+}
+
+.attendee-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin: 0 0 1rem;
+	padding: 0;
+	list-style: none;
+}
+
+.attendee-list li {
+	padding: 0.35rem 0.6rem;
+	border-radius: 999px;
+	background: #dce9f5;
+	color: #285879;
+	font-size: 0.75rem;
+	font-weight: 700;
 }
 
 .covered-shifts {

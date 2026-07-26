@@ -19,7 +19,8 @@ const PROJECT_COLUMNS = {
 	survey: 'link_mkpp7m53',
 	description: 'text_mm2vbpn3',
 	calendar: 'integration_mm17v8nx',
-	spaceReservation: 'color_mm2vwpkb'
+	spaceReservation: 'color_mm2vwpkb',
+	attendees: 'dropdown_mm17a53k'
 };
 
 const COMMUNITY_COLUMNS = {
@@ -123,6 +124,7 @@ const UPDATE_ITEM = `
 			board_id: $boardId
 			item_id: $itemId
 			column_values: $columnValues
+			create_labels_if_missing: true
 		) { id name }
 	}
 `;
@@ -186,6 +188,18 @@ function mondayUrl(boardId: string, itemId: string): string {
 	return `https://queerlective.monday.com/boards/${boardId}/pulses/${itemId}`;
 }
 
+export function attendeeEmails(value: unknown): string[] {
+	if (typeof value !== 'string') return [];
+	return [
+		...new Set(
+			value
+				.split(/[,;\n]+/u)
+				.map((email) => email.trim().toLocaleLowerCase('en-US'))
+				.filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email))
+		)
+	];
+}
+
 export function mapProjectEvent(item: Item, syncedAt: string): ProjectEventRecord {
 	const columns = values(item);
 	const location = text(columns, PROJECT_COLUMNS.location);
@@ -215,6 +229,7 @@ export function mapProjectEvent(item: Item, syncedAt: string): ProjectEventRecor
 			surveyUrl: safeUrl(columns, PROJECT_COLUMNS.survey),
 			calendarUrl: safeUrl(columns, PROJECT_COLUMNS.calendar),
 			spaceReservation: text(columns, PROJECT_COLUMNS.spaceReservation),
+			attendees: text(columns, PROJECT_COLUMNS.attendees),
 			mondayUrl: mondayUrl(PROJECT_BOARD_ID, item.id)
 		},
 		syncedAt
@@ -332,6 +347,23 @@ export class EventDirectory {
 			boardId,
 			itemId,
 			columnValues: JSON.stringify(columnValues)
+		});
+	}
+
+	async updateProjectAttendees(itemId: string, emails: string[]): Promise<void> {
+		const labels = [
+			...new Set(
+				emails
+					.map((email) => email.trim().toLocaleLowerCase('en-US'))
+					.filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email))
+			)
+		];
+		await this.monday.request(UPDATE_ITEM, {
+			boardId: PROJECT_BOARD_ID,
+			itemId,
+			columnValues: JSON.stringify({
+				[PROJECT_COLUMNS.attendees]: { labels }
+			})
 		});
 	}
 }

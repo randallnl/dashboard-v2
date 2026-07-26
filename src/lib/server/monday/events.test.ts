@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MondayClient } from './client';
-import { EventDirectory, mapCommunityEvent, mapProjectEvent } from './events';
+import { attendeeEmails, EventDirectory, mapCommunityEvent, mapProjectEvent } from './events';
 
 describe('Monday event mapping', () => {
 	it('marks project events outside member locations as admin-only', () => {
@@ -37,6 +37,28 @@ describe('Monday event mapping', () => {
 			endDateValue: '2026-08-02',
 			record: { mondayUrl: 'https://queerlective.monday.com/boards/8390893779/pulses/event-2' }
 		});
+	});
+
+	it('maps attendee emails from the project dropdown', () => {
+		const event = mapProjectEvent(
+			{
+				id: 'event-attendees',
+				name: 'Volunteer project',
+				column_values: [
+					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-08-01"}' },
+					{ id: 'dropdown_mknqezw8', text: 'CoLab', value: null },
+					{
+						id: 'dropdown_mm17a53k',
+						text: 'one@example.com, two@example.com',
+						value: null
+					}
+				]
+			},
+			'2026-07-26T16:00:00.000Z'
+		);
+
+		expect(event.record.attendees).toBe('one@example.com, two@example.com');
+		expect(attendeeEmails(event.record.attendees)).toEqual(['one@example.com', 'two@example.com']);
 	});
 
 	it('prefers the original public asset URL over Monday’s small thumbnail', () => {
@@ -117,6 +139,30 @@ describe('Monday event mapping', () => {
 				boardId: '8390893779',
 				itemId: 'event-1',
 				columnValues: expect.stringContaining('"name":"Updated studio night"')
+			})
+		);
+	});
+
+	it('writes normalized attendee emails to the project dropdown', async () => {
+		const request = vi.fn().mockResolvedValue({ change_multiple_column_values: { id: 'event-1' } });
+		const directory = new EventDirectory({ request } as unknown as MondayClient);
+
+		await directory.updateProjectAttendees('event-1', [
+			'Member@Example.com',
+			'member@example.com',
+			'second@example.com'
+		]);
+
+		expect(request).toHaveBeenCalledWith(
+			expect.stringContaining('create_labels_if_missing: true'),
+			expect.objectContaining({
+				boardId: '8390893779',
+				itemId: 'event-1',
+				columnValues: JSON.stringify({
+					dropdown_mm17a53k: {
+						labels: ['member@example.com', 'second@example.com']
+					}
+				})
 			})
 		);
 	});

@@ -18,6 +18,8 @@ export const GET: RequestHandler = async ({ request, locals, platform, url }) =>
 	const env = platform!.env;
 	const context = await loadMemberContext({ session: locals.session, env });
 	const query = (url.searchParams.get('q') ?? '').trim().toLocaleLowerCase('en-US');
+	const includeSelf =
+		url.searchParams.get('includeSelf') === '1' && context.viewerCapabilities.isAdmin;
 	const repository = new MemberRepository(env.DB);
 	let members = await repository.search(query, 12);
 	if (!members.length) {
@@ -29,7 +31,7 @@ export const GET: RequestHandler = async ({ request, locals, platform, url }) =>
 		members = await repository.search(query, 12);
 	}
 	const options = members
-		.filter((member) => member.id !== context.member.id)
+		.filter((member) => includeSelf || member.id !== context.member.id)
 		.map((member) => ({ id: member.id, label: coveredByLabel(member.preferredName) }))
 		.slice(0, 10);
 	if (request.headers.has('hx-request')) {

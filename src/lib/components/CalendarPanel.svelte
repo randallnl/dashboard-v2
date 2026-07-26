@@ -2,6 +2,7 @@
 	import { datesInRange, monthBounds } from '$lib/calendar/month';
 	import ContentState from '$lib/components/ContentState.svelte';
 	import ItemComments from '$lib/components/ItemComments.svelte';
+	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
 	import type { CalendarEvent } from '$lib/types/domain';
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
@@ -15,8 +16,8 @@
 	let selected = $state<CalendarEvent | null>(null);
 	let signingUp = $state(false);
 	let signupMessage = $state('');
-	let memberOptions = $state<Array<{ id: string; label: string }>>([]);
-	let shiftHostSelection = $state('');
+	let shiftHostSelection = $state<{ id: string; label: string } | null>(null);
+	let shiftPickerKey = $state(0);
 
 	const bounds = $derived(monthBounds(month)!);
 	const monthDate = $derived(new Date(`${month}-01T12:00:00Z`));
@@ -147,15 +148,11 @@
 
 	async function reassignShift() {
 		if (!selected || selected.source !== 'shift') return;
-		const member = memberOptions.find(
-			(option) =>
-				option.label.toLocaleLowerCase('en-US') ===
-				shiftHostSelection.trim().toLocaleLowerCase('en-US')
-		);
-		if (!member) {
+		if (!shiftHostSelection) {
 			signupMessage = 'Type and choose a member from the suggestions.';
 			return;
 		}
+		const member = shiftHostSelection;
 		signingUp = true;
 		try {
 			const response = await fetch('/api/admin/shifts/host', {
@@ -176,7 +173,8 @@
 					? { ...event, details: selected.details }
 					: event
 			);
-			shiftHostSelection = '';
+			shiftHostSelection = null;
+			shiftPickerKey += 1;
 			signupMessage = result.message || 'Shift reassigned.';
 		} catch (cause) {
 			signupMessage = cause instanceof Error ? cause.message : 'Could not reassign this shift.';
@@ -185,17 +183,7 @@
 		}
 	}
 
-	onMount(async () => {
-		await load();
-		if (!isAdmin) return;
-		const response = await fetch('/api/members/mentions');
-		if (response.ok) {
-			const result = (await response.json()) as {
-				members?: Array<{ id: string; label: string }>;
-			};
-			memberOptions = result.members ?? [];
-		}
-	});
+	onMount(load);
 </script>
 
 <section class="calendar-panel" id="calendar" aria-labelledby="calendar-title">
@@ -383,20 +371,19 @@
 					<div class="calendar-shift-reassign">
 						<label>
 							<span>Change shift coverage</span>
-							<input
-								list="calendar-shift-members"
-								bind:value={shiftHostSelection}
-								placeholder="Type a member’s name"
-							/>
+							{#key shiftPickerKey}
+								<MemberPredictivePicker
+									id="calendar-shift-member"
+									placeholder="Type @ and a member’s name"
+									includeSelf={true}
+									bind:selection={shiftHostSelection}
+									disabled={signingUp}
+								/>
+							{/key}
 						</label>
 						<button type="button" onclick={reassignShift} disabled={signingUp}>
 							{signingUp ? 'Saving…' : 'Assign new person'}
 						</button>
-						<datalist id="calendar-shift-members">
-							{#each memberOptions as member (member.id)}
-								<option value={member.label}></option>
-							{/each}
-						</datalist>
 					</div>
 				{/if}
 				{#if signupMessage}<p role="status" class="calendar-message">{signupMessage}</p>{/if}

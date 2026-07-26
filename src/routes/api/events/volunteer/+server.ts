@@ -1,5 +1,7 @@
 import { loadMemberContext, requireWritableMemberView } from '$lib/server/auth/member-context';
 import { ProjectEventRepository, VolunteerRepository } from '$lib/server/db';
+import { MondayClient, mondayToken } from '$lib/server/monday/client';
+import { attendeeEmails, EventDirectory } from '$lib/server/monday/events';
 import type { ProjectEventSource } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -31,6 +33,23 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	}
 	if (context.capabilities.isRetailOnly && record.source === 'community') {
 		error(403, 'This event is not included with this membership.');
+	}
+
+	if (record.source === 'project' && context.viewer.email) {
+		const emails = [
+			...new Set([
+				...attendeeEmails(record.record.attendees),
+				context.viewer.email.toLocaleLowerCase('en-US')
+			])
+		];
+		await new EventDirectory(
+			new MondayClient(await mondayToken(env!.MONDAY_API_TOKEN))
+		).updateProjectAttendees(record.id, emails);
+		await new ProjectEventRepository(env!.DB).upsert({
+			...record,
+			record: { ...record.record, attendees: emails.join(', ') },
+			syncedAt: new Date().toISOString()
+		});
 	}
 
 	const created = await new VolunteerRepository(env!.DB).signup(
