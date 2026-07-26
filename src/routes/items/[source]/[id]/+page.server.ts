@@ -1,4 +1,4 @@
-import { HostRepository, ProjectEventRepository } from '$lib/server/db';
+import { GivebutterRepository, HostRepository, ProjectEventRepository } from '$lib/server/db';
 import type { ProjectEventSource } from '$lib/types/domain';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -20,6 +20,12 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		error(403, 'This event is not included with this membership.');
 	}
 	const host = await new HostRepository(platform!.env.DB).find(record.source, record.id);
+	const campaignId =
+		typeof record.record.campaignId === 'string' ? record.record.campaignId.trim() : '';
+	const signups =
+		layout.viewerCapabilities.isAdmin && campaignId
+			? await new GivebutterRepository(platform!.env.DB).listByCampaign(campaignId)
+			: [];
 	const hidden = layout.viewerCapabilities.isAdmin
 		? new Set<string>()
 		: new Set(['organizerEmail', 'mondayUrl', 'itemId', 'creationLog']);
@@ -29,6 +35,7 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 			record: Object.fromEntries(Object.entries(record.record).filter(([key]) => !hidden.has(key)))
 		},
 		host,
+		signups,
 		isAdmin: layout.viewerCapabilities.isAdmin && !layout.isViewingAs,
 		readOnly: layout.isViewingAs
 	};

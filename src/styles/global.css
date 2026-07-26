@@ -1330,6 +1330,7 @@ h2 {
 .event-editor,
 .host-editor,
 .attendee-editor,
+.signup-roster,
 .item-dashboard > .item-comments {
 	padding: clamp(1.4rem, 3vw, 2rem);
 	border: 1px solid #d8d1c5;
@@ -1339,6 +1340,38 @@ h2 {
 
 .event-editor {
 	margin-top: 1rem;
+}
+
+.signup-roster {
+	margin-top: 1rem;
+}
+
+.signup-table-wrap {
+	overflow-x: auto;
+	margin-top: 1rem;
+}
+
+.signup-roster table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.85rem;
+}
+
+.signup-roster th,
+.signup-roster td {
+	padding: 0.75rem;
+	border-bottom: 1px solid #ddd6ca;
+	text-align: left;
+}
+
+.signup-roster th {
+	color: #6e756f;
+	font-size: 0.68rem;
+	text-transform: uppercase;
+}
+
+.signup-roster a {
+	color: #194639;
 }
 
 .event-editor form,

@@ -74,6 +74,16 @@
 		return url && /\.(?:avif|gif|jpe?g|png|webp)(?:\?.*)?$/iu.test(url) ? url : '';
 	}
 
+	function dateTimeLabel(value: string): string {
+		const parsed = new Date(value);
+		return Number.isNaN(parsed.getTime())
+			? value
+			: new Intl.DateTimeFormat('en-US', {
+					dateStyle: 'medium',
+					timeStyle: 'short'
+				}).format(parsed);
+	}
+
 	async function addAttendee() {
 		if (!attendeeSelection) {
 			attendeeMessage = 'Type and choose a member from the suggestions.';
@@ -215,6 +225,48 @@
 			</div>
 		</article>
 	</section>
+
+	{#if data.isAdmin && typeof data.record.record.campaignId === 'string' && data.record.record.campaignId}
+		<section class="signup-roster">
+			<div class="card-heading">
+				<div>
+					<p class="eyebrow">Givebutter campaign {data.record.record.campaignId}</p>
+					<h2>Signups</h2>
+				</div>
+				<span class="status-pill">{data.signups.length} registered</span>
+			</div>
+			{#if data.signups.length}
+				<div class="signup-table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th scope="col">Donor</th>
+								<th scope="col">Email</th>
+								<th scope="col">Event</th>
+								<th scope="col">Transaction date</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each data.signups as signup (signup.id)}
+								<tr>
+									<td>{signup.donorName || 'Name not provided'}</td>
+									<td><a href={`mailto:${signup.donorEmail}`}>{signup.donorEmail}</a></td>
+									<td>{signup.eventTitle || data.record.title}</td>
+									<td>
+										<time datetime={signup.transactionDate}>
+											{dateTimeLabel(signup.transactionDate)}
+										</time>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{:else}
+				<p>No Givebutter signups have synchronized for this campaign yet.</p>
+			{/if}
+		</section>
+	{/if}
 
 	{#if data.isAdmin}
 		<section class="event-editor">

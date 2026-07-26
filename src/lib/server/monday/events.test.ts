@@ -26,7 +26,8 @@ describe('Monday event mapping', () => {
 				column_values: [
 					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-07-30"}' },
 					{ id: 'date_mm171v9p', text: '', value: '{"date":"2026-08-02"}' },
-					{ id: 'dropdown_mknqezw8', text: 'Community Room', value: null }
+					{ id: 'dropdown_mknqezw8', text: 'Community Room', value: null },
+					{ id: 'text_mm5myb9c', text: 'campaign-42', value: null }
 				]
 			},
 			'2026-07-26T16:00:00.000Z'
@@ -35,7 +36,10 @@ describe('Monday event mapping', () => {
 			adminOnly: false,
 			dateValue: '2026-07-30',
 			endDateValue: '2026-08-02',
-			record: { mondayUrl: 'https://queerlective.monday.com/boards/8390893779/pulses/event-2' }
+			record: {
+				campaignId: 'campaign-42',
+				mondayUrl: 'https://queerlective.monday.com/boards/8390893779/pulses/event-2'
+			}
 		});
 	});
 

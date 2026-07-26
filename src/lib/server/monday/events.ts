@@ -18,6 +18,7 @@ const PROJECT_COLUMNS = {
 	registration: 'link_mkppdhq5',
 	survey: 'link_mkpp7m53',
 	description: 'text_mm2vbpn3',
+	campaignId: 'text_mm5myb9c',
 	calendar: 'integration_mm17v8nx',
 	spaceReservation: 'color_mm2vwpkb',
 	attendees: 'dropdown_mm17a53k'
@@ -222,6 +223,7 @@ export function mapProjectEvent(item: Item, syncedAt: string): ProjectEventRecor
 			category: text(columns, PROJECT_COLUMNS.category),
 			priority: text(columns, PROJECT_COLUMNS.priority),
 			description: text(columns, PROJECT_COLUMNS.description),
+			campaignId: text(columns, PROJECT_COLUMNS.campaignId),
 			posterUrl: safeUrl(columns, PROJECT_COLUMNS.posters),
 			fileUrl: safeUrl(columns, PROJECT_COLUMNS.files),
 			attachments: files,

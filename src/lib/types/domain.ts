@@ -106,6 +106,16 @@ export type Payment = {
 	orderDate: string;
 };
 
+export type GivebutterSignup = {
+	id: string;
+	donorName: string;
+	donorEmail: string;
+	campaignId: string;
+	eventTitle: string;
+	transactionDate: string;
+	syncedAt: string;
+};
+
 export type Order = {
 	id: string;
 	name: string;

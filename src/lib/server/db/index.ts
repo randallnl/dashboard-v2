@@ -1,5 +1,6 @@
 export { AuthRepository } from './auth-repository';
 export { CommentRepository } from './comment-repository';
+export { GivebutterRepository } from './givebutter-repository';
 export { HostRepository } from './host-repository';
 export { MemberRepository, memberNames } from './member-repository';
 export type { ProjectEventHost } from './host-repository';
