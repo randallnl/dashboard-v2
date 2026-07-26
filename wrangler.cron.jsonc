@@ -1,0 +1,30 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "dashboard-v2-shift-sync",
+	"main": "src/cron-worker.ts",
+	"compatibility_date": "2026-07-24",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"preview_urls": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "queerlective-dashboard",
+			"database_id": "fd34016a-db11-4ee7-8103-73f149118172"
+		}
+	],
+	"secrets_store_secrets": [
+		{
+			"binding": "MONDAY_API_TOKEN",
+			"store_id": "2b9ec8a0d6d742649ad4d3498815ca54",
+			"secret_name": "Central_Monday_API_TOKEN"
+		}
+	],
+	"triggers": {
+		"crons": ["*/15 * * * *"]
+	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+}

@@ -15,8 +15,11 @@
 		"db:migrate:local": "wrangler d1 migrations apply queerlective-dashboard --local",
 		"db:migrate:remote": "wrangler d1 migrations apply queerlective-dashboard --remote",
 		"db:migrations:list": "wrangler d1 migrations list queerlective-dashboard --remote",
-		"deploy": "npm run build && wrangler deploy",
+		"deploy": "npm run deploy:app && npm run deploy:cron",
+		"deploy:app": "npm run build && wrangler deploy",
+		"deploy:cron": "wrangler deploy --config wrangler.cron.jsonc",
 		"deploy:dry-run": "npm run build && wrangler deploy --dry-run",
+		"deploy:cron:dry-run": "wrangler deploy --config wrangler.cron.jsonc --dry-run",
 		"cf-types": "wrangler types --include-runtime false"
 	},
 	"devDependencies": {
