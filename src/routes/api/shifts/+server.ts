@@ -1,5 +1,6 @@
 import { loadMemberContext } from '$lib/server/auth/member-context';
 import { ShiftRepository } from '$lib/server/db';
+import { coveredByLabel } from '$lib/server/monday/shifts';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -18,7 +19,9 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 	return json(
 		{
 			available: shifts.filter((shift) => !shift.isCovered),
-			covered: shifts.filter((shift) => shift.isCovered),
+			covered: shifts
+				.filter((shift) => shift.isCovered)
+				.map((shift) => ({ ...shift, person: '', coveredBy: coveredByLabel(shift.coveredBy) })),
 			syncedAt: shifts.reduce(
 				(latest, shift) => (shift.syncedAt > latest ? shift.syncedAt : latest),
 				''

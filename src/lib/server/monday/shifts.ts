@@ -110,6 +110,15 @@ export function shiftTime(date: string): string {
 	return new Date(`${date}T12:00:00Z`).getUTCDay() === 0 ? '2pm-4pm' : '6pm-8pm';
 }
 
+export function coveredByLabel(value: string): string {
+	const name = value.split('|', 1)[0]?.trim() ?? '';
+	const parts = name.split(/\s+/u).filter(Boolean);
+	if (!parts.length) return 'A member';
+	const first = parts[0];
+	const last = parts.length > 1 ? parts.at(-1)?.replace(/[^\p{L}]/gu, '') : '';
+	return last ? `${first} ${last.charAt(0).toUpperCase()}.` : first;
+}
+
 export function mapMondayShift(item: MondayShiftItem, syncedAt: string): Shift {
 	const values = columns(item);
 	const date = dateValue(values.get(SHIFT_COLUMNS.date));

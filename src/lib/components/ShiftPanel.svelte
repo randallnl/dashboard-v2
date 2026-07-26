@@ -1,12 +1,23 @@
 <script lang="ts">
 	import ContentState from '$lib/components/ContentState.svelte';
 	import type { Shift } from '$lib/types/domain';
-	import { onMount } from 'svelte';
+	import { untrack } from 'svelte';
 
-	let { isAdmin, readOnly = false }: { isAdmin: boolean; readOnly?: boolean } = $props();
+	let {
+		isAdmin,
+		readOnly = false,
+		initialAvailableShifts = [],
+		initialCoveredShifts = []
+	}: {
+		isAdmin: boolean;
+		readOnly?: boolean;
+		initialAvailableShifts?: Shift[];
+		initialCoveredShifts?: Shift[];
+	} = $props();
 
-	let shifts = $state<Shift[]>([]);
-	let loading = $state(true);
+	let shifts = $state<Shift[]>(untrack(() => initialAvailableShifts));
+	let coveredShifts = $state<Shift[]>(untrack(() => initialCoveredShifts));
+	let loading = $state(false);
 	let syncing = $state(false);
 	let claimingId = $state('');
 	let message = $state('');
@@ -19,10 +30,12 @@
 			const response = await fetch('/api/shifts');
 			const result = (await response.json()) as {
 				available?: Shift[];
+				covered?: Shift[];
 				message?: string;
 			};
 			if (!response.ok) throw new Error(result.message || 'Could not load shifts.');
 			shifts = result.available ?? [];
+			coveredShifts = result.covered ?? [];
 		} catch (cause) {
 			failed = true;
 			message = cause instanceof Error ? cause.message : 'Could not load shifts.';
@@ -60,6 +73,7 @@
 			const result = (await response.json()) as { shift?: Shift; message?: string };
 			if (!response.ok) throw new Error(result.message || 'Could not claim this shift.');
 			shifts = shifts.filter((candidate) => candidate.id !== shift.id);
+			if (result.shift) coveredShifts = [...coveredShifts, result.shift];
 			message = `You’re covering ${shift.title} on ${shift.dateLabel || shift.dateValue}.`;
 			failed = false;
 		} catch (cause) {
@@ -70,8 +84,6 @@
 			claimingId = '';
 		}
 	}
-
-	onMount(loadShifts);
 </script>
 
 <section class="shift-panel" aria-labelledby="available-shifts-title">
@@ -132,6 +144,20 @@
 					</button>
 				</article>
 			{/each}
+		</div>
+	{/if}
+
+	{#if !loading && coveredShifts.length}
+		<div class="covered-shifts">
+			<h3>Covered shifts</h3>
+			<ul>
+				{#each coveredShifts as shift (shift.id)}
+					<li>
+						<span><strong>{shift.dateLabel || shift.dateValue}</strong> · {shift.timeLabel}</span>
+						<span>{shift.title} — covered by {shift.coveredBy || 'a member'}</span>
+					</li>
+				{/each}
+			</ul>
 		</div>
 	{/if}
 </section>

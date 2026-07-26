@@ -73,10 +73,21 @@ export function paymentsForEmail(
 	email: string,
 	limit = 50
 ): Payment[] {
-	const normalized = normalizeEmail(email);
+	return paymentsForEmails(transactions, [email], limit);
+}
+
+export function paymentsForEmails(
+	transactions: Transaction[],
+	emails: Iterable<string>,
+	limit = 50
+): Payment[] {
+	const normalizedEmails = new Set(
+		Array.from(emails, normalizeEmail).filter((email) => email.length > 0)
+	);
 	return transactions
 		.filter(
-			(transaction) => transaction.email === normalized && isSubscription(transaction.details)
+			(transaction) =>
+				normalizedEmails.has(transaction.email) && isSubscription(transaction.details)
 		)
 		.sort((left, right) => right.orderDate.localeCompare(left.orderDate))
 		.slice(0, limit)

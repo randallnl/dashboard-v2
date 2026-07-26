@@ -75,7 +75,7 @@
 			<p class="eyebrow">Your history</p>
 			<h2 id="history-title">Activity and payments</h2>
 		</div>
-		<p>A private overview matched to your member ID and membership email.</p>
+		<p>A private overview matched to your member ID and membership email addresses.</p>
 	</div>
 
 	{#if loading}

@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { mapMondayShift, shiftTime } from './shifts';
+import { coveredByLabel, mapMondayShift, shiftTime } from './shifts';
 
 describe('shiftTime', () => {
 	it('uses Sunday and weekday coverage hours', () => {
 		expect(shiftTime('2026-07-26')).toBe('2pm-4pm');
 		expect(shiftTime('2026-07-27')).toBe('6pm-8pm');
+	});
+});
+
+describe('coveredByLabel', () => {
+	it('shows only a first name and last initial', () => {
+		expect(coveredByLabel('Alex Morgan | member-1')).toBe('Alex M.');
+		expect(coveredByLabel('Rae')).toBe('Rae');
+		expect(coveredByLabel('')).toBe('A member');
 	});
 });
 

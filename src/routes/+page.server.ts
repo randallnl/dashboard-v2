@@ -1,6 +1,8 @@
+import { ShiftRepository } from '$lib/server/db';
+import { coveredByLabel } from '$lib/server/monday/shifts';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ parent, url }) => {
+export const load: PageServerLoad = async ({ parent, platform, url }) => {
 	const authStatus = url.searchParams.get('auth');
 	const layout = await parent();
 	if (
@@ -16,12 +18,23 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		};
 	}
 
+	const shifts =
+		layout.capabilities.canViewShifts && platform?.env.DB
+			? await new ShiftRepository(platform.env.DB).listFromDate(
+					new Date().toISOString().slice(0, 10)
+				)
+			: [];
+
 	return {
 		authenticated: true as const,
 		viewer: layout.viewer,
 		member: layout.member,
 		capabilities: layout.capabilities,
 		viewerCapabilities: layout.viewerCapabilities,
-		isViewingAs: layout.isViewingAs
+		isViewingAs: layout.isViewingAs,
+		initialAvailableShifts: shifts.filter((shift) => !shift.isCovered),
+		initialCoveredShifts: shifts
+			.filter((shift) => shift.isCovered)
+			.map((shift) => ({ ...shift, person: '', coveredBy: coveredByLabel(shift.coveredBy) }))
 	};
 };

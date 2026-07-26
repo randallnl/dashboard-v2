@@ -766,6 +766,14 @@ h2 {
 	text-decoration: none;
 }
 
+.day-events button.calendar-event {
+	width: 100%;
+	border: 0;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
 .day-events strong {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -788,6 +796,106 @@ h2 {
 
 .agenda-list {
 	display: none;
+}
+
+.event-dialog-backdrop {
+	position: fixed;
+	z-index: 100;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	padding: 1rem;
+	background: rgb(15 29 23 / 65%);
+}
+
+.event-dialog {
+	width: min(36rem, 100%);
+	max-height: min(44rem, calc(100vh - 2rem));
+	overflow: auto;
+	padding: clamp(1.4rem, 4vw, 2.2rem);
+	border-radius: 1.2rem;
+	background: #faf7f0;
+	box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 25%);
+}
+
+.event-dialog h3 {
+	margin: 1rem 0;
+	font-size: 1.7rem;
+}
+
+.event-dialog dl {
+	display: grid;
+	gap: 0.65rem;
+}
+
+.event-dialog dl div {
+	display: grid;
+	grid-template-columns: 5rem 1fr;
+	gap: 1rem;
+}
+
+.event-dialog dt {
+	color: #707873;
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.event-dialog dd {
+	margin: 0;
+}
+
+.event-dialog-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.8rem;
+	margin-top: 1.5rem;
+}
+
+.event-dialog-actions button,
+.event-dialog-actions a {
+	padding: 0.75rem 1rem;
+	border: 1px solid #194639;
+	border-radius: 0.6rem;
+	background: #194639;
+	color: #fff;
+	font: inherit;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.event-dialog-actions button:disabled {
+	opacity: 0.65;
+}
+
+.calendar-message {
+	color: #194639;
+	font-weight: 700;
+}
+
+.covered-shifts {
+	margin-top: 2rem;
+	padding-top: 1.5rem;
+	border-top: 1px solid #d8d1c5;
+}
+
+.covered-shifts ul {
+	display: grid;
+	gap: 0.65rem;
+	margin: 1rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.covered-shifts li {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 0.5rem 1rem;
+	padding: 0.8rem 0;
+	border-bottom: 1px solid #e0d9cd;
+	color: #5f6762;
 }
 
 .source-pill {

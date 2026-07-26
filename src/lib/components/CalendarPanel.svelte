@@ -5,11 +5,15 @@
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
+	let { readOnly = false }: { readOnly?: boolean } = $props();
 	const today = new Date().toISOString().slice(0, 10);
 	let month = $state(today.slice(0, 7));
 	let events = $state<CalendarEvent[]>([]);
 	let loading = $state(true);
 	let message = $state('');
+	let selected = $state<CalendarEvent | null>(null);
+	let signingUp = $state(false);
+	let signupMessage = $state('');
 
 	const bounds = $derived(monthBounds(month)!);
 	const monthDate = $derived(new Date(`${month}-01T12:00:00Z`));
@@ -70,6 +74,37 @@
 		await load();
 	}
 
+	function openDetails(event: CalendarEvent) {
+		selected = event;
+		signupMessage = '';
+	}
+
+	async function volunteer() {
+		if (!selected || selected.source === 'shift') return;
+		signingUp = true;
+		signupMessage = '';
+		try {
+			const response = await fetch('/api/events/volunteer', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ source: selected.source, eventId: selected.id })
+			});
+			const result = (await response.json()) as { message?: string };
+			if (!response.ok) throw new Error(result.message || 'Could not record your signup.');
+			selected.isVolunteering = true;
+			events = events.map((event) =>
+				event.source === selected?.source && event.id === selected?.id
+					? { ...event, isVolunteering: true }
+					: event
+			);
+			signupMessage = result.message || 'Volunteer signup recorded.';
+		} catch (cause) {
+			signupMessage = cause instanceof Error ? cause.message : 'Could not record your signup.';
+		} finally {
+			signingUp = false;
+		}
+	}
+
 	onMount(load);
 </script>
 
@@ -110,17 +145,14 @@
 						<time datetime={date}>{Number(date.slice(-2))}</time>
 						<div class="day-events">
 							{#each eventsByDate.get(date) ?? [] as event (`${event.source}-${event.id}`)}
-								{@const href = safeUrl(event.url)}
-								{#if href}
-									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-									<a {href} target="_blank" rel="noreferrer" class={`event-${event.source}`}>
-										<strong>{event.title}</strong><span>{event.status}</span>
-									</a>
-								{:else}
-									<div class={`calendar-event event-${event.source}`}>
-										<strong>{event.title}</strong><span>{event.status}</span>
-									</div>
-								{/if}
+								<button
+									type="button"
+									onclick={() => openDetails(event)}
+									class={`calendar-event event-${event.source}`}
+									aria-label={`View details for ${event.title}`}
+								>
+									<strong>{event.title}</strong><span>{event.status}</span>
+								</button>
 							{/each}
 						</div>
 					</div>
@@ -139,13 +171,73 @@
 				/>
 			{:else}
 				{#each events as event (`agenda-${event.source}-${event.id}`)}
-					<article>
+					<button type="button" class="agenda-event" onclick={() => openDetails(event)}>
 						<time datetime={event.startDate}>{event.startDate}</time>
 						<div><strong>{event.title}</strong><span>{event.location || event.status}</span></div>
 						<span class={`source-pill source-${event.source}`}>{event.source}</span>
-					</article>
+					</button>
 				{/each}
 			{/if}
+		</div>
+	{/if}
+
+	{#if selected}
+		<div class="event-dialog-backdrop" role="presentation">
+			<div
+				class="event-dialog"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="event-dialog-title"
+			>
+				<div class="card-heading">
+					<span class={`source-pill source-${selected.source}`}>{selected.source}</span>
+					<button type="button" class="text-button" onclick={() => (selected = null)}>Close</button>
+				</div>
+				<h3 id="event-dialog-title">{selected.title}</h3>
+				<dl>
+					<div>
+						<dt>Date</dt>
+						<dd>
+							{selected.startDate}{selected.endDate !== selected.startDate
+								? ` – ${selected.endDate}`
+								: ''}
+						</dd>
+					</div>
+					{#if selected.location}<div>
+							<dt>Location</dt>
+							<dd>{selected.location}</dd>
+						</div>{/if}
+					{#if selected.status}<div>
+							<dt>Status</dt>
+							<dd>{selected.status}</dd>
+						</div>{/if}
+				</dl>
+				{#if selected.details}<p>{selected.details}</p>{/if}
+				<div class="event-dialog-actions">
+					{#if selected.canVolunteer}
+						<button
+							type="button"
+							onclick={volunteer}
+							disabled={signingUp || selected.isVolunteering || readOnly}
+						>
+							{selected.isVolunteering
+								? 'Signed up to volunteer'
+								: readOnly
+									? 'View only'
+									: signingUp
+										? 'Signing up…'
+										: 'Volunteer for this'}
+						</button>
+					{/if}
+					{#if safeUrl(selected.url)}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={safeUrl(selected.url)} target="_blank" rel="noreferrer"
+							>Registration/details ↗</a
+						>
+					{/if}
+				</div>
+				{#if signupMessage}<p role="status" class="calendar-message">{signupMessage}</p>{/if}
+			</div>
 		</div>
 	{/if}
 </section>

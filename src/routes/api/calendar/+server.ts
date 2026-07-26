@@ -1,6 +1,7 @@
 import { monthBounds } from '$lib/calendar/month';
 import { loadMemberContext } from '$lib/server/auth/member-context';
-import { ProjectEventRepository, ShiftRepository } from '$lib/server/db';
+import { ProjectEventRepository, ShiftRepository, VolunteerRepository } from '$lib/server/db';
+import { coveredByLabel } from '$lib/server/monday/shifts';
 import type { CalendarEvent } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -16,13 +17,14 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 	const bounds = monthBounds(requestedMonth);
 	if (!bounds) error(400, 'Month must use YYYY-MM.');
 
-	const [shifts, records] = await Promise.all([
+	const [shifts, records, volunteerKeys] = await Promise.all([
 		new ShiftRepository(env!.DB).listBetween(bounds.from, bounds.through),
 		new ProjectEventRepository(env!.DB).listForCalendar(
 			bounds.from,
 			bounds.through,
 			context.capabilities.isAdmin
-		)
+		),
+		new VolunteerRepository(env!.DB).listKeysForMember(context.member.id)
 	]);
 
 	const events: CalendarEvent[] = [
@@ -36,8 +38,10 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 				endDate: shift.dateValue,
 				status: 'Covered',
 				location: 'CoLab',
-				details: `${shift.timeLabel}${shift.coveredBy ? ` · ${shift.coveredBy}` : ''}`,
-				url: ''
+				details: `${shift.timeLabel}${shift.coveredBy ? ` · ${coveredByLabel(shift.coveredBy)}` : ''}`,
+				url: '',
+				canVolunteer: false,
+				isVolunteering: false
 			})),
 		...records
 			.filter((record) => !(context.capabilities.isRetailOnly && record.source === 'community'))
@@ -50,7 +54,9 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 				status: record.status,
 				location: record.location,
 				details: recordString(record.record, 'description'),
-				url: recordString(record.record, 'registrationUrl') || recordString(record.record, 'link')
+				url: recordString(record.record, 'registrationUrl') || recordString(record.record, 'link'),
+				canVolunteer: !record.adminOnly,
+				isVolunteering: volunteerKeys.has(`${record.source}:${record.id}`)
 			}))
 	];
 

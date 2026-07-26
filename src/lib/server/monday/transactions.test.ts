@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { mapTransaction, openOrdersForEmail, paymentsForEmail } from './transactions';
+import {
+	mapTransaction,
+	openOrdersForEmail,
+	paymentsForEmail,
+	paymentsForEmails
+} from './transactions';
 
 const transactions = [
 	{
@@ -30,6 +35,15 @@ const transactions = [
 		fulfillmentStatus: 'Unfulfilled'
 	},
 	{
+		id: 'alternate-payment',
+		name: 'Membership',
+		amount: 45,
+		details: 'CoLab Membership Subscription — June',
+		email: 'alternate@example.com',
+		orderDate: '2026-06-02',
+		fulfillmentStatus: 'Fulfilled'
+	},
+	{
 		id: 'fulfilled',
 		name: 'Completed order',
 		amount: 8,
@@ -44,6 +58,20 @@ describe('transaction filters', () => {
 	it('matches subscription payments using a normalized email', () => {
 		expect(paymentsForEmail(transactions, ' MEMBER@Example.COM ')).toHaveLength(1);
 		expect(paymentsForEmail(transactions, 'member@example.com')[0]?.id).toBe('payment');
+	});
+
+	it('matches membership payments across primary and alternate emails', () => {
+		expect(
+			paymentsForEmails(transactions, [
+				' MEMBER@example.com ',
+				'Alternate@Example.com',
+				'alternate@example.com'
+			]).map((payment) => payment.id)
+		).toEqual(['payment', 'alternate-payment']);
+	});
+
+	it('does not match unrelated emails or non-subscription transactions', () => {
+		expect(paymentsForEmails(transactions, ['missing@example.com'])).toEqual([]);
 	});
 
 	it('returns only unfulfilled, non-subscription orders for the member', () => {

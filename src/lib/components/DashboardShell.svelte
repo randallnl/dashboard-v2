@@ -14,13 +14,17 @@
 		member,
 		capabilities,
 		viewerCapabilities,
-		isViewingAs
+		isViewingAs,
+		initialAvailableShifts,
+		initialCoveredShifts
 	}: {
 		viewer: Member;
 		member: Member;
 		capabilities: MemberCapabilities;
 		viewerCapabilities: MemberCapabilities;
 		isViewingAs: boolean;
+		initialAvailableShifts: import('$lib/types/domain').Shift[];
+		initialCoveredShifts: import('$lib/types/domain').Shift[];
 	} = $props();
 
 	const firstName = $derived(member.preferredName.split(/\s+/u)[0] || member.preferredName);
@@ -132,11 +136,16 @@
 		</section>
 
 		{#if capabilities.canViewShifts}
-			<ShiftPanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
+			<ShiftPanel
+				isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
+				readOnly={isViewingAs}
+				{initialAvailableShifts}
+				{initialCoveredShifts}
+			/>
 		{/if}
 
 		{#if capabilities.canViewCalendar}
-			<CalendarPanel />
+			<CalendarPanel readOnly={isViewingAs} />
 		{/if}
 
 		{#if capabilities.canVote}

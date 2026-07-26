@@ -108,4 +108,6 @@ export type CalendarEvent = {
 	location: string;
 	details: string;
 	url: string;
+	canVolunteer: boolean;
+	isVolunteering: boolean;
 };
