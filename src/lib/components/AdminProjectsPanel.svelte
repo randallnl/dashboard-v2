@@ -2,7 +2,7 @@
 	import ContentState from '$lib/components/ContentState.svelte';
 	import ItemComments from '$lib/components/ItemComments.svelte';
 	import type { EventAttachment, ProjectEventRecord } from '$lib/types/domain';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	type Page = {
@@ -28,6 +28,7 @@
 	let message = $state('');
 	let failed = $state(false);
 	let brokenPosters = $state<Record<string, boolean>>({});
+	let detailElement = $state<HTMLDivElement>();
 
 	const totalPages = $derived(Math.max(1, Math.ceil(total / pageSize)));
 
@@ -117,6 +118,8 @@
 			}
 			selected = result.record;
 			failed = false;
+			await tick();
+			detailElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		} catch (cause) {
 			failed = true;
 			message = cause instanceof Error ? cause.message : 'Could not load project details.';
@@ -203,15 +206,41 @@
 						{/if}
 					</div>
 					<div class="project-tile-body">
-						<div class="project-pills">
-							<span class="source-pill">{record.source}</span>
-							{#if record.status}<span class="status-pill">{record.status}</span>{/if}
-							{#if field(record, 'category')}<span>{field(record, 'category')}</span>{/if}
-							{#if field(record, 'priority')}<span>{field(record, 'priority')}</span>{/if}
+						<div class="project-row-heading">
+							<div>
+								<span class="source-pill">{record.source}</span>
+								<h3>{record.title}</h3>
+							</div>
+							<p>{dateLabel(record.dateValue)}</p>
 						</div>
-						<h3>{record.title}</h3>
-						<p>{dateLabel(record.dateValue)} · {record.location || 'Location not set'}</p>
-						<small>Synced {dateLabel(record.syncedAt.slice(0, 10))}</small>
+						<div class="project-pills">
+							{#if record.status}
+								<span class="project-pill pill-status">Status · {record.status}</span>
+							{/if}
+							{#if field(record, 'goal') || field(record, 'category')}
+								<span class="project-pill pill-goal">
+									Goal · {field(record, 'goal') || field(record, 'category')}
+								</span>
+							{/if}
+							{#if record.location}
+								<span class="project-pill pill-location">Location · {record.location}</span>
+							{/if}
+							{#if field(record, 'strategicGoal')}
+								<span class="project-pill pill-strategic">
+									Strategic goal · {field(record, 'strategicGoal')}
+								</span>
+							{/if}
+							{#if field(record, 'priority')}
+								<span class="project-pill pill-priority">
+									Priority · {field(record, 'priority')}
+								</span>
+							{/if}
+						</div>
+						<small
+							>{record.owner || 'Owner not set'} · Synced {dateLabel(
+								record.syncedAt.slice(0, 10)
+							)}</small
+						>
 					</div>
 				</button>
 			{/each}
@@ -228,7 +257,7 @@
 	{/if}
 
 	{#if selected}
-		<div class="project-detail">
+		<div class="project-detail" bind:this={detailElement}>
 			<div class="card-heading">
 				<div>
 					<p class="eyebrow">{selected.source} record</p>

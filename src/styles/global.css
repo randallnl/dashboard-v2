@@ -895,10 +895,27 @@ h2 {
 
 .day-events button.calendar-event {
 	width: 100%;
+	padding: 0;
 	border: 0;
 	font: inherit;
 	text-align: left;
 	cursor: pointer;
+}
+
+.calendar-event-thumbnail {
+	width: 100%;
+	height: 3.2rem;
+	object-fit: cover;
+}
+
+.calendar-event-copy {
+	display: flex;
+	flex-direction: column;
+	padding: 0.4rem;
+}
+
+.day-events .calendar-event-copy {
+	opacity: 1;
 }
 
 .day-events strong {
@@ -923,6 +940,14 @@ h2 {
 
 .agenda-list {
 	display: none;
+}
+
+.agenda-event-thumbnail {
+	width: 4.5rem;
+	height: 3.5rem;
+	flex: 0 0 auto;
+	border-radius: 0.45rem;
+	object-fit: cover;
 }
 
 .event-dialog-backdrop {
@@ -1813,7 +1838,7 @@ h2 {
 
 .admin-project-grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: minmax(0, 1fr);
 	gap: 0.8rem;
 	margin-top: 0.8rem;
 }
@@ -1821,7 +1846,8 @@ h2 {
 .admin-projects .project-tile {
 	display: grid;
 	overflow: hidden;
-	grid-template-columns: 5.5rem 1fr;
+	grid-template-columns: 7rem minmax(0, 1fr);
+	width: 100%;
 	padding: 0;
 	border-color: #d2bd94;
 	background: #fffaf0;
@@ -1831,7 +1857,7 @@ h2 {
 
 .poster-frame {
 	display: grid;
-	min-height: 8rem;
+	min-height: 7.5rem;
 	place-items: center;
 	overflow: hidden;
 	background: #dce6dd;
@@ -1847,14 +1873,33 @@ h2 {
 }
 
 .project-tile-body {
+	display: grid;
 	min-width: 0;
+	align-content: center;
+	gap: 0.65rem;
 	padding: 0.9rem;
 }
 
+.project-row-heading {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.project-row-heading > div {
+	min-width: 0;
+}
+
+.project-row-heading > p {
+	flex: 0 0 auto;
+	font-weight: 700;
+}
+
 .project-tile h3 {
-	margin: 0.8rem 0 0.35rem;
+	margin: 0.35rem 0 0;
 	overflow: hidden;
-	font-size: 1rem;
+	font-size: 1.08rem;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
@@ -1882,6 +1927,31 @@ h2 {
 	font-weight: 700;
 }
 
+.project-pills .pill-status {
+	background: #dce9f5;
+	color: #285879;
+}
+
+.project-pills .pill-goal {
+	background: #e6dff2;
+	color: #59427b;
+}
+
+.project-pills .pill-location {
+	background: #dcebdd;
+	color: #315f40;
+}
+
+.project-pills .pill-strategic {
+	background: #f3e4bd;
+	color: #73551c;
+}
+
+.project-pills .pill-priority {
+	background: #f1d8cf;
+	color: #843c28;
+}
+
 .pagination {
 	display: flex;
 	align-items: center;
@@ -1894,6 +1964,7 @@ h2 {
 
 .project-detail {
 	margin-top: 1.5rem;
+	scroll-margin-top: 1.5rem;
 	padding: 1.5rem;
 	border: 1px solid #cdb686;
 	border-radius: 1rem;
@@ -2159,13 +2230,27 @@ h2 {
 		margin-top: 1.5rem;
 	}
 
-	.agenda-list article {
-		display: grid;
-		grid-template-columns: 6rem 1fr auto;
+	.agenda-event {
+		display: flex;
 		align-items: center;
 		gap: 0.8rem;
+		width: 100%;
 		padding: 0.9rem 0;
+		border: 0;
 		border-top: 1px solid #d8d1c5;
+		background: transparent;
+		color: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.agenda-event time {
+		flex: 0 0 6rem;
+	}
+
+	.agenda-event > div {
+		min-width: 0;
+		flex: 1;
 	}
 
 	.agenda-list time,
@@ -2174,7 +2259,7 @@ h2 {
 		font-size: 0.72rem;
 	}
 
-	.agenda-list div {
+	.agenda-event > div {
 		display: flex;
 		flex-direction: column;
 	}

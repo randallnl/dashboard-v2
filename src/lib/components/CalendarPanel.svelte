@@ -241,7 +241,12 @@
 									class={`calendar-event event-${event.source}`}
 									aria-label={`View details for ${event.title}`}
 								>
-									<strong>{event.title}</strong><span>{event.status}</span>
+									{#if safeUrl(event.imageUrl)}
+										<img class="calendar-event-thumbnail" src={safeUrl(event.imageUrl)} alt="" />
+									{/if}
+									<span class="calendar-event-copy">
+										<strong>{event.title}</strong><span>{event.status}</span>
+									</span>
 								</button>
 							{/each}
 						</div>
@@ -262,6 +267,9 @@
 			{:else}
 				{#each events as event (`agenda-${event.source}-${event.id}`)}
 					<button type="button" class="agenda-event" onclick={() => openDetails(event)}>
+						{#if safeUrl(event.imageUrl)}
+							<img class="agenda-event-thumbnail" src={safeUrl(event.imageUrl)} alt="" />
+						{/if}
 						<time datetime={event.startDate}>{event.startDate}</time>
 						<div><strong>{event.title}</strong><span>{event.location || event.status}</span></div>
 						<span class={`source-pill source-${event.source}`}>{event.source}</span>
