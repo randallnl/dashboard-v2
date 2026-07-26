@@ -2,6 +2,7 @@
 	import CalendarPanel from '$lib/components/CalendarPanel.svelte';
 	import ContentState from '$lib/components/ContentState.svelte';
 	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
+	import VotePanel from '$lib/components/VotePanel.svelte';
 	import type { Member, MemberCapabilities } from '$lib/types/domain';
 	import { resolve } from '$app/paths';
 
@@ -42,6 +43,7 @@
 			<a class="nav-active" href="#overview">Overview</a>
 			{#if capabilities.canViewShifts}<a href="#portal-areas">Shifts</a>{/if}
 			{#if capabilities.canViewCalendar}<a href="#calendar">Calendar</a>{/if}
+			{#if capabilities.canVote}<a href="#votes">Votes</a>{/if}
 			<a href="#resources">Resources</a>
 			{#if capabilities.canViewAdminTools}<a href="#admin">Admin</a>{/if}
 		</nav>
@@ -115,6 +117,10 @@
 
 		{#if capabilities.canViewCalendar}
 			<CalendarPanel />
+		{/if}
+
+		{#if capabilities.canVote}
+			<VotePanel />
 		{/if}
 
 		<section class="member-details-grid" aria-label="Member identity and resources">

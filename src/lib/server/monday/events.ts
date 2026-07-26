@@ -23,7 +23,8 @@ const COMMUNITY_COLUMNS = {
 	date: 'date_Mjj7b71V',
 	links: 'link_mm345aqv',
 	space: 'multi_selectgtgkuzvw',
-	status: 'status_mkmxzk3x'
+	status: 'status_mkmxzk3x',
+	created: 'pulse_log_mm4wyjyr'
 };
 
 const MEMBER_LOCATIONS = ['board room', 'colab', 'community room', 'gym'];
@@ -126,7 +127,8 @@ export function mapCommunityEvent(item: Item, syncedAt: string): ProjectEventRec
 		record: {
 			organizerEmail: text(columns, COMMUNITY_COLUMNS.email),
 			description: text(columns, COMMUNITY_COLUMNS.description),
-			link: safeUrl(columns, COMMUNITY_COLUMNS.links)
+			link: safeUrl(columns, COMMUNITY_COLUMNS.links),
+			creationLog: text(columns, COMMUNITY_COLUMNS.created)
 		},
 		syncedAt
 	};
