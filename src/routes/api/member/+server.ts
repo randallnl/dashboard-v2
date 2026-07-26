@@ -2,11 +2,10 @@ import { loadMemberContext } from '$lib/server/auth/member-context';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals, platform, url }) => {
+export const GET: RequestHandler = async ({ locals, platform }) => {
 	const context = await loadMemberContext({
 		session: locals.session,
-		env: platform?.env,
-		requestedMemberId: url.searchParams.get('memberId')
+		env: platform?.env
 	});
 
 	return json({

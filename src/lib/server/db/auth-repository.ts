@@ -75,13 +75,25 @@ export class AuthRepository {
 	async findValidSession(sessionHash: string, now: string): Promise<MagicSessionRow | null> {
 		return this.db
 			.prepare(
-				`SELECT session_hash, email, member_id, expires_at, created_at, last_seen_at
+				`SELECT session_hash, email, member_id, viewed_member_id, expires_at, created_at, last_seen_at
 				 FROM magic_sessions
 				 WHERE session_hash = ?1 AND expires_at > ?2
 				 LIMIT 1`
 			)
 			.bind(sessionHash, now)
 			.first<MagicSessionRow>();
+	}
+
+	async setViewedMember(sessionHash: string, memberId: string): Promise<boolean> {
+		const result = await this.db
+			.prepare(
+				`UPDATE magic_sessions
+				 SET viewed_member_id = ?2
+				 WHERE session_hash = ?1`
+			)
+			.bind(sessionHash, memberId)
+			.run();
+		return result.meta.changes === 1;
 	}
 
 	async touchSession(sessionHash: string, seenAt: string): Promise<void> {

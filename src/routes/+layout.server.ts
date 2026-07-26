@@ -18,10 +18,14 @@ export const load: LayoutServerLoad = async ({ locals, platform }) => {
 			session: {
 				email: session.email,
 				memberId: session.memberId,
+				viewedMemberId: session.viewedMemberId,
 				expiresAt: session.expiresAt
 			},
-			member: context.viewer,
-			capabilities: context.capabilities
+			viewer: context.viewer,
+			member: context.member,
+			capabilities: context.capabilities,
+			viewerCapabilities: context.viewerCapabilities,
+			isViewingAs: context.isViewingAs
 		};
 	} catch (cause) {
 		if (cause && typeof cause === 'object' && 'status' in cause) throw cause;

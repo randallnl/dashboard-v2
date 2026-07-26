@@ -4,11 +4,24 @@
 	import ContentState from '$lib/components/ContentState.svelte';
 	import MemberHistoryPanel from '$lib/components/MemberHistoryPanel.svelte';
 	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
+	import ViewAsControl from '$lib/components/ViewAsControl.svelte';
 	import VotePanel from '$lib/components/VotePanel.svelte';
 	import type { Member, MemberCapabilities } from '$lib/types/domain';
 	import { resolve } from '$app/paths';
 
-	let { member, capabilities }: { member: Member; capabilities: MemberCapabilities } = $props();
+	let {
+		viewer,
+		member,
+		capabilities,
+		viewerCapabilities,
+		isViewingAs
+	}: {
+		viewer: Member;
+		member: Member;
+		capabilities: MemberCapabilities;
+		viewerCapabilities: MemberCapabilities;
+		isViewingAs: boolean;
+	} = $props();
 
 	const firstName = $derived(member.preferredName.split(/\s+/u)[0] || member.preferredName);
 	const hasProfileDetails = $derived(
@@ -48,7 +61,7 @@
 			{#if capabilities.canVote}<a href="#votes">Votes</a>{/if}
 			<a href="#history">History</a>
 			<a href="#resources">Resources</a>
-			{#if capabilities.canViewAdminTools}<a href="#admin">Admin</a>{/if}
+			{#if viewerCapabilities.canViewAdminTools && !isViewingAs}<a href="#admin">Admin</a>{/if}
 		</nav>
 		<div class="member-menu">
 			<div>
@@ -60,6 +73,10 @@
 			</form>
 		</div>
 	</header>
+
+	{#if viewerCapabilities.isAdmin}
+		<ViewAsControl {viewer} {member} {isViewingAs} />
+	{/if}
 
 	<main class="dashboard-main" id="overview">
 		<section class="welcome-card">
@@ -115,7 +132,7 @@
 		</section>
 
 		{#if capabilities.canViewShifts}
-			<ShiftPanel isAdmin={capabilities.isAdmin} />
+			<ShiftPanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
 		{/if}
 
 		{#if capabilities.canViewCalendar}
@@ -123,7 +140,7 @@
 		{/if}
 
 		{#if capabilities.canVote}
-			<VotePanel />
+			<VotePanel readOnly={isViewingAs} />
 		{/if}
 
 		<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />
@@ -196,7 +213,7 @@
 			</article>
 		</section>
 
-		{#if capabilities.canViewAdminTools}
+		{#if viewerCapabilities.canViewAdminTools && !isViewingAs}
 			<AdminProjectsPanel />
 		{/if}
 	</main>
@@ -207,6 +224,6 @@
 		<a href="#calendar">Calendar</a>
 		<a href="#history">History</a>
 		<a href="#resources">Resources</a>
-		{#if capabilities.canViewAdminTools}<a href="#admin">Admin</a>{/if}
+		{#if viewerCapabilities.canViewAdminTools && !isViewingAs}<a href="#admin">Admin</a>{/if}
 	</nav>
 </div>

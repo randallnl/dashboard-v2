@@ -9,6 +9,7 @@ export const GET: RequestHandler = ({ locals }) => {
 	return json({
 		authenticated: true,
 		memberId: locals.session.memberId,
+		viewedMemberId: locals.session.viewedMemberId,
 		email: locals.session.email,
 		expiresAt: locals.session.expiresAt
 	});

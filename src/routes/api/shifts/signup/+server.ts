@@ -1,4 +1,4 @@
-import { loadMemberContext } from '$lib/server/auth/member-context';
+import { loadMemberContext, requireWritableMemberView } from '$lib/server/auth/member-context';
 import { ShiftRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { ShiftDirectory } from '$lib/server/monday/shifts';
@@ -28,6 +28,7 @@ function coveredShift(shift: Shift, member: Member, person: string, syncedAt: st
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform?.env;
 	const context = await loadMemberContext({ session: locals.session, env });
+	requireWritableMemberView(context);
 	if (!context.capabilities.canViewShifts) {
 		error(403, 'Shift signup is not included with this membership.');
 	}

@@ -5,6 +5,7 @@
 
 	type EligibleVote = Vote & { hasVoted: boolean };
 	const objection = "Don't Approve(With Comment)";
+	let { readOnly = false }: { readOnly?: boolean } = $props();
 
 	let votes = $state<EligibleVote[]>([]);
 	let responses = $state<Record<string, string>>({});
@@ -79,6 +80,9 @@
 	{#if message}
 		<p class="vote-message" class:error={failed} role={failed ? 'alert' : 'status'}>{message}</p>
 	{/if}
+	{#if readOnly}
+		<p class="vote-message">Voting is disabled in administrator member view.</p>
+	{/if}
 
 	{#if loading}
 		<ContentState
@@ -111,7 +115,7 @@
 						<div class="vote-form">
 							<label>
 								<span>Your response</span>
-								<select bind:value={responses[vote.id]}>
+								<select bind:value={responses[vote.id]} disabled={readOnly}>
 									<option value="">Choose…</option>
 									<option value="Approve">Approve</option>
 									<option value={objection}>Don’t approve (with comment)</option>
@@ -124,8 +128,12 @@
 									<textarea bind:value={comments[vote.id]} rows="3" required></textarea>
 								</label>
 							{/if}
-							<button type="button" onclick={() => submit(vote)} disabled={Boolean(submitting)}>
-								{submitting === vote.id ? 'Recording…' : 'Submit response'}
+							<button
+								type="button"
+								onclick={() => submit(vote)}
+								disabled={Boolean(submitting) || readOnly}
+							>
+								{submitting === vote.id ? 'Recording…' : readOnly ? 'View only' : 'Submit response'}
 							</button>
 						</div>
 					{/if}

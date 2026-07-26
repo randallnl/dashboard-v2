@@ -32,6 +32,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		sessionHash: row.session_hash,
 		email: row.email,
 		memberId: row.member_id,
+		viewedMemberId: row.viewed_member_id,
 		expiresAt: row.expires_at,
 		lastSeenAt: row.last_seen_at
 	};

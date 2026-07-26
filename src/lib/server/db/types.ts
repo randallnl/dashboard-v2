@@ -10,6 +10,7 @@ export type MagicSessionRow = {
 	session_hash: string;
 	email: string;
 	member_id: string;
+	viewed_member_id: string;
 	expires_at: string;
 	created_at: string;
 	last_seen_at: string;

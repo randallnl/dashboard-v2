@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 	]);
 	const votes = [...motions, ...communityConsentVotes(community)].map((vote) => ({
 		...vote,
-		hasVoted: hasDuplicateVote(logs, context.viewer.id, vote)
+		hasVoted: hasDuplicateVote(logs, context.member.id, vote)
 	}));
 	return json({ votes }, { headers: { 'cache-control': 'private, no-store' } });
 };

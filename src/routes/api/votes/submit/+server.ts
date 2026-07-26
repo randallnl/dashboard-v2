@@ -1,4 +1,4 @@
-import { loadMemberContext } from '$lib/server/auth/member-context';
+import { loadMemberContext, requireWritableMemberView } from '$lib/server/auth/member-context';
 import { ProjectEventRepository, VoteRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { hasDuplicateVote, OBJECTION_RESPONSE, VoteDirectory } from '$lib/server/monday/votes';
@@ -11,6 +11,7 @@ const RESPONSES = new Set(['Approve', OBJECTION_RESPONSE, 'Abstain']);
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform?.env;
 	const context = await loadMemberContext({ session: locals.session, env });
+	requireWritableMemberView(context);
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const voteId = typeof body?.voteId === 'string' ? body.voteId.trim() : '';
 	const response = typeof body?.response === 'string' ? body.response.trim() : '';

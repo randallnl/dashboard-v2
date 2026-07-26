@@ -8,13 +8,13 @@ import type { AuthenticatedSession } from './types';
 type MemberContextInput = {
 	session: AuthenticatedSession | null;
 	env: Env | undefined;
-	requestedMemberId?: string | null;
 };
 
 export type MemberContext = {
 	viewer: Member;
 	member: Member;
 	capabilities: MemberCapabilities;
+	viewerCapabilities: MemberCapabilities;
 	isViewingAs: boolean;
 };
 
@@ -28,8 +28,7 @@ export function canAccessMember(
 
 export async function loadMemberContext({
 	session,
-	env,
-	requestedMemberId
+	env
 }: MemberContextInput): Promise<MemberContext> {
 	if (!session) {
 		error(401, 'Authentication required');
@@ -45,9 +44,9 @@ export async function loadMemberContext({
 		error(403, 'Your CoLab membership could not be confirmed.');
 	}
 
-	const capabilities = memberCapabilities(viewer);
-	const targetId = requestedMemberId?.trim() || viewer.id;
-	if (!canAccessMember(viewer.id, targetId, capabilities)) {
+	const viewerCapabilities = memberCapabilities(viewer);
+	const targetId = session.viewedMemberId.trim() || viewer.id;
+	if (!canAccessMember(viewer.id, targetId, viewerCapabilities)) {
 		error(403, 'You do not have permission to view another member.');
 	}
 
@@ -59,13 +58,20 @@ export async function loadMemberContext({
 	return {
 		viewer,
 		member,
-		capabilities,
+		capabilities: memberCapabilities(member),
+		viewerCapabilities,
 		isViewingAs: member.id !== viewer.id
 	};
 }
 
-export function requireAdmin(context: Pick<MemberContext, 'capabilities'>): void {
-	if (!context.capabilities.isAdmin) {
+export function requireAdmin(context: Pick<MemberContext, 'viewerCapabilities'>): void {
+	if (!context.viewerCapabilities.isAdmin) {
 		error(403, 'Administrator access required');
+	}
+}
+
+export function requireWritableMemberView(context: Pick<MemberContext, 'isViewingAs'>): void {
+	if (context.isViewingAs) {
+		error(403, 'This action is disabled while viewing as another member.');
 	}
 }

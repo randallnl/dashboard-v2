@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canAccessMember } from './member-context';
+import { canAccessMember, requireWritableMemberView } from './member-context';
 
 describe('canAccessMember', () => {
 	it('allows every member to access their own record', () => {
@@ -12,5 +12,23 @@ describe('canAccessMember', () => {
 
 	it('allows an admin to access another member', () => {
 		expect(canAccessMember('admin-1', 'member-2', { isAdmin: true })).toBe(true);
+	});
+});
+
+describe('requireWritableMemberView', () => {
+	it('rejects mutations while an admin is viewing another member', () => {
+		try {
+			requireWritableMemberView({ isViewingAs: true });
+			expect.fail('Expected the member-view guard to reject the mutation');
+		} catch (cause) {
+			expect(cause).toMatchObject({
+				status: 403,
+				body: { message: 'This action is disabled while viewing as another member.' }
+			});
+		}
+	});
+
+	it('allows mutations in the authenticated member view', () => {
+		expect(() => requireWritableMemberView({ isViewingAs: false })).not.toThrow();
 	});
 });

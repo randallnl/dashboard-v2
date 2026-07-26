@@ -72,6 +72,15 @@ describe('AuthRepository', () => {
 			)
 		).resolves.toBe(false);
 	});
+
+	it('stores view-as state against the authenticated session only', async () => {
+		const mock = createDatabaseMock({ changes: 1 });
+		const repository = new AuthRepository(mock.db);
+
+		await expect(repository.setViewedMember('session-hash', 'member-2')).resolves.toBe(true);
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('viewed_member_id = ?2'));
+		expect(mock.bind).toHaveBeenCalledWith('session-hash', 'member-2');
+	});
 });
 
 describe('ShiftRepository', () => {

@@ -3,7 +3,7 @@
 	import type { Shift } from '$lib/types/domain';
 	import { onMount } from 'svelte';
 
-	let { isAdmin }: { isAdmin: boolean } = $props();
+	let { isAdmin, readOnly = false }: { isAdmin: boolean; readOnly?: boolean } = $props();
 
 	let shifts = $state<Shift[]>([]);
 	let loading = $state(true);
@@ -90,6 +90,9 @@
 	{#if message}
 		<p class="shift-message" class:error={failed} role={failed ? 'alert' : 'status'}>{message}</p>
 	{/if}
+	{#if readOnly}
+		<p class="shift-message">Shift signup is disabled in administrator member view.</p>
+	{/if}
 
 	{#if loading}
 		<ContentState
@@ -122,10 +125,10 @@
 					<button
 						type="button"
 						onclick={() => claim(shift)}
-						disabled={Boolean(claimingId)}
+						disabled={Boolean(claimingId) || readOnly}
 						aria-label={`Claim ${shift.title} on ${shift.dateLabel || shift.dateValue}`}
 					>
-						{claimingId === shift.id ? 'Claiming…' : 'Claim shift'}
+						{claimingId === shift.id ? 'Claiming…' : readOnly ? 'View only' : 'Claim shift'}
 					</button>
 				</article>
 			{/each}

@@ -361,6 +361,82 @@ h2 {
 	padding: clamp(2rem, 5vw, 5rem) clamp(1.5rem, 4vw, 4rem);
 }
 
+.view-as-control,
+.view-as-banner {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	padding: 0.8rem clamp(1.5rem, 4vw, 4rem);
+}
+
+.view-as-control {
+	justify-content: flex-end;
+	border-bottom: 1px solid #d8d1c5;
+	background: #ebe5d9;
+}
+
+.view-as-control label {
+	font-size: 0.78rem;
+	font-weight: 700;
+}
+
+.view-as-control select,
+.view-as-control button,
+.view-as-banner button {
+	padding: 0.55rem 0.7rem;
+	border: 1px solid #bfb6a8;
+	border-radius: 0.5rem;
+	font: inherit;
+}
+
+.view-as-control select {
+	min-width: 16rem;
+	background: #fffdf8;
+}
+
+.view-as-control button,
+.view-as-banner button {
+	cursor: pointer;
+	background: #194639;
+	color: #fff;
+	font-weight: 700;
+}
+
+.view-as-control button:disabled,
+.view-as-banner button:disabled {
+	cursor: wait;
+	opacity: 0.6;
+}
+
+.view-as-control > span {
+	color: #8d3f2c;
+	font-size: 0.75rem;
+}
+
+.view-as-banner {
+	position: sticky;
+	z-index: 9;
+	top: 0;
+	justify-content: space-between;
+	background: #dca340;
+	color: #17251e;
+	box-shadow: 0 0.4rem 1rem rgb(23 37 30 / 16%);
+}
+
+.view-as-banner div {
+	display: flex;
+	flex-direction: column;
+}
+
+.view-as-banner span {
+	font-size: 0.78rem;
+}
+
+.view-as-banner button {
+	border-color: #17251e;
+	background: #17251e;
+}
+
 .welcome-card {
 	display: flex;
 	align-items: end;
@@ -1315,6 +1391,17 @@ h2 {
 
 	.dashboard-header nav {
 		display: none;
+	}
+
+	.view-as-control,
+	.view-as-banner {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.view-as-control select {
+		width: 100%;
+		min-width: 0;
 	}
 
 	.member-menu > div {
