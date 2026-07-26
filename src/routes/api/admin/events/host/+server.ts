@@ -1,5 +1,12 @@
 import { loadMemberContext, requireAdmin } from '$lib/server/auth/member-context';
-import { HostRepository, MemberRepository, ProjectEventRepository } from '$lib/server/db';
+import {
+	HostRepository,
+	MemberRepository,
+	ProjectEventRepository,
+	VolunteerRepository
+} from '$lib/server/db';
+import { MondayClient, mondayToken } from '$lib/server/monday/client';
+import { attendeeEmails, EventDirectory } from '$lib/server/monday/events';
 import { coveredByLabel } from '$lib/server/monday/shifts';
 import type { ProjectEventSource } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
@@ -16,20 +23,49 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	if ((source !== 'project' && source !== 'community') || !eventId || !memberId) {
 		error(400, 'A project or event and member are required.');
 	}
-	const record = await new ProjectEventRepository(env.DB).findById(
-		source as ProjectEventSource,
-		eventId
-	);
+	const projects = new ProjectEventRepository(env.DB);
+	const record = await projects.findById(source as ProjectEventSource, eventId);
 	if (!record) error(404, 'Project or event not found.');
 	const member = await new MemberRepository(env.DB).findById(memberId);
 	if (!member) error(404, 'Member not found.');
+	const updatedAt = new Date().toISOString();
+
+	if (record.source === 'project' && member.email) {
+		const emails = [
+			...new Set([
+				...attendeeEmails(record.record.attendees),
+				member.email.trim().toLocaleLowerCase('en-US')
+			])
+		];
+		await new EventDirectory(
+			new MondayClient(await mondayToken(env.MONDAY_API_TOKEN))
+		).updateProjectAttendees(record.id, emails);
+		await Promise.all([
+			projects.upsert({
+				...record,
+				record: { ...record.record, attendees: emails.join(', ') },
+				syncedAt: updatedAt
+			}),
+			new VolunteerRepository(env.DB).signup('project', record.id, member.id)
+		]);
+	}
+
 	const host = await new HostRepository(env.DB).upsert(
 		record.source,
 		record.id,
 		member.id,
 		coveredByLabel(member.preferredName),
 		context.viewer.id,
-		new Date().toISOString()
+		updatedAt
 	);
-	return json({ host }, { headers: { 'cache-control': 'private, no-store' } });
+	return json(
+		{
+			host,
+			message:
+				record.source === 'project'
+					? `${host.hostLabel} assigned as host and added to attendees.`
+					: `${host.hostLabel} assigned as host.`
+		},
+		{ headers: { 'cache-control': 'private, no-store' } }
+	);
 };

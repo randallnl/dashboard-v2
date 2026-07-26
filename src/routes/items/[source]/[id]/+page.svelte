@@ -123,7 +123,7 @@
 		const result = (await response.json()) as { host?: typeof host; message?: string };
 		if (response.ok && result.host) {
 			host = result.host;
-			hostMessage = `Host changed to ${result.host.hostLabel}.`;
+			hostMessage = result.message || `Host changed to ${result.host.hostLabel}.`;
 		} else {
 			hostMessage = result.message || 'Could not change host.';
 		}
