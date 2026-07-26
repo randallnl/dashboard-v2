@@ -1307,12 +1307,24 @@ h2 {
 .item-dashboard > header {
 	display: flex;
 	align-items: start;
-	justify-content: space-between;
 	gap: 2rem;
 	margin: 2rem 0;
 	padding: clamp(1.5rem, 4vw, 3rem);
 	border-radius: 1.2rem;
 	background: #e8eee8;
+}
+
+.item-dashboard > header > div {
+	width: 100%;
+}
+
+.item-dashboard-pills {
+	margin-top: 1.2rem;
+}
+
+.item-dashboard-pills > span {
+	padding: 0.42rem 0.7rem;
+	font-size: 0.68rem;
 }
 
 .item-dashboard h1 {
@@ -1340,6 +1352,30 @@ h2 {
 
 .event-editor {
 	margin-top: 1rem;
+}
+
+.event-editor summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	font-size: 1.05rem;
+	font-weight: 800;
+	list-style: none;
+}
+
+.event-editor summary::-webkit-details-marker {
+	display: none;
+}
+
+.event-editor[open] summary {
+	margin-bottom: 1.2rem;
+	padding-bottom: 1rem;
+	border-bottom: 1px solid #ddd6ca;
+}
+
+.event-editor[open] summary span:last-child {
+	transform: rotate(45deg);
 }
 
 .signup-roster {
@@ -1438,6 +1474,31 @@ h2 {
 	margin-top: 1rem;
 }
 
+.people-editor-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+}
+
+.people-editor-heading {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.9rem;
+}
+
+.people-editor-heading h2,
+.people-editor-heading p {
+	margin: 0;
+}
+
+.people-editor-heading h2 {
+	max-width: none;
+	margin-top: 0.2rem;
+	font-size: 1.15rem;
+}
+
 .host-editor > div,
 .attendee-editor > div {
 	display: flex;
@@ -1499,12 +1560,10 @@ h2 {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5rem;
-	margin: 0 0 1rem;
-	padding: 0;
-	list-style: none;
+	justify-content: end;
 }
 
-.attendee-list li {
+.attendee-list span {
 	padding: 0.35rem 0.6rem;
 	border-radius: 999px;
 	background: #dce9f5;
@@ -2399,8 +2458,19 @@ h2 {
 
 	.admin-filters,
 	.admin-project-grid,
-	.project-detail dl {
+	.project-detail dl,
+	.item-dashboard-grid,
+	.people-editor-grid,
+	.event-editor form > div {
 		grid-template-columns: 1fr;
+	}
+
+	.people-editor-heading {
+		flex-direction: column;
+	}
+
+	.attendee-list {
+		justify-content: start;
 	}
 
 	.admin-load-prompt {

@@ -43,7 +43,10 @@
 
 	const entries = $derived(
 		Object.entries(data.record.record).filter(
-			([key, value]) => key !== 'attendees' && typeof value === 'string' && value
+			([key, value]) =>
+				!['attendees', 'goal', 'category', 'strategicGoal', 'priority'].includes(key) &&
+				typeof value === 'string' &&
+				value
 		)
 	);
 	const attachments = $derived(
@@ -57,6 +60,11 @@
 			.replace(/Url$/u, '')
 			.replace(/([a-z])([A-Z])/gu, '$1 $2')
 			.replace(/^./u, (character) => character.toUpperCase());
+	}
+
+	function field(key: string): string {
+		const value = data.record.record[key];
+		return typeof value === 'string' ? value : '';
 	}
 
 	function safeUrl(value: unknown): string {
@@ -177,9 +185,29 @@
 		<div>
 			<p class="eyebrow">{data.record.source} dashboard</p>
 			<h1>{data.record.title}</h1>
-			<p>{data.record.dateValue}{data.record.location ? ` · ${data.record.location}` : ''}</p>
+			<p>{data.record.dateValue}</p>
+			<div class="project-pills item-dashboard-pills" aria-label="Project attributes">
+				{#if data.record.status}
+					<span class="project-pill pill-status">Status · {data.record.status}</span>
+				{/if}
+				{#if field('goal') || field('category')}
+					<span class="project-pill pill-goal">
+						Goal · {field('goal') || field('category')}
+					</span>
+				{/if}
+				{#if data.record.location}
+					<span class="project-pill pill-location">Location · {data.record.location}</span>
+				{/if}
+				{#if field('strategicGoal')}
+					<span class="project-pill pill-strategic">
+						Strategic goal · {field('strategicGoal')}
+					</span>
+				{/if}
+				{#if field('priority')}
+					<span class="project-pill pill-priority">Priority · {field('priority')}</span>
+				{/if}
+			</div>
 		</div>
-		<span class="status-pill">{data.record.status || 'Status not set'}</span>
 	</header>
 
 	<section class="item-dashboard-grid">
@@ -269,8 +297,11 @@
 	{/if}
 
 	{#if data.isAdmin}
-		<section class="event-editor">
-			<h2>Edit project or event</h2>
+		<details class="event-editor">
+			<summary>
+				<span>Edit project or event</span>
+				<span aria-hidden="true">＋</span>
+			</summary>
 			<form
 				onsubmit={(event) => {
 					event.preventDefault();
@@ -299,53 +330,62 @@
 				</button>
 			</form>
 			{#if editMessage}<p role="status">{editMessage}</p>{/if}
-		</section>
+		</details>
 
-		<section class="host-editor">
-			<h2>Change host</h2>
-			<div>
-				<MemberPredictivePicker
-					id="event-host-member"
-					placeholder="Type @ and a member’s name"
-					includeSelf={true}
-					bind:selection={hostSelection}
-					disabled={savingHost}
-				/>
-				<button type="button" onclick={saveHost} disabled={savingHost}>
-					{savingHost ? 'Saving…' : 'Assign host'}
-				</button>
-			</div>
-			{#if hostMessage}<p role="status">{hostMessage}</p>{/if}
-		</section>
-
-		{#if data.record.source === 'project'}
-			<section class="attendee-editor">
-				<h2>Attendees and volunteers</h2>
-				{#if attendees.length}
-					<ul class="attendee-list">
-						{#each attendees as email (email)}<li>{email}</li>{/each}
-					</ul>
-				{:else}
-					<p>No attendees have been added yet.</p>
-				{/if}
+		<div class:people-editor-grid={data.record.source === 'project'}>
+			<section class="host-editor">
+				<div class="people-editor-heading">
+					<div>
+						<p class="eyebrow">Host</p>
+						<h2>{host?.hostLabel || data.record.owner || 'Not assigned'}</h2>
+					</div>
+				</div>
 				<div>
-					{#key attendeePickerKey}
-						<MemberPredictivePicker
-							id="event-attendee-member"
-							placeholder="Type @ and a member’s name"
-							includeSelf={true}
-							bind:selection={attendeeSelection}
-							disabled={savingAttendee}
-						/>
-					{/key}
-					<button type="button" onclick={addAttendee} disabled={savingAttendee}>
-						{savingAttendee ? 'Adding…' : 'Add attendee'}
+					<MemberPredictivePicker
+						id="event-host-member"
+						placeholder="Type @ to change host"
+						includeSelf={true}
+						bind:selection={hostSelection}
+						disabled={savingHost}
+					/>
+					<button type="button" onclick={saveHost} disabled={savingHost}>
+						{savingHost ? 'Saving…' : 'Assign'}
 					</button>
 				</div>
-				<p class="help">The member’s primary email is written to Monday’s attendees field.</p>
-				{#if attendeeMessage}<p role="status">{attendeeMessage}</p>{/if}
+				{#if hostMessage}<p role="status">{hostMessage}</p>{/if}
 			</section>
-		{/if}
+
+			{#if data.record.source === 'project'}
+				<section class="attendee-editor">
+					<div class="people-editor-heading">
+						<div>
+							<p class="eyebrow">Attendees and volunteers</p>
+							<h2>{attendees.length} assigned</h2>
+						</div>
+						{#if attendees.length}
+							<div class="attendee-list" aria-label="Current attendees">
+								{#each attendees as email (email)}<span>{email}</span>{/each}
+							</div>
+						{/if}
+					</div>
+					<div>
+						{#key attendeePickerKey}
+							<MemberPredictivePicker
+								id="event-attendee-member"
+								placeholder="Type @ to add someone"
+								includeSelf={true}
+								bind:selection={attendeeSelection}
+								disabled={savingAttendee}
+							/>
+						{/key}
+						<button type="button" onclick={addAttendee} disabled={savingAttendee}>
+							{savingAttendee ? 'Adding…' : 'Add'}
+						</button>
+					</div>
+					{#if attendeeMessage}<p role="status">{attendeeMessage}</p>{/if}
+				</section>
+			{/if}
+		</div>
 	{/if}
 
 	<ItemComments source={data.record.source} eventId={data.record.id} readOnly={data.readOnly} />
