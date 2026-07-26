@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CalendarPanel from '$lib/components/CalendarPanel.svelte';
 	import ContentState from '$lib/components/ContentState.svelte';
+	import MemberHistoryPanel from '$lib/components/MemberHistoryPanel.svelte';
 	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
 	import VotePanel from '$lib/components/VotePanel.svelte';
 	import type { Member, MemberCapabilities } from '$lib/types/domain';
@@ -44,6 +45,7 @@
 			{#if capabilities.canViewShifts}<a href="#portal-areas">Shifts</a>{/if}
 			{#if capabilities.canViewCalendar}<a href="#calendar">Calendar</a>{/if}
 			{#if capabilities.canVote}<a href="#votes">Votes</a>{/if}
+			<a href="#history">History</a>
 			<a href="#resources">Resources</a>
 			{#if capabilities.canViewAdminTools}<a href="#admin">Admin</a>{/if}
 		</nav>
@@ -122,6 +124,8 @@
 		{#if capabilities.canVote}
 			<VotePanel />
 		{/if}
+
+		<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />
 
 		<section class="member-details-grid" aria-label="Member identity and resources">
 			<article class="profile-card">
@@ -207,6 +211,7 @@
 		<a href="#overview">Overview</a>
 		<a href="#portal-areas">Tools</a>
 		<a href="#calendar">Calendar</a>
+		<a href="#history">History</a>
 		<a href="#resources">Resources</a>
 		{#if capabilities.canViewAdminTools}<a href="#admin">Admin</a>{/if}
 	</nav>

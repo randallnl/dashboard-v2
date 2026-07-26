@@ -794,6 +794,115 @@ h2 {
 	color: #863e2b;
 }
 
+.history-panel {
+	margin-top: 4rem;
+	scroll-margin-top: 2rem;
+}
+
+.history-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+	margin-top: 2rem;
+}
+
+.history-card {
+	padding: clamp(1.4rem, 3vw, 2rem);
+	border: 1px solid #d8d1c5;
+	border-radius: 1.2rem;
+	background: #faf7f0;
+}
+
+.history-card.activity-card {
+	grid-row: span 2;
+}
+
+.history-card h3 {
+	margin: 0;
+	font-size: 1.35rem;
+}
+
+.activity-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	margin-top: 1.2rem;
+}
+
+.activity-summary div {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.45rem 0.7rem;
+	border-radius: 999px;
+	background: #e8eee8;
+	color: #194639;
+	font-size: 0.75rem;
+}
+
+.activity-summary strong {
+	font-size: 0.9rem;
+}
+
+.history-list {
+	display: grid;
+	margin: 1rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.history-list li {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.9rem 0;
+	border-top: 1px solid #ded7cb;
+}
+
+.history-list li > div:first-child {
+	display: grid;
+	gap: 0.2rem;
+}
+
+.history-list span,
+.history-list time {
+	color: #707873;
+	font-size: 0.76rem;
+}
+
+.history-list time {
+	flex: 0 0 auto;
+}
+
+.card-heading,
+.order-meta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.8rem;
+}
+
+.card-heading a {
+	color: #194639;
+	font-size: 0.78rem;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.order-meta {
+	flex-direction: column;
+	align-items: end;
+}
+
+.status-pill {
+	padding: 0.3rem 0.5rem;
+	border-radius: 999px;
+	background: #f3dfb6;
+	color: #694a15 !important;
+	font-weight: 700;
+}
+
 .member-details-grid {
 	display: grid;
 	grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.8fr);
@@ -1050,6 +1159,22 @@ h2 {
 
 	.vote-list {
 		grid-template-columns: 1fr;
+	}
+
+	.history-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.history-card.activity-card {
+		grid-row: auto;
+	}
+
+	.history-list li {
+		flex-direction: column;
+	}
+
+	.order-meta {
+		align-items: start;
 	}
 
 	.dashboard-main {
