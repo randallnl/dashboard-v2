@@ -69,4 +69,34 @@ export class ShiftRepository {
 
 		return result.results.map(mapShiftRow);
 	}
+
+	async claimIfOpen(
+		id: string,
+		memberId: string,
+		person: string,
+		syncedAt: string
+	): Promise<boolean> {
+		const result = await this.db
+			.prepare(
+				`UPDATE colab_shifts
+				 SET member_id = ?2, person = ?3, covered_by = ?3,
+				     coverage_status = 'Covered', is_covered = 1, synced_at = ?4
+				 WHERE id = ?1 AND is_covered = 0`
+			)
+			.bind(id, memberId, person, syncedAt)
+			.run();
+		return result.meta.changes === 1;
+	}
+
+	async releaseClaim(id: string, memberId: string, syncedAt: string): Promise<void> {
+		await this.db
+			.prepare(
+				`UPDATE colab_shifts
+				 SET member_id = '', person = '', covered_by = '',
+				     coverage_status = 'Open', is_covered = 0, synced_at = ?3
+				 WHERE id = ?1 AND member_id = ?2`
+			)
+			.bind(id, memberId, syncedAt)
+			.run();
+	}
 }

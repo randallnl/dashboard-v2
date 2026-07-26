@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ContentState from '$lib/components/ContentState.svelte';
+	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
 	import type { Member, MemberCapabilities } from '$lib/types/domain';
 	import { resolve } from '$app/paths';
 
@@ -106,6 +107,10 @@
 				{/if}
 			</div>
 		</section>
+
+		{#if capabilities.canViewShifts}
+			<ShiftPanel isAdmin={capabilities.isAdmin} />
+		{/if}
 
 		<section class="member-details-grid" aria-label="Member identity and resources">
 			<article class="profile-card">

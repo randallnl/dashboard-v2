@@ -117,6 +117,30 @@ describe('ShiftRepository', () => {
 			'2026-07-24T12:00:00.000Z'
 		);
 	});
+
+	it('claims only a shift that is still open', async () => {
+		const claimed = createDatabaseMock({ changes: 1 });
+		const unavailable = createDatabaseMock({ changes: 0 });
+
+		await expect(
+			new ShiftRepository(claimed.db).claimIfOpen(
+				'shift-1',
+				'member-1',
+				'Alex M. | member-1',
+				'2026-07-26T12:00:00.000Z'
+			)
+		).resolves.toBe(true);
+		await expect(
+			new ShiftRepository(unavailable.db).claimIfOpen(
+				'shift-1',
+				'member-2',
+				'Casey R. | member-2',
+				'2026-07-26T12:00:00.000Z'
+			)
+		).resolves.toBe(false);
+
+		expect(claimed.prepare).toHaveBeenCalledWith(expect.stringContaining('is_covered = 0'));
+	});
 });
 
 describe('ProjectEventRepository', () => {
