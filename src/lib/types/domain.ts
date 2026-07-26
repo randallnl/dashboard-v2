@@ -17,6 +17,17 @@ export type Member = {
 	signUpDate: string;
 };
 
+export type MemberCapabilities = {
+	isAdmin: boolean;
+	isRetailOnly: boolean;
+	canViewAdminTools: boolean;
+	canViewShifts: boolean;
+	canViewOpenOrders: boolean;
+	canSubmitCommunityEvents: boolean;
+	canViewCalendar: boolean;
+	canVote: boolean;
+};
+
 export type Shift = {
 	id: string;
 	boardId: string;

@@ -15,7 +15,7 @@
 </svelte:head>
 
 {#if data.authenticated}
-	<DashboardShell member={data.member} />
+	<DashboardShell member={data.member} capabilities={data.capabilities} />
 {:else}
 	<LoginSplash authStatus={data.authStatus} />
 {/if}

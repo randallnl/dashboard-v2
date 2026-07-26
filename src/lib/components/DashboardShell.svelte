@@ -1,10 +1,33 @@
 <script lang="ts">
-	import type { Member } from '$lib/types/domain';
+	import ContentState from '$lib/components/ContentState.svelte';
+	import type { Member, MemberCapabilities } from '$lib/types/domain';
 	import { resolve } from '$app/paths';
 
-	let { member }: { member: Member } = $props();
+	let { member, capabilities }: { member: Member; capabilities: MemberCapabilities } = $props();
 
 	const firstName = $derived(member.preferredName.split(/\s+/u)[0] || member.preferredName);
+	const hasProfileDetails = $derived(
+		Boolean(
+			member.businessName ||
+			member.phone ||
+			member.website ||
+			member.socialMedia ||
+			member.creativeGroundUrl ||
+			member.artistDescription
+		)
+	);
+	const websiteUrl = $derived(safeExternalUrl(member.website));
+	const creativeGroundUrl = $derived(safeExternalUrl(member.creativeGroundUrl));
+
+	function safeExternalUrl(value: string): string {
+		if (!value) return '';
+		try {
+			const url = new URL(value.startsWith('www.') ? `https://${value}` : value);
+			return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+		} catch {
+			return '';
+		}
+	}
 </script>
 
 <div class="dashboard-shell">
@@ -14,9 +37,11 @@
 			<span>CoLab</span>
 		</a>
 		<nav aria-label="Member navigation">
-			<span class="nav-active">Overview</span>
-			<span>Calendar</span>
-			<span>Resources</span>
+			<a class="nav-active" href="#overview">Overview</a>
+			{#if capabilities.canViewShifts}<a href="#portal-areas">Shifts</a>{/if}
+			{#if capabilities.canViewCalendar}<a href="#portal-areas">Calendar</a>{/if}
+			<a href="#resources">Resources</a>
+			{#if capabilities.canViewAdminTools}<a href="#admin">Admin</a>{/if}
 		</nav>
 		<div class="member-menu">
 			<div>
@@ -29,35 +54,143 @@
 		</div>
 	</header>
 
-	<main class="dashboard-main">
+	<main class="dashboard-main" id="overview">
 		<section class="welcome-card">
 			<div>
 				<p class="eyebrow">Member overview</p>
 				<h1>Hi, {firstName}.</h1>
-				<p>Your secure CoLab dashboard is ready. Member tools are coming in the next phase.</p>
+				<p>Your CoLab membership, studio tools, and community resources live here.</p>
 			</div>
 			<span class="membership-pill">{member.membershipType || 'CoLab Member'}</span>
 		</section>
 
-		<section class="foundation-grid" aria-label="Upcoming dashboard areas">
-			<article>
-				<span class="card-number">01</span>
-				<h2>Available shifts</h2>
-				<p>Browse and claim upcoming studio coverage times.</p>
-				<span class="coming-soon">Next milestone</span>
+		<section class="portal-section" id="portal-areas" aria-labelledby="portal-title">
+			<div class="section-heading">
+				<div>
+					<p class="eyebrow">Your portal</p>
+					<h2 id="portal-title">Member tools</h2>
+				</div>
+				<p>Features will become active as each data workflow is connected.</p>
+			</div>
+
+			<div class="foundation-grid">
+				{#if capabilities.canViewShifts}
+					<article>
+						<span class="card-number">01</span>
+						<h3>Available shifts</h3>
+						<p>Browse and claim upcoming studio coverage times.</p>
+						<span class="coming-soon">Next milestone</span>
+					</article>
+				{/if}
+				<article>
+					<span class="card-number">02</span>
+					<h3>Studio calendar</h3>
+					<p>See shifts, member events, and community programming.</p>
+					<span class="coming-soon">Coming soon</span>
+				</article>
+				{#if capabilities.canVote}
+					<article>
+						<span class="card-number">03</span>
+						<h3>Community votes</h3>
+						<p>Review active motions and participate in decisions.</p>
+						<span class="coming-soon">Coming soon</span>
+					</article>
+				{/if}
+				{#if capabilities.isRetailOnly}
+					<article class="access-note">
+						<span class="card-number">Retail membership</span>
+						<h3>Your focused portal</h3>
+						<p>Shift signup, open orders, and event submissions are not part of this membership.</p>
+						<span class="coming-soon">Access applied</span>
+					</article>
+				{/if}
+			</div>
+		</section>
+
+		<section class="member-details-grid" aria-label="Member identity and resources">
+			<article class="profile-card">
+				<div class="section-heading compact">
+					<div>
+						<p class="eyebrow">Member identity</p>
+						<h2>Profile</h2>
+					</div>
+					<span class="member-id">ID {member.id}</span>
+				</div>
+				<dl class="profile-list">
+					<div>
+						<dt>Preferred name</dt>
+						<dd>{member.preferredName}</dd>
+					</div>
+					<div>
+						<dt>Email</dt>
+						<dd>{member.email}</dd>
+					</div>
+					{#if member.businessName}<div>
+							<dt>Business</dt>
+							<dd>{member.businessName}</dd>
+						</div>{/if}
+					{#if member.phone}<div>
+							<dt>Phone</dt>
+							<dd>{member.phone}</dd>
+						</div>{/if}
+					{#if member.signUpDate}<div>
+							<dt>Member since</dt>
+							<dd>{member.signUpDate}</dd>
+						</div>{/if}
+				</dl>
+				{#if !hasProfileDetails}
+					<ContentState
+						kind="empty"
+						title="Your basic membership is connected"
+						message="Additional profile details can be added through the CoLab team."
+					/>
+				{/if}
 			</article>
-			<article>
-				<span class="card-number">02</span>
-				<h2>Studio calendar</h2>
-				<p>See shifts, member events, and community programming.</p>
-				<span class="coming-soon">Coming soon</span>
-			</article>
-			<article>
-				<span class="card-number">03</span>
-				<h2>Community votes</h2>
-				<p>Review active motions and participate in decisions.</p>
-				<span class="coming-soon">Coming soon</span>
+
+			<article class="resources-card" id="resources">
+				<p class="eyebrow">Quick links</p>
+				<h2>Resources</h2>
+				<div class="resource-links">
+					{#if capabilities.canSubmitCommunityEvents}
+						<a href="https://wkf.ms/4aSHDGu" target="_blank" rel="noreferrer">
+							<span>Submit a community-led event</span><span aria-hidden="true">↗</span>
+						</a>
+					{/if}
+					<a href="mailto:Randall@queerlective.com">
+						<span>Contact CoLab support</span><span aria-hidden="true">→</span>
+					</a>
+					{#if websiteUrl}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={websiteUrl} target="_blank" rel="noreferrer">
+							<span>Your website</span><span aria-hidden="true">↗</span>
+						</a>
+					{/if}
+					{#if creativeGroundUrl}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={creativeGroundUrl} target="_blank" rel="noreferrer">
+							<span>Your CreativeGround profile</span><span aria-hidden="true">↗</span>
+						</a>
+					{/if}
+				</div>
 			</article>
 		</section>
+
+		{#if capabilities.canViewAdminTools}
+			<section class="admin-card" id="admin">
+				<div>
+					<p class="eyebrow">Administrator access</p>
+					<h2>Admin workspace</h2>
+					<p>Your authoritative Monday member record grants access to protected admin tools.</p>
+				</div>
+				<span class="coming-soon">Project tools arrive in Phase 8</span>
+			</section>
+		{/if}
 	</main>
+
+	<nav class="mobile-nav" aria-label="Mobile member navigation">
+		<a href="#overview">Overview</a>
+		<a href="#portal-areas">Tools</a>
+		<a href="#resources">Resources</a>
+		{#if capabilities.canViewAdminTools}<a href="#admin">Admin</a>{/if}
+	</nav>
 </div>
