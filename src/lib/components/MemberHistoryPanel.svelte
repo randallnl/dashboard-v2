@@ -13,6 +13,12 @@
 	let shopifyAdminUrl = $state('');
 	let loading = $state(true);
 	let errorMessage = $state('');
+	let showAllActivity = $state(false);
+	let showAllPayments = $state(false);
+	let showAllOrders = $state(false);
+	const visibleActivities = $derived(showAllActivity ? activities : activities.slice(0, 6));
+	const visiblePayments = $derived(showAllPayments ? payments : payments.slice(0, 6));
+	const visibleOrders = $derived(showAllOrders ? orders : orders.slice(0, 6));
 
 	function dateLabel(value: string): string {
 		if (!value) return 'Date unavailable';
@@ -99,13 +105,24 @@
 				{/if}
 				{#if activities.length}
 					<ul class="history-list">
-						{#each activities.slice(0, 12) as activity (activity.id)}
+						{#each visibleActivities as activity (activity.id)}
 							<li>
 								<div><strong>{activity.type}</strong><span>{activity.description}</span></div>
 								<time datetime={activity.submitDate}>{dateLabel(activity.submitDate)}</time>
 							</li>
 						{/each}
 					</ul>
+					{#if activities.length > 6}
+						<button
+							class="show-more-button"
+							type="button"
+							onclick={() => (showAllActivity = !showAllActivity)}
+						>
+							{showAllActivity
+								? 'Show fewer activities'
+								: `Show ${activities.length - 6} more activities`}
+						</button>
+					{/if}
 				{:else}
 					<ContentState
 						kind="empty"
@@ -119,13 +136,24 @@
 				<h3>Membership payments</h3>
 				{#if payments.length}
 					<ul class="history-list">
-						{#each payments as payment (payment.id)}
+						{#each visiblePayments as payment (payment.id)}
 							<li>
 								<div><strong>{money(payment.amount)}</strong><span>{payment.details}</span></div>
 								<time datetime={payment.orderDate}>{dateLabel(payment.orderDate)}</time>
 							</li>
 						{/each}
 					</ul>
+					{#if payments.length > 6}
+						<button
+							class="show-more-button"
+							type="button"
+							onclick={() => (showAllPayments = !showAllPayments)}
+						>
+							{showAllPayments
+								? 'Show fewer payments'
+								: `Show ${payments.length - 6} more payments`}
+						</button>
+					{/if}
 				{:else}
 					<ContentState
 						kind="empty"
@@ -146,7 +174,7 @@
 					</div>
 					{#if orders.length}
 						<ul class="history-list">
-							{#each orders as order (order.id)}
+							{#each visibleOrders as order (order.id)}
 								<li>
 									<div><strong>{order.name}</strong><span>{order.details}</span></div>
 									<div class="order-meta">
@@ -156,6 +184,15 @@
 								</li>
 							{/each}
 						</ul>
+						{#if orders.length > 6}
+							<button
+								class="show-more-button"
+								type="button"
+								onclick={() => (showAllOrders = !showAllOrders)}
+							>
+								{showAllOrders ? 'Show fewer orders' : `Show ${orders.length - 6} more orders`}
+							</button>
+						{/if}
 					{:else}
 						<ContentState
 							kind="empty"

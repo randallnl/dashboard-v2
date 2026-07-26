@@ -62,6 +62,16 @@ export type ProjectEventRecord<T extends Record<string, unknown> = Record<string
 	syncedAt: string;
 };
 
+export type ProjectEventComment = {
+	id: string;
+	source: ProjectEventSource;
+	eventId: string;
+	authorLabel: string;
+	body: string;
+	mentionLabels: string[];
+	createdAt: string;
+};
+
 export type VoteType = 'Super Majority Vote' | 'Consent Vote' | 'Simple Majority Vote';
 
 export type Vote = {
@@ -110,4 +120,5 @@ export type CalendarEvent = {
 	url: string;
 	canVolunteer: boolean;
 	isVolunteering: boolean;
+	fields: Array<{ label: string; value: string; url: boolean }>;
 };

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { datesInRange, monthBounds } from '$lib/calendar/month';
 	import ContentState from '$lib/components/ContentState.svelte';
+	import ItemComments from '$lib/components/ItemComments.svelte';
 	import type { CalendarEvent } from '$lib/types/domain';
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
@@ -213,6 +214,25 @@
 						</div>{/if}
 				</dl>
 				{#if selected.details}<p>{selected.details}</p>{/if}
+				{#if selected.fields.length}
+					<dl class="event-extra-fields">
+						{#each selected.fields as field (`${field.label}-${field.value}`)}
+							<div>
+								<dt>{field.label}</dt>
+								<dd>
+									{#if field.url && safeUrl(field.value)}
+										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+										<a href={safeUrl(field.value)} target="_blank" rel="noreferrer"
+											>{field.value} ↗</a
+										>
+									{:else}
+										{field.value}
+									{/if}
+								</dd>
+							</div>
+						{/each}
+					</dl>
+				{/if}
 				<div class="event-dialog-actions">
 					{#if selected.canVolunteer}
 						<button
@@ -237,6 +257,9 @@
 					{/if}
 				</div>
 				{#if signupMessage}<p role="status" class="calendar-message">{signupMessage}</p>{/if}
+				{#if selected.source !== 'shift'}
+					<ItemComments source={selected.source} eventId={selected.id} {readOnly} />
+				{/if}
 			</div>
 		</div>
 	{/if}

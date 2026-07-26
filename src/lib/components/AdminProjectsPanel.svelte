@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ContentState from '$lib/components/ContentState.svelte';
+	import ItemComments from '$lib/components/ItemComments.svelte';
 	import type { ProjectEventRecord } from '$lib/types/domain';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
@@ -34,6 +35,13 @@
 	function field(record: ProjectEventRecord, key: string): string {
 		const value = record.record[key];
 		return typeof value === 'string' ? value : '';
+	}
+
+	function fieldLabel(key: string): string {
+		return key
+			.replace(/Url$/u, '')
+			.replace(/([a-z])([A-Z])/gu, '$1 $2')
+			.replace(/^./u, (character) => character.toUpperCase());
 	}
 
 	function posterKey(record: ProjectEventRecord): string {
@@ -271,6 +279,14 @@
 			{#if field(selected, 'description')}<p class="detail-description">
 					{field(selected, 'description')}
 				</p>{/if}
+			<dl class="event-extra-fields">
+				{#each Object.entries(selected.record).filter(([key, value]) => key !== 'description' && typeof value === 'string' && value && !validUrl(value)) as entry (entry[0])}
+					<div>
+						<dt>{fieldLabel(entry[0])}</dt>
+						<dd>{String(entry[1])}</dd>
+					</div>
+				{/each}
+			</dl>
 			<div class="detail-links">
 				{#each [['Files', field(selected, 'fileUrl')], ['Registration', field(selected, 'registrationUrl')], ['Survey', field(selected, 'surveyUrl')], ['Calendar', field(selected, 'calendarUrl')], ['Event link', field(selected, 'link')], ['Canva', field(selected, 'canvaUrl')], ['Monday', field(selected, 'mondayUrl')]] as link (link[0])}
 					{#if validUrl(link[1])}
@@ -280,6 +296,7 @@
 				{/each}
 			</div>
 			<p class="last-synced">Last synchronized {selected.syncedAt}</p>
+			<ItemComments source={selected.source} eventId={selected.id} />
 		</div>
 	{/if}
 </section>

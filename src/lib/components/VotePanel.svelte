@@ -18,6 +18,8 @@
 	let loading = $state(true);
 	let message = $state('');
 	let failed = $state(false);
+	let showAllVotes = $state(false);
+	const visibleVotes = $derived(showAllVotes ? votes : votes.slice(0, 4));
 
 	async function load() {
 		loading = true;
@@ -111,7 +113,7 @@
 		/>
 	{:else}
 		<div class="vote-list">
-			{#each votes as vote (vote.id)}
+			{#each visibleVotes as vote (vote.id)}
 				<article class:voted={vote.hasVoted}>
 					<div class="vote-meta">
 						<span>{vote.type}</span>
@@ -154,5 +156,10 @@
 				</article>
 			{/each}
 		</div>
+		{#if votes.length > 4}
+			<button class="show-more-button" type="button" onclick={() => (showAllVotes = !showAllVotes)}>
+				{showAllVotes ? 'Show fewer motions' : `Show ${votes.length - 4} more motions`}
+			</button>
+		{/if}
 	{/if}
 </section>

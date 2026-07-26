@@ -22,6 +22,10 @@
 	let claimingId = $state('');
 	let message = $state('');
 	let failed = $state(false);
+	let showAllAvailable = $state(false);
+	let showAllCovered = $state(false);
+	const visibleShifts = $derived(showAllAvailable ? shifts : shifts.slice(0, 6));
+	const visibleCoveredShifts = $derived(showAllCovered ? coveredShifts : coveredShifts.slice(0, 6));
 
 	async function loadShifts() {
 		loading = true;
@@ -124,7 +128,7 @@
 		/>
 	{:else}
 		<div class="shift-list">
-			{#each shifts as shift (shift.id)}
+			{#each visibleShifts as shift (shift.id)}
 				<article>
 					<div class="shift-date">
 						<strong>{shift.dateLabel || shift.dateValue}</strong>
@@ -145,19 +149,39 @@
 				</article>
 			{/each}
 		</div>
+		{#if shifts.length > 6}
+			<button
+				class="show-more-button"
+				type="button"
+				onclick={() => (showAllAvailable = !showAllAvailable)}
+			>
+				{showAllAvailable ? 'Show fewer shifts' : `Show ${shifts.length - 6} more shifts`}
+			</button>
+		{/if}
 	{/if}
 
 	{#if !loading && coveredShifts.length}
 		<div class="covered-shifts">
 			<h3>Covered shifts</h3>
 			<ul>
-				{#each coveredShifts as shift (shift.id)}
+				{#each visibleCoveredShifts as shift (shift.id)}
 					<li>
 						<span><strong>{shift.dateLabel || shift.dateValue}</strong> · {shift.timeLabel}</span>
 						<span>{shift.title} — covered by {shift.coveredBy || 'a member'}</span>
 					</li>
 				{/each}
 			</ul>
+			{#if coveredShifts.length > 6}
+				<button
+					class="show-more-button"
+					type="button"
+					onclick={() => (showAllCovered = !showAllCovered)}
+				>
+					{showAllCovered
+						? 'Show fewer covered shifts'
+						: `Show ${coveredShifts.length - 6} more covered shifts`}
+				</button>
+			{/if}
 		</div>
 	{/if}
 </section>

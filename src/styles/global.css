@@ -185,6 +185,24 @@ h1 {
 	font-weight: 700;
 }
 
+.show-more-button {
+	display: block;
+	margin: 1rem auto 0;
+	padding: 0.65rem 1rem;
+	border: 1px solid #b8b1a6;
+	border-radius: 999px;
+	background: transparent;
+	color: #194639;
+	font: inherit;
+	font-size: 0.78rem;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.show-more-button:hover {
+	background: #e8eee8;
+}
+
 .input-row button {
 	padding: 0.9rem 1.2rem;
 	border-radius: 0.7rem;
@@ -845,6 +863,17 @@ h2 {
 	margin: 0;
 }
 
+.event-extra-fields {
+	margin-top: 1rem;
+	padding-top: 1rem;
+	border-top: 1px solid #ded7cb;
+}
+
+.event-extra-fields a {
+	color: #194639;
+	overflow-wrap: anywhere;
+}
+
 .event-dialog-actions {
 	display: flex;
 	flex-wrap: wrap;
@@ -871,6 +900,89 @@ h2 {
 
 .calendar-message {
 	color: #194639;
+	font-weight: 700;
+}
+
+.item-comments {
+	margin-top: 1.5rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid #ded7cb;
+}
+
+.item-comments h4 {
+	margin: 0 0 1rem;
+	font-size: 1.1rem;
+}
+
+.item-comments ul {
+	display: grid;
+	gap: 0.8rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.item-comments li {
+	padding: 0.8rem;
+	border-radius: 0.65rem;
+	background: #f0ece3;
+}
+
+.item-comments li > div {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	font-size: 0.78rem;
+}
+
+.item-comments li p {
+	margin: 0.5rem 0 0;
+	white-space: pre-wrap;
+}
+
+.item-comments .comment-mentions {
+	color: #194639;
+	font-weight: 700;
+}
+
+.item-comments time {
+	color: #707873;
+}
+
+.item-comments form,
+.item-comments label {
+	display: grid;
+	gap: 0.45rem;
+}
+
+.item-comments form {
+	gap: 0.8rem;
+	margin-top: 1rem;
+}
+
+.item-comments label span {
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+
+.item-comments select,
+.item-comments textarea {
+	width: 100%;
+	padding: 0.7rem;
+	border: 1px solid #c9c1b5;
+	border-radius: 0.55rem;
+	background: #fffdf8;
+	font: inherit;
+}
+
+.item-comments form button {
+	justify-self: start;
+	padding: 0.7rem 1rem;
+	border: 0;
+	border-radius: 0.55rem;
+	background: #194639;
+	color: #fff;
+	font: inherit;
 	font-weight: 700;
 }
 

@@ -1,4 +1,5 @@
 export { AuthRepository } from './auth-repository';
+export { CommentRepository } from './comment-repository';
 export type { NewMagicLoginToken, NewMagicSession } from './auth-repository';
 export { ProjectEventRepository } from './project-repository';
 export type { ProjectEventFilters, ProjectEventPage } from './project-repository';

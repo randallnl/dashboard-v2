@@ -1,6 +1,7 @@
 import type { ProjectEventRecord, Shift } from '$lib/types/domain';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthRepository } from './auth-repository';
+import { CommentRepository } from './comment-repository';
 import { ProjectEventRepository } from './project-repository';
 import { ShiftRepository } from './shift-repository';
 import type { Database } from './types';
@@ -80,6 +81,36 @@ describe('AuthRepository', () => {
 		await expect(repository.setViewedMember('session-hash', 'member-2')).resolves.toBe(true);
 		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('viewed_member_id = ?2'));
 		expect(mock.bind).toHaveBeenCalledWith('session-hash', 'member-2');
+	});
+});
+
+describe('CommentRepository', () => {
+	it('stores comments with privacy-safe author and mention labels', async () => {
+		const mock = createDatabaseMock();
+		const repository = new CommentRepository(mock.db);
+
+		await repository.create({
+			id: 'comment-1',
+			source: 'project',
+			eventId: 'project-1',
+			memberId: 'member-1',
+			authorLabel: 'Alex M.',
+			body: 'I can help with setup.',
+			mentionLabels: ['Rae J.'],
+			createdAt: '2026-07-26T21:30:00.000Z'
+		});
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('project_event_comments'));
+		expect(mock.bind).toHaveBeenCalledWith(
+			'comment-1',
+			'project',
+			'project-1',
+			'member-1',
+			'Alex M.',
+			'I can help with setup.',
+			'["Rae J."]',
+			'2026-07-26T21:30:00.000Z'
+		);
 	});
 });
 

@@ -10,6 +10,30 @@ function recordString(record: Record<string, unknown>, key: string): string {
 	return typeof record[key] === 'string' ? record[key] : '';
 }
 
+function fieldLabel(key: string): string {
+	return key
+		.replace(/Url$/u, '')
+		.replace(/([a-z])([A-Z])/gu, '$1 $2')
+		.replace(/^./u, (character) => character.toUpperCase());
+}
+
+function recordFields(
+	record: Record<string, unknown>,
+	includeOperational: boolean
+): Array<{ label: string; value: string; url: boolean }> {
+	const hidden = new Set(['description', 'posterUrl']);
+	if (!includeOperational) {
+		for (const key of ['organizerEmail', 'mondayUrl', 'itemId', 'creationLog']) hidden.add(key);
+	}
+	return Object.entries(record)
+		.filter(([key, value]) => !hidden.has(key) && typeof value === 'string' && value.trim())
+		.map(([key, value]) => ({
+			label: fieldLabel(key),
+			value: value as string,
+			url: /Url$/u.test(key) || key === 'link'
+		}));
+}
+
 export const GET: RequestHandler = async ({ locals, platform, url }) => {
 	const env = platform?.env;
 	const context = await loadMemberContext({ session: locals.session, env });
@@ -41,7 +65,8 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 				details: `${shift.timeLabel}${shift.coveredBy ? ` · ${coveredByLabel(shift.coveredBy)}` : ''}`,
 				url: '',
 				canVolunteer: false,
-				isVolunteering: false
+				isVolunteering: false,
+				fields: []
 			})),
 		...records
 			.filter((record) => !(context.capabilities.isRetailOnly && record.source === 'community'))
@@ -56,7 +81,8 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 				details: recordString(record.record, 'description'),
 				url: recordString(record.record, 'registrationUrl') || recordString(record.record, 'link'),
 				canVolunteer: !record.adminOnly,
-				isVolunteering: volunteerKeys.has(`${record.source}:${record.id}`)
+				isVolunteering: volunteerKeys.has(`${record.source}:${record.id}`),
+				fields: recordFields(record.record, context.viewerCapabilities.isAdmin)
 			}))
 	];
 
