@@ -1,7 +1,5 @@
 import { loadMemberContext, requireWritableMemberView } from '$lib/server/auth/member-context';
-import { CommentRepository, ProjectEventRepository } from '$lib/server/db';
-import { MondayClient, mondayToken } from '$lib/server/monday/client';
-import { MemberDirectory } from '$lib/server/monday/members';
+import { CommentRepository, MemberRepository, ProjectEventRepository } from '$lib/server/db';
 import { coveredByLabel } from '$lib/server/monday/shifts';
 import type { MemberContext } from '$lib/server/auth/member-context';
 import type { ProjectEventRecord, ProjectEventSource } from '$lib/types/domain';
@@ -64,7 +62,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		? body.mentionIds.filter((id): id is string => typeof id === 'string')
 		: [];
 	const members = requestedMentionIds.length
-		? await new MemberDirectory(new MondayClient(await mondayToken(env.MONDAY_API_TOKEN))).list()
+		? await new MemberRepository(env.DB).search('', 100)
 		: [];
 	const membersById = new Map(members.map((member) => [member.id, member]));
 	const mentionLabels = [

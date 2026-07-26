@@ -1,7 +1,5 @@
 import { loadMemberContext, requireAdmin } from '$lib/server/auth/member-context';
-import { HostRepository, ProjectEventRepository } from '$lib/server/db';
-import { MondayClient, mondayToken } from '$lib/server/monday/client';
-import { MemberDirectory } from '$lib/server/monday/members';
+import { HostRepository, MemberRepository, ProjectEventRepository } from '$lib/server/db';
 import { coveredByLabel } from '$lib/server/monday/shifts';
 import type { ProjectEventSource } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
@@ -23,9 +21,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		eventId
 	);
 	if (!record) error(404, 'Project or event not found.');
-	const member = await new MemberDirectory(
-		new MondayClient(await mondayToken(env.MONDAY_API_TOKEN))
-	).findById(memberId);
+	const member = await new MemberRepository(env.DB).findById(memberId);
 	if (!member) error(404, 'Member not found.');
 	const host = await new HostRepository(env.DB).upsert(
 		record.source,

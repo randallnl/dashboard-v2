@@ -1,4 +1,5 @@
 import { memberCapabilities } from '$lib/auth/capabilities';
+import { MemberRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { MemberDirectory } from '$lib/server/monday/members';
 import type { Member, MemberCapabilities } from '$lib/types/domain';
@@ -39,10 +40,13 @@ export async function loadMemberContext({
 
 	const token = await mondayToken(env.MONDAY_API_TOKEN);
 	const directory = new MemberDirectory(new MondayClient(token));
-	const viewer = await directory.findById(session.memberId);
+	const repository = new MemberRepository(env.DB);
+	const viewer =
+		(await repository.findById(session.memberId)) ?? (await directory.findById(session.memberId));
 	if (!viewer) {
 		error(403, 'Your CoLab membership could not be confirmed.');
 	}
+	await repository.upsert(viewer, new Date().toISOString());
 
 	const viewerCapabilities = memberCapabilities(viewer);
 	const targetId = session.viewedMemberId.trim() || viewer.id;
@@ -50,10 +54,14 @@ export async function loadMemberContext({
 		error(403, 'You do not have permission to view another member.');
 	}
 
-	const member = targetId === viewer.id ? viewer : await directory.findById(targetId);
+	const member =
+		targetId === viewer.id
+			? viewer
+			: ((await repository.findById(targetId)) ?? (await directory.findById(targetId)));
 	if (!member) {
 		error(404, 'Member not found');
 	}
+	if (member.id !== viewer.id) await repository.upsert(member, new Date().toISOString());
 
 	return {
 		viewer,

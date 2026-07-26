@@ -48,6 +48,12 @@ export type Shift = {
 
 export type ProjectEventSource = 'project' | 'community';
 
+export type EventAttachment = {
+	name: string;
+	url: string;
+	isImage: boolean;
+};
+
 export type ProjectEventRecord<T extends Record<string, unknown> = Record<string, unknown>> = {
 	id: string;
 	source: ProjectEventSource;
@@ -122,5 +128,6 @@ export type CalendarEvent = {
 	isVolunteering: boolean;
 	fields: Array<{ label: string; value: string; url: boolean }>;
 	imageUrl: string;
+	attachments: EventAttachment[];
 	pageUrl: string;
 };

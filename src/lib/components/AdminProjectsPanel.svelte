@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ContentState from '$lib/components/ContentState.svelte';
 	import ItemComments from '$lib/components/ItemComments.svelte';
-	import type { ProjectEventRecord } from '$lib/types/domain';
+	import type { EventAttachment, ProjectEventRecord } from '$lib/types/domain';
 	import { onMount } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
@@ -45,6 +45,12 @@
 
 	function posterKey(record: ProjectEventRecord): string {
 		return `${record.source}:${record.id}`;
+	}
+
+	function attachments(record: ProjectEventRecord): EventAttachment[] {
+		return Array.isArray(record.record.attachments)
+			? (record.record.attachments as EventAttachment[])
+			: [];
 	}
 
 	function validUrl(value: string): string {
@@ -267,6 +273,21 @@
 					{/if}
 				{/each}
 			</div>
+			{#if attachments(selected).length}
+				<div class="event-attachment-previews">
+					{#each attachments(selected) as attachment (`${attachment.name}-${attachment.url}`)}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={validUrl(attachment.url)} target="_blank" rel="noreferrer">
+							{#if attachment.isImage}
+								<img src={validUrl(attachment.url)} alt={attachment.name} />
+							{:else}
+								<span class="file-preview-icon" aria-hidden="true">↗</span>
+							{/if}
+							<strong>{attachment.name}</strong>
+						</a>
+					{/each}
+				</div>
+			{/if}
 			<p class="last-synced">Last synchronized {selected.syncedAt}</p>
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a class="project-dashboard-link" href={`/items/${selected.source}/${selected.id}`}>

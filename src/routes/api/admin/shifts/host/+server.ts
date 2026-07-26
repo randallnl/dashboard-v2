@@ -1,7 +1,6 @@
 import { loadMemberContext, requireAdmin } from '$lib/server/auth/member-context';
-import { ShiftRepository } from '$lib/server/db';
+import { MemberRepository, ShiftRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
-import { MemberDirectory } from '$lib/server/monday/members';
 import { coveredByLabel, shiftPersonValue, ShiftDirectory } from '$lib/server/monday/shifts';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -22,7 +21,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const monday = new MondayClient(token);
 	const [shift, member] = await Promise.all([
 		new ShiftDirectory(monday).findById(shiftId),
-		new MemberDirectory(monday).findById(memberId)
+		new MemberRepository(env.DB).findById(memberId)
 	]);
 	if (!shift) error(404, 'Shift not found.');
 	if (!member) error(404, 'Member not found.');

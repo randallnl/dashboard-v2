@@ -1,4 +1,4 @@
-import type { ProjectEventRecord, ProjectEventSource } from '$lib/types/domain';
+import type { EventAttachment, ProjectEventRecord, ProjectEventSource } from '$lib/types/domain';
 import { MondayClient } from './client';
 
 export const PROJECT_BOARD_ID = '8390893779';
@@ -43,9 +43,24 @@ const COMMUNITY_COLUMNS = {
 
 const MEMBER_LOCATIONS = ['board room', 'colab', 'community room', 'gym'];
 
+export type ProjectEventUpdate = {
+	title: string;
+	dateValue: string;
+	endDateValue: string;
+	status: string;
+	location: string;
+	description: string;
+};
+
 type FileValue = {
+	name?: string | null;
+	is_image?: boolean | null;
 	url?: string | null;
-	asset?: { public_url?: string | null; url_thumbnail?: string | null } | null;
+	asset?: {
+		public_url?: string | null;
+		url_thumbnail?: string | null;
+		file_extension?: string | null;
+	} | null;
 };
 type Column = { id: string; text: string | null; value: string | null; files?: FileValue[] };
 type Item = { id: string; name: string; column_values: Column[] };
@@ -63,8 +78,11 @@ const INITIAL = `
 						id text value
 						... on FileValue {
 							files {
-								... on FileAssetValue { asset { public_url url_thumbnail } }
-								... on FileLinkValue { url }
+								... on FileAssetValue {
+									name is_image
+									asset { public_url url_thumbnail file_extension }
+								}
+								... on FileLinkValue { name url }
 								... on FileDocValue { url }
 							}
 						}
@@ -85,14 +103,27 @@ const NEXT = `
 					id text value
 					... on FileValue {
 						files {
-							... on FileAssetValue { asset { public_url url_thumbnail } }
-							... on FileLinkValue { url }
+							... on FileAssetValue {
+								name is_image
+								asset { public_url url_thumbnail file_extension }
+							}
+							... on FileLinkValue { name url }
 							... on FileDocValue { url }
 						}
 					}
 				}
 			}
 		}
+	}
+`;
+
+const UPDATE_ITEM = `
+	mutation UpdateProjectEvent($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+		change_multiple_column_values(
+			board_id: $boardId
+			item_id: $itemId
+			column_values: $columnValues
+		) { id name }
 	}
 `;
 
@@ -133,6 +164,24 @@ function safeUrl(columns: Map<string, Column>, id: string): string {
 	return column?.text?.trim() ?? '';
 }
 
+function attachments(columns: Map<string, Column>, ...ids: string[]): EventAttachment[] {
+	return ids.flatMap((id) =>
+		(columns.get(id)?.files ?? [])
+			.map((file) => {
+				const url = file.asset?.public_url || file.asset?.url_thumbnail || file.url || '';
+				const extension = file.asset?.file_extension?.toLocaleLowerCase('en-US') ?? '';
+				return {
+					name: file.name?.trim() || `Attached ${extension || 'file'}`,
+					url,
+					isImage:
+						file.is_image === true ||
+						['avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'].includes(extension)
+				};
+			})
+			.filter((file) => file.url)
+	);
+}
+
 function mondayUrl(boardId: string, itemId: string): string {
 	return `https://queerlective.monday.com/boards/${boardId}/pulses/${itemId}`;
 }
@@ -140,6 +189,7 @@ function mondayUrl(boardId: string, itemId: string): string {
 export function mapProjectEvent(item: Item, syncedAt: string): ProjectEventRecord {
 	const columns = values(item);
 	const location = text(columns, PROJECT_COLUMNS.location);
+	const files = attachments(columns, PROJECT_COLUMNS.posters, PROJECT_COLUMNS.files);
 	const visibleToMembers = MEMBER_LOCATIONS.some((allowed) =>
 		location.toLocaleLowerCase('en-US').includes(allowed)
 	);
@@ -160,6 +210,7 @@ export function mapProjectEvent(item: Item, syncedAt: string): ProjectEventRecor
 			description: text(columns, PROJECT_COLUMNS.description),
 			posterUrl: safeUrl(columns, PROJECT_COLUMNS.posters),
 			fileUrl: safeUrl(columns, PROJECT_COLUMNS.files),
+			attachments: files,
 			registrationUrl: safeUrl(columns, PROJECT_COLUMNS.registration),
 			surveyUrl: safeUrl(columns, PROJECT_COLUMNS.survey),
 			calendarUrl: safeUrl(columns, PROJECT_COLUMNS.calendar),
@@ -172,6 +223,7 @@ export function mapProjectEvent(item: Item, syncedAt: string): ProjectEventRecor
 
 export function mapCommunityEvent(item: Item, syncedAt: string): ProjectEventRecord {
 	const columns = values(item);
+	const files = attachments(columns, COMMUNITY_COLUMNS.poster);
 	return {
 		id: item.id,
 		source: 'community',
@@ -188,6 +240,7 @@ export function mapCommunityEvent(item: Item, syncedAt: string): ProjectEventRec
 			description: text(columns, COMMUNITY_COLUMNS.description),
 			link: safeUrl(columns, COMMUNITY_COLUMNS.links),
 			posterUrl: safeUrl(columns, COMMUNITY_COLUMNS.poster),
+			attachments: files,
 			equipmentRequests: text(columns, COMMUNITY_COLUMNS.equipment),
 			supportAmount: text(columns, COMMUNITY_COLUMNS.supportAmount),
 			supportDetails: text(columns, COMMUNITY_COLUMNS.supportDetails),
@@ -254,5 +307,31 @@ export class EventDirectory {
 			...projects.map((item) => mapProjectEvent(item, syncedAt)),
 			...community.map((item) => mapCommunityEvent(item, syncedAt))
 		];
+	}
+
+	async update(
+		source: ProjectEventSource,
+		itemId: string,
+		update: ProjectEventUpdate
+	): Promise<void> {
+		const boardId = source === 'project' ? PROJECT_BOARD_ID : COMMUNITY_BOARD_ID;
+		const columnValues: Record<string, unknown> = {
+			name: update.title,
+			[source === 'project' ? PROJECT_COLUMNS.start : COMMUNITY_COLUMNS.date]: {
+				date: update.dateValue
+			},
+			[source === 'project' ? PROJECT_COLUMNS.status : COMMUNITY_COLUMNS.status]: update.status,
+			[source === 'project' ? PROJECT_COLUMNS.description : COMMUNITY_COLUMNS.description]:
+				update.description
+		};
+		if (source === 'project') {
+			columnValues[PROJECT_COLUMNS.end] = update.endDateValue ? { date: update.endDateValue } : {};
+			columnValues[PROJECT_COLUMNS.location] = update.location;
+		}
+		await this.monday.request(UPDATE_ITEM, {
+			boardId,
+			itemId,
+			columnValues: JSON.stringify(columnValues)
+		});
 	}
 }

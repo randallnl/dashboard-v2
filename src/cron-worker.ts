@@ -1,4 +1,5 @@
 import { syncEventsFromMonday } from '$lib/server/events/sync';
+import { syncMembersFromMonday } from '$lib/server/members/sync';
 import { syncShiftsFromMonday } from '$lib/server/shifts/sync';
 
 export async function runScheduledShiftSync(
@@ -8,9 +9,10 @@ export async function runScheduledShiftSync(
 ): Promise<void> {
 	const startedAt = Date.now();
 	try {
-		const [shifts, events] = await Promise.all([
+		const [shifts, events, members] = await Promise.all([
 			syncShiftsFromMonday(env),
-			syncEventsFromMonday(env)
+			syncEventsFromMonday(env),
+			syncMembersFromMonday(env)
 		]);
 		console.log(
 			JSON.stringify({
@@ -21,6 +23,9 @@ export async function runScheduledShiftSync(
 				shiftFailed: shifts.failed,
 				eventCount: events.count,
 				eventFailed: events.failed,
+				memberCount: members.count,
+				memberFailed: members.failed,
+				memberRemoved: members.removed,
 				syncedAt: shifts.syncedAt > events.syncedAt ? shifts.syncedAt : events.syncedAt,
 				durationMs: Date.now() - startedAt
 			})

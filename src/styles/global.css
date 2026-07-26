@@ -705,17 +705,22 @@ h2 {
 }
 
 .shift-picker-list article {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
+	display: grid;
+	gap: 0;
 	padding: 0.9rem;
 	border: 1px solid #d8d1c5;
 	border-radius: 0.75rem;
 	background: #fffdf8;
 }
 
-.shift-picker-list article div {
+.shift-picker-row-main {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.shift-picker-row-main > div {
 	display: grid;
 	gap: 0.25rem;
 }
@@ -727,6 +732,57 @@ h2 {
 
 .shift-picker-list article button {
 	flex: 0 0 auto;
+}
+
+.shift-picker-list article.expanded {
+	border-color: #91aa9c;
+	box-shadow: 0 0 0 2px rgb(25 70 57 / 8%);
+}
+
+.shift-signup-confirmation {
+	margin-top: 0.9rem;
+	padding-top: 0.9rem;
+	border-top: 1px solid #ded7cb;
+}
+
+.shift-signup-confirmation h4,
+.shift-signup-confirmation p {
+	margin: 0;
+}
+
+.shift-signup-confirmation dl {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.7rem;
+	margin: 0.9rem 0;
+}
+
+.shift-signup-confirmation dl div {
+	display: grid;
+	gap: 0.15rem;
+}
+
+.shift-signup-confirmation dt {
+	color: #707873;
+	font-size: 0.7rem;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.shift-signup-confirmation dd {
+	margin: 0;
+	font-weight: 600;
+}
+
+.shift-signup-confirmation p {
+	color: #56625b;
+	line-height: 1.45;
+}
+
+.shift-confirm-actions {
+	display: flex;
+	gap: 0.6rem;
+	margin-top: 1rem;
 }
 
 .shift-panel .content-state {
@@ -899,6 +955,43 @@ h2 {
 	max-height: 20rem;
 	object-fit: cover;
 	border-radius: 0.8rem;
+}
+
+.event-attachment-previews {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.65rem;
+	margin-top: 0.75rem;
+}
+
+.event-attachment-previews a {
+	display: grid;
+	overflow: hidden;
+	gap: 0.45rem;
+	border: 1px solid #d8d1c5;
+	border-radius: 0.7rem;
+	background: #fffdf8;
+	color: #194639;
+	text-decoration: none;
+}
+
+.event-attachment-previews img {
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+}
+
+.event-attachment-previews strong {
+	padding: 0 0.65rem 0.65rem;
+	font-size: 0.78rem;
+}
+
+.file-preview-icon {
+	display: grid;
+	min-height: 5rem;
+	place-items: center;
+	background: #e8eee8;
+	font-size: 1.5rem;
 }
 
 .event-dialog dl {
@@ -1201,12 +1294,43 @@ h2 {
 }
 
 .item-dashboard-grid > article,
+.event-editor,
 .host-editor,
 .item-dashboard > .item-comments {
 	padding: clamp(1.4rem, 3vw, 2rem);
 	border: 1px solid #d8d1c5;
 	border-radius: 1rem;
 	background: #faf7f0;
+}
+
+.event-editor {
+	margin-top: 1rem;
+}
+
+.event-editor form,
+.event-editor label {
+	display: grid;
+	gap: 0.4rem;
+}
+
+.event-editor form {
+	gap: 0.8rem;
+}
+
+.event-editor form > div {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.8rem;
+}
+
+.event-editor input,
+.event-editor textarea {
+	width: 100%;
+	padding: 0.7rem 0.8rem;
+	border: 1px solid #c9c1b5;
+	border-radius: 0.55rem;
+	background: #fffdf8;
+	font: inherit;
 }
 
 .item-previews {

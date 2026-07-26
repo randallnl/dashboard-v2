@@ -1,6 +1,7 @@
 export { AuthRepository } from './auth-repository';
 export { CommentRepository } from './comment-repository';
 export { HostRepository } from './host-repository';
+export { MemberRepository, memberNames } from './member-repository';
 export type { ProjectEventHost } from './host-repository';
 export type { NewMagicLoginToken, NewMagicSession } from './auth-repository';
 export { ProjectEventRepository } from './project-repository';

@@ -1,8 +1,9 @@
-import type { ProjectEventRecord, Shift } from '$lib/types/domain';
+import type { Member, ProjectEventRecord, Shift } from '$lib/types/domain';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthRepository } from './auth-repository';
 import { CommentRepository } from './comment-repository';
 import { HostRepository } from './host-repository';
+import { memberNames, MemberRepository } from './member-repository';
 import { ProjectEventRepository } from './project-repository';
 import { ShiftRepository } from './shift-repository';
 import type { Database } from './types';
@@ -147,6 +148,59 @@ describe('HostRepository', () => {
 			'admin-1',
 			'2026-07-26T22:00:00.000Z'
 		);
+	});
+});
+
+describe('MemberRepository', () => {
+	it('splits names for predictive search and caches complete member data', async () => {
+		expect(memberNames('Alex Morgan')).toEqual({ firstName: 'Alex', lastName: 'Morgan' });
+		const mock = createDatabaseMock();
+		const member: Member = {
+			id: 'member-1',
+			preferredName: 'Alex Morgan',
+			membershipType: 'CoLab Member',
+			email: 'alex@example.com',
+			otherEmails: ['studio@example.com'],
+			phone: '',
+			businessName: '',
+			website: '',
+			socialMedia: '',
+			creativeGroundUrl: '',
+			artistDescription: '',
+			artistPhotoUrl: '',
+			artistBannerUrl: '',
+			signUpDate: '2026-01-01'
+		};
+
+		await new MemberRepository(mock.db).upsert(member, '2026-07-26T22:30:00.000Z');
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT(id) DO UPDATE'));
+		expect(mock.bind).toHaveBeenCalledWith(
+			'member-1',
+			'Alex Morgan',
+			'Alex',
+			'Morgan',
+			'CoLab Member',
+			'alex@example.com',
+			'["studio@example.com"]',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'2026-01-01',
+			'2026-07-26T22:30:00.000Z'
+		);
+	});
+
+	it('searches cached first, last, and preferred names in D1', async () => {
+		const mock = createDatabaseMock();
+		await new MemberRepository(mock.db).search(' Alex ', 10);
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('first_name'));
+		expect(mock.bind).toHaveBeenCalledWith('alex', 10);
 	});
 });
 

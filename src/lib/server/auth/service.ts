@@ -1,4 +1,4 @@
-import { AuthRepository } from '$lib/server/db';
+import { AuthRepository, MemberRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { MemberDirectory, normalizeEmail } from '$lib/server/monday/members';
 import { createOpaqueToken, expiresAt, hashToken } from '$lib/server/security/tokens';
@@ -36,8 +36,13 @@ export async function requestMagicLink(
 		return { accepted: true };
 	}
 
-	const token = await mondayToken(env.MONDAY_API_TOKEN);
-	const member = await new MemberDirectory(new MondayClient(token)).findByEmail(email);
+	const memberRepository = new MemberRepository(env.DB);
+	let member = await memberRepository.findByEmail(email);
+	if (!member) {
+		const token = await mondayToken(env.MONDAY_API_TOKEN);
+		member = await new MemberDirectory(new MondayClient(token)).findByEmail(email);
+		if (member) await memberRepository.upsert(member, nowIso);
+	}
 	if (!member) {
 		return { accepted: true };
 	}

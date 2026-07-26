@@ -19,6 +19,7 @@
 	let message = $state('');
 	let failed = $state(false);
 	let showShiftPicker = $state(false);
+	let selectedShiftId = $state('');
 	const visibleShifts = $derived(shifts.slice(0, 3));
 
 	async function loadShifts() {
@@ -55,6 +56,7 @@
 			shifts = shifts.filter((candidate) => candidate.id !== shift.id);
 			message = `You’re covering ${shift.title} on ${shift.dateLabel || shift.dateValue}.`;
 			failed = false;
+			selectedShiftId = '';
 			if (shifts.length === 0) showShiftPicker = false;
 		} catch (cause) {
 			failed = true;
@@ -143,24 +145,79 @@
 						<p class="eyebrow">Upcoming coverage</p>
 						<h3 id="shift-picker-title">Choose an open CoLab shift</h3>
 					</div>
-					<button type="button" class="text-button" onclick={() => (showShiftPicker = false)}>
+					<button
+						type="button"
+						class="text-button"
+						onclick={() => {
+							showShiftPicker = false;
+							selectedShiftId = '';
+						}}
+					>
 						Close
 					</button>
 				</div>
 				<div class="shift-picker-list">
 					{#each shifts as shift (shift.id)}
-						<article>
-							<div>
-								<strong>{shift.dateLabel || shift.dateValue} · {shift.timeLabel}</strong>
-								<span>{shift.title}{shift.month ? ` · ${shift.month}` : ''}</span>
+						<article class:expanded={selectedShiftId === shift.id}>
+							<div class="shift-picker-row-main">
+								<div>
+									<strong>{shift.dateLabel || shift.dateValue} · {shift.timeLabel}</strong>
+									<span>{shift.title}{shift.month ? ` · ${shift.month}` : ''}</span>
+								</div>
+								<button
+									type="button"
+									onclick={() => (selectedShiftId = shift.id)}
+									disabled={Boolean(claimingId) || readOnly}
+									aria-expanded={selectedShiftId === shift.id}
+								>
+									{readOnly ? 'View only' : 'Sign Up'}
+								</button>
 							</div>
-							<button
-								type="button"
-								onclick={() => claim(shift)}
-								disabled={Boolean(claimingId) || readOnly}
-							>
-								{claimingId === shift.id ? 'Claiming…' : readOnly ? 'View only' : 'Select'}
-							</button>
+							{#if selectedShiftId === shift.id}
+								<div class="shift-signup-confirmation">
+									<h4>Confirm shift signup</h4>
+									<dl>
+										<div>
+											<dt>Shift</dt>
+											<dd>{shift.title}</dd>
+										</div>
+										<div>
+											<dt>Date</dt>
+											<dd>{shift.dateLabel || shift.dateValue}</dd>
+										</div>
+										<div>
+											<dt>Time</dt>
+											<dd>{shift.timeLabel}</dd>
+										</div>
+										{#if shift.month}
+											<div>
+												<dt>Schedule</dt>
+												<dd>{shift.month}</dd>
+											</div>
+										{/if}
+									</dl>
+									<p>
+										By confirming, your name will be added as the person covering this CoLab shift.
+									</p>
+									<div class="shift-confirm-actions">
+										<button
+											type="button"
+											onclick={() => claim(shift)}
+											disabled={Boolean(claimingId)}
+										>
+											{claimingId === shift.id ? 'Signing up…' : 'Confirm signup'}
+										</button>
+										<button
+											type="button"
+											class="text-button"
+											onclick={() => (selectedShiftId = '')}
+											disabled={Boolean(claimingId)}
+										>
+											Cancel
+										</button>
+									</div>
+								</div>
+							{/if}
 						</article>
 					{/each}
 				</div>

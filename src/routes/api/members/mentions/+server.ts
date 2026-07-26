@@ -1,4 +1,5 @@
 import { loadMemberContext } from '$lib/server/auth/member-context';
+import { MemberRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { MemberDirectory } from '$lib/server/monday/members';
 import { coveredByLabel } from '$lib/server/monday/shifts';
@@ -16,15 +17,20 @@ function html(value: string): string {
 export const GET: RequestHandler = async ({ request, locals, platform, url }) => {
 	const env = platform!.env;
 	const context = await loadMemberContext({ session: locals.session, env });
-	const members = await new MemberDirectory(
-		new MondayClient(await mondayToken(env.MONDAY_API_TOKEN))
-	).list();
 	const query = (url.searchParams.get('q') ?? '').trim().toLocaleLowerCase('en-US');
+	const repository = new MemberRepository(env.DB);
+	let members = await repository.search(query, 12);
+	if (!members.length) {
+		const mondayMembers = await new MemberDirectory(
+			new MondayClient(await mondayToken(env.MONDAY_API_TOKEN))
+		).list();
+		const syncedAt = new Date().toISOString();
+		await Promise.all(mondayMembers.map((member) => repository.upsert(member, syncedAt)));
+		members = await repository.search(query, 12);
+	}
 	const options = members
 		.filter((member) => member.id !== context.member.id)
 		.map((member) => ({ id: member.id, label: coveredByLabel(member.preferredName) }))
-		.filter((member) => !query || member.label.toLocaleLowerCase('en-US').includes(query))
-		.sort((left, right) => left.label.localeCompare(right.label))
 		.slice(0, 10);
 	if (request.headers.has('hx-request')) {
 		return new Response(

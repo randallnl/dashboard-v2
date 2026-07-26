@@ -55,6 +55,10 @@
 		}
 	}
 
+	function additionalAttachments(event: CalendarEvent) {
+		return event.attachments.filter((attachment) => attachment.url !== event.imageUrl);
+	}
+
 	async function load() {
 		loading = true;
 		message = '';
@@ -282,6 +286,21 @@
 				<h3 id="event-dialog-title">{selected.title}</h3>
 				{#if safeUrl(selected.imageUrl)}
 					<img class="event-preview-image" src={safeUrl(selected.imageUrl)} alt="" />
+				{/if}
+				{#if additionalAttachments(selected).length}
+					<div class="event-attachment-previews">
+						{#each additionalAttachments(selected) as attachment (`${attachment.name}-${attachment.url}`)}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer">
+								{#if attachment.isImage}
+									<img src={safeUrl(attachment.url)} alt={attachment.name} />
+								{:else}
+									<span class="file-preview-icon" aria-hidden="true">↗</span>
+								{/if}
+								<strong>{attachment.name}</strong>
+							</a>
+						{/each}
+					</div>
 				{/if}
 				<dl>
 					<div>

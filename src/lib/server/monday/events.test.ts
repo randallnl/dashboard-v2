@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { mapCommunityEvent, mapProjectEvent } from './events';
+import { describe, expect, it, vi } from 'vitest';
+import type { MondayClient } from './client';
+import { EventDirectory, mapCommunityEvent, mapProjectEvent } from './events';
 
 describe('Monday event mapping', () => {
 	it('marks project events outside member locations as admin-only', () => {
@@ -52,9 +53,12 @@ describe('Monday event mapping', () => {
 						value: null,
 						files: [
 							{
+								name: 'Poster.jpg',
+								is_image: true,
 								asset: {
 									public_url: 'https://cdn.monday.com/original/poster.jpg',
-									url_thumbnail: 'https://cdn.monday.com/thumbnail/poster.jpg'
+									url_thumbnail: 'https://cdn.monday.com/thumbnail/poster.jpg',
+									file_extension: 'jpg'
 								}
 							}
 						]
@@ -65,6 +69,13 @@ describe('Monday event mapping', () => {
 		);
 
 		expect(event.record.posterUrl).toBe('https://cdn.monday.com/original/poster.jpg');
+		expect(event.record.attachments).toEqual([
+			{
+				name: 'Poster.jpg',
+				url: 'https://cdn.monday.com/original/poster.jpg',
+				isImage: true
+			}
+		]);
 	});
 
 	it('defaults community submissions to pending and member-visible', () => {
@@ -85,5 +96,28 @@ describe('Monday event mapping', () => {
 				mondayUrl: 'https://queerlective.monday.com/boards/8052311890/pulses/community-1'
 			}
 		});
+	});
+
+	it('updates editable project fields in Monday with type-aware values', async () => {
+		const request = vi.fn().mockResolvedValue({ change_multiple_column_values: { id: 'event-1' } });
+		const directory = new EventDirectory({ request } as unknown as MondayClient);
+
+		await directory.update('project', 'event-1', {
+			title: 'Updated studio night',
+			dateValue: '2026-08-10',
+			endDateValue: '2026-08-11',
+			status: 'Scheduled',
+			location: 'CoLab',
+			description: 'Updated details'
+		});
+
+		expect(request).toHaveBeenCalledWith(
+			expect.stringContaining('change_multiple_column_values'),
+			expect.objectContaining({
+				boardId: '8390893779',
+				itemId: 'event-1',
+				columnValues: expect.stringContaining('"name":"Updated studio night"')
+			})
+		);
 	});
 });

@@ -2,12 +2,29 @@ import { monthBounds } from '$lib/calendar/month';
 import { loadMemberContext } from '$lib/server/auth/member-context';
 import { ProjectEventRepository, ShiftRepository, VolunteerRepository } from '$lib/server/db';
 import { coveredByLabel } from '$lib/server/monday/shifts';
-import type { CalendarEvent } from '$lib/types/domain';
+import type { CalendarEvent, EventAttachment } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 function recordString(record: Record<string, unknown>, key: string): string {
 	return typeof record[key] === 'string' ? record[key] : '';
+}
+
+function recordAttachments(record: Record<string, unknown>): EventAttachment[] {
+	return Array.isArray(record.attachments)
+		? record.attachments.filter((value): value is EventAttachment =>
+				Boolean(
+					value &&
+					typeof value === 'object' &&
+					'name' in value &&
+					typeof value.name === 'string' &&
+					'url' in value &&
+					typeof value.url === 'string' &&
+					'isImage' in value &&
+					typeof value.isImage === 'boolean'
+				)
+			)
+		: [];
 }
 
 function fieldLabel(key: string): string {
@@ -66,6 +83,7 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 			isVolunteering: false,
 			fields: [],
 			imageUrl: '',
+			attachments: [],
 			pageUrl: ''
 		})),
 		...records
@@ -84,6 +102,7 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 				isVolunteering: volunteerKeys.has(`${record.source}:${record.id}`),
 				fields: recordFields(record.record, context.viewerCapabilities.isAdmin),
 				imageUrl: recordString(record.record, 'posterUrl'),
+				attachments: recordAttachments(record.record),
 				pageUrl: `/items/${record.source}/${record.id}`
 			}))
 	];
