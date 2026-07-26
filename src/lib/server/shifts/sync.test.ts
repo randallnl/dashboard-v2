@@ -1,6 +1,6 @@
-import type { Shift } from '$lib/types/domain';
+import type { Member, Shift } from '$lib/types/domain';
 import { describe, expect, it, vi } from 'vitest';
-import { syncShifts } from './sync';
+import { resolveShiftCoverage, syncShifts } from './sync';
 
 const shift = {
 	id: 'shift-1',
@@ -18,7 +18,38 @@ describe('syncShifts', () => {
 			syncedAt: shift.syncedAt
 		});
 		expect(store.upsert).toHaveBeenCalledTimes(2);
-		expect(store.upsert).toHaveBeenNthCalledWith(1, shift);
+		expect(store.upsert).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ ...shift, coveredBy: '' })
+		);
+	});
+
+	it('backs up a missing person value with the member ID directory', async () => {
+		const covered = {
+			...shift,
+			isCovered: true,
+			memberId: 'member-1',
+			person: '',
+			coveredBy: ''
+		};
+		const member = {
+			id: 'member-1',
+			preferredName: 'Alex Morgan'
+		} as Member;
+		const store = { upsert: vi.fn().mockResolvedValue(undefined) };
+
+		await syncShifts({ list: vi.fn().mockResolvedValue([covered]) }, store, [member]);
+
+		expect(store.upsert).toHaveBeenCalledWith(expect.objectContaining({ coveredBy: 'Alex M.' }));
+	});
+
+	it('prefers Monday Person while storing a privacy-safe display label', () => {
+		expect(
+			resolveShiftCoverage(
+				{ ...shift, isCovered: true, memberId: 'member-1', person: 'Rae Johnson | member-1' },
+				new Map()
+			).coveredBy
+		).toBe('Rae J.');
 	});
 
 	it('returns a valid timestamp when Monday has no shifts', async () => {

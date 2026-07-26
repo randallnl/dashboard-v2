@@ -119,15 +119,19 @@ export function coveredByLabel(value: string): string {
 	return last ? `${first} ${last.charAt(0).toUpperCase()}.` : first;
 }
 
+export function isShiftCovered(coverageStatus: string, memberId: string, person: string): boolean {
+	const status = coverageStatus.trim().toLocaleLowerCase('en-US');
+	if (status === 'open' || status === 'needs coverage') return false;
+	return Boolean(memberId || person || status);
+}
+
 export function mapMondayShift(item: MondayShiftItem, syncedAt: string): Shift {
 	const values = columns(item);
 	const date = dateValue(values.get(SHIFT_COLUMNS.date));
 	const memberId = text(values, SHIFT_COLUMNS.memberId);
 	const person = text(values, SHIFT_COLUMNS.person);
 	const coverageStatus = text(values, SHIFT_COLUMNS.coverageStatus) || 'Open';
-	const isCovered =
-		Boolean(memberId || person) ||
-		!['', 'open'].includes(coverageStatus.toLocaleLowerCase('en-US'));
+	const isCovered = isShiftCovered(coverageStatus, memberId, person);
 
 	return {
 		id: item.id,

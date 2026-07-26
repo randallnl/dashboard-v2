@@ -1,7 +1,8 @@
 import { ShiftRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
-import { ShiftDirectory } from '$lib/server/monday/shifts';
-import type { Shift } from '$lib/types/domain';
+import { MemberDirectory } from '$lib/server/monday/members';
+import { coveredByLabel, ShiftDirectory } from '$lib/server/monday/shifts';
+import type { Member, Shift } from '$lib/types/domain';
 
 type ShiftSource = {
 	list(): Promise<Shift[]>;
@@ -17,11 +18,30 @@ export type ShiftSyncResult = {
 	syncedAt: string;
 };
 
-export async function syncShifts(source: ShiftSource, store: ShiftStore): Promise<ShiftSyncResult> {
+export function resolveShiftCoverage(shift: Shift, members: Map<string, Member>): Shift {
+	if (!shift.isCovered) {
+		return { ...shift, coveredBy: '' };
+	}
+
+	const member = shift.memberId ? members.get(shift.memberId) : undefined;
+	const sourceName = shift.person.trim() || member?.preferredName || '';
+	return {
+		...shift,
+		coveredBy: coveredByLabel(sourceName)
+	};
+}
+
+export async function syncShifts(
+	source: ShiftSource,
+	store: ShiftStore,
+	members: Member[] = []
+): Promise<ShiftSyncResult> {
 	const shifts = await source.list();
+	const membersById = new Map(members.map((member) => [member.id, member]));
 	let count = 0;
 	let failed = 0;
-	for (const shift of shifts) {
+	for (const rawShift of shifts) {
+		const shift = resolveShiftCoverage(rawShift, membersById);
 		try {
 			await store.upsert(shift);
 			count += 1;
@@ -48,5 +68,10 @@ export async function syncShiftsFromMonday(
 	env: Pick<Env, 'DB' | 'MONDAY_API_TOKEN'>
 ): Promise<ShiftSyncResult> {
 	const token = await mondayToken(env.MONDAY_API_TOKEN);
-	return syncShifts(new ShiftDirectory(new MondayClient(token)), new ShiftRepository(env.DB));
+	const monday = new MondayClient(token);
+	const [shifts, members] = await Promise.all([
+		new ShiftDirectory(monday).list(),
+		new MemberDirectory(monday).list()
+	]);
+	return syncShifts({ list: async () => shifts }, new ShiftRepository(env.DB), members);
 }
