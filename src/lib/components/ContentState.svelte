@@ -4,11 +4,13 @@
 	let {
 		kind,
 		title,
-		message
+		message,
+		onretry
 	}: {
 		kind: StateKind;
 		title: string;
 		message: string;
+		onretry?: () => void;
 	} = $props();
 </script>
 
@@ -20,12 +22,17 @@
 	aria-busy={kind === 'loading'}
 >
 	{#if kind === 'loading'}
-		<span class="state-spinner" aria-hidden="true"></span>
+		<div class="state-skeleton" aria-hidden="true">
+			<span></span><span></span><span></span>
+		</div>
 	{:else}
 		<span class="state-symbol" aria-hidden="true">{kind === 'error' ? '!' : '—'}</span>
 	{/if}
 	<div>
 		<strong>{title}</strong>
 		<p>{message}</p>
+		{#if kind === 'error' && onretry}
+			<button type="button" onclick={onretry}>Try again</button>
+		{/if}
 	</div>
 </div>

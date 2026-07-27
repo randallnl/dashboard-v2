@@ -1,16 +1,34 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { MondayClient } from './client';
 import {
 	coveredByLabel,
 	isShiftCovered,
 	mapMondayShift,
 	shiftPersonValue,
-	shiftTime
+	shiftTime,
+	ShiftDirectory
 } from './shifts';
 
 describe('shiftTime', () => {
 	it('uses Sunday and weekday coverage hours', () => {
 		expect(shiftTime('2026-07-26')).toBe('2pm-4pm');
 		expect(shiftTime('2026-07-27')).toBe('6pm-8pm');
+	});
+});
+
+describe('ShiftDirectory release', () => {
+	it('clears the assignment and marks the Monday shift open', async () => {
+		const request = vi.fn().mockResolvedValue({});
+		const directory = new ShiftDirectory({ request } as unknown as MondayClient);
+		await directory.release({ id: 'shift-1', boardId: 'board-1' });
+		expect(request).toHaveBeenCalledWith(
+			expect.stringContaining('change_multiple_column_values'),
+			expect.objectContaining({
+				boardId: 'board-1',
+				itemId: 'shift-1',
+				columnValues: expect.stringContaining('"label":"Open"')
+			})
+		);
 	});
 });
 

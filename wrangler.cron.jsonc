@@ -20,6 +20,17 @@
 			"secret_name": "Central_Monday_API_TOKEN"
 		}
 	],
+	"send_email": [
+		{
+			"name": "EMAIL",
+			"allowed_sender_addresses": ["dashboard@nhciviccommons.com"]
+		}
+	],
+	"vars": {
+		"ENVIRONMENT": "production",
+		"LOGIN_FROM_EMAIL": "dashboard@nhciviccommons.com",
+		"LOGIN_FROM_NAME": "Queerlective CoLab"
+	},
 	"triggers": {
 		"crons": ["*/15 * * * *"]
 	},

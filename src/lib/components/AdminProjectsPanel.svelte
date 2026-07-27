@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ContentState from '$lib/components/ContentState.svelte';
+	import DataFreshness from '$lib/components/DataFreshness.svelte';
 	import type { ProjectEventRecord } from '$lib/types/domain';
 	import { onMount, untrack } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
@@ -33,6 +34,9 @@
 	let syncFailed = $state(false);
 
 	const totalPages = $derived(Math.max(1, Math.ceil(total / pageSize)));
+	const syncedAt = $derived(
+		records.reduce((latest, record) => (record.syncedAt > latest ? record.syncedAt : latest), '')
+	);
 
 	function field(record: ProjectEventRecord, key: string): string {
 		const value = record.record[key];
@@ -145,7 +149,7 @@
 		</div>
 		{#if isAdmin}
 			<div class="admin-sync-controls">
-				<p class="automatic-sync-note">Updates automatically every 15 minutes.</p>
+				<DataFreshness {syncedAt} {syncing} />
 				<button type="button" class="secondary-button" onclick={syncNow} disabled={syncing}>
 					{syncing ? 'Syncing D1…' : 'Sync D1 now'}
 				</button>
@@ -207,7 +211,7 @@
 	{#if loading && !records.length}
 		<ContentState kind="loading" title="Loading projects" message="Reading filtered D1 records." />
 	{:else if failed && !records.length}
-		<ContentState kind="error" title="Projects unavailable" {message} />
+		<ContentState kind="error" title="Projects unavailable" {message} onretry={() => load(1)} />
 	{:else if !records.length}
 		<ContentState
 			kind="empty"

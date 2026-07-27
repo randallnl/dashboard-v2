@@ -1,4 +1,9 @@
-import type { EventAttachment, ProjectEventRecord, ProjectEventSource } from '$lib/types/domain';
+import type {
+	EventAttachment,
+	ProjectEventRecord,
+	ProjectEventSource,
+	ProjectTask
+} from '$lib/types/domain';
 import { MondayClient } from './client';
 
 export const PROJECT_BOARD_ID = '8390893779';
@@ -23,6 +28,14 @@ const PROJECT_COLUMNS = {
 	spaceReservation: 'color_mm2vwpkb',
 	attendees: 'dropdown_mm17a53k'
 };
+
+const TASK_COLUMNS = {
+	owner: 'person',
+	status: 'status',
+	dueDate: 'date_mm0yt95b',
+	completionDate: 'date0',
+	files: 'file_mm196z8c'
+} as const;
 
 const COMMUNITY_COLUMNS = {
 	poster: 'upload_file_Mjj7BNI5',
@@ -80,7 +93,13 @@ type RawUpdate = {
 	creator: { name: string | null } | null;
 	replies?: RawUpdate[] | null;
 };
-type Item = { id: string; name: string; column_values: Column[]; updates?: RawUpdate[] };
+type Item = {
+	id: string;
+	name: string;
+	column_values: Column[];
+	updates?: RawUpdate[];
+	subitems?: Item[];
+};
 type Page = { cursor: string | null; items: Item[] };
 
 const INITIAL = `
@@ -95,6 +114,22 @@ const INITIAL = `
 						id text_body created_at creator_id
 						creator { name }
 						replies { id text_body created_at creator_id creator { name } }
+					}
+					subitems {
+						id name
+						column_values(ids: ["person", "status", "date_mm0yt95b", "date0", "file_mm196z8c"]) {
+							id text value
+							... on FileValue {
+								files {
+									... on FileAssetValue {
+										name is_image
+										asset { public_url url_thumbnail file_extension }
+									}
+									... on FileLinkValue { name url }
+									... on FileDocValue { url }
+								}
+							}
+						}
 					}
 					column_values(ids: $columnIds) {
 						id text value
@@ -125,6 +160,22 @@ const NEXT = `
 					id text_body created_at creator_id
 					creator { name }
 					replies { id text_body created_at creator_id creator { name } }
+				}
+				subitems {
+					id name
+					column_values(ids: ["person", "status", "date_mm0yt95b", "date0", "file_mm196z8c"]) {
+						id text value
+						... on FileValue {
+							files {
+								... on FileAssetValue {
+									name is_image
+									asset { public_url url_thumbnail file_extension }
+								}
+								... on FileLinkValue { name url }
+								... on FileDocValue { url }
+							}
+						}
+					}
 				}
 				column_values(ids: $columnIds) {
 					id text value
@@ -227,6 +278,24 @@ function mondayUpdates(item: Item): MondayItemUpdate[] {
 		.filter((update) => update.textBody && update.createdAt);
 }
 
+function projectTasks(item: Item): ProjectTask[] {
+	return (item.subitems ?? []).map((subitem) => {
+		const columns = values(subitem);
+		const status = text(columns, TASK_COLUMNS.status);
+		const completionDate = date(columns, TASK_COLUMNS.completionDate);
+		return {
+			id: subitem.id,
+			title: subitem.name,
+			owner: text(columns, TASK_COLUMNS.owner),
+			status,
+			dueDate: date(columns, TASK_COLUMNS.dueDate),
+			completionDate,
+			completed: Boolean(completionDate) || /^(?:complete|completed|done)$/iu.test(status),
+			attachments: attachments(columns, TASK_COLUMNS.files)
+		};
+	});
+}
+
 export function attendeeEmails(value: unknown): string[] {
 	if (typeof value !== 'string') return [];
 	return [
@@ -270,6 +339,7 @@ export function mapProjectEvent(item: Item, syncedAt: string): ProjectEventRecor
 			calendarUrl: safeUrl(columns, PROJECT_COLUMNS.calendar),
 			spaceReservation: text(columns, PROJECT_COLUMNS.spaceReservation),
 			attendees: text(columns, PROJECT_COLUMNS.attendees),
+			tasks: projectTasks(item),
 			_mondayUpdates: mondayUpdates(item),
 			mondayUrl: mondayUrl(PROJECT_BOARD_ID, item.id)
 		},

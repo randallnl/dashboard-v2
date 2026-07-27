@@ -2,19 +2,62 @@ import { syncEventsFromMonday } from '$lib/server/events/sync';
 import { syncGivebutterFromMonday } from '$lib/server/givebutter/sync';
 import { syncMembersFromMonday } from '$lib/server/members/sync';
 import { syncShiftsFromMonday } from '$lib/server/shifts/sync';
+import { MemberRepository, ShiftSwitchRepository } from '$lib/server/db';
+import { sendShiftSwitchEmail } from '$lib/server/shifts/switch-email';
+
+async function sendShiftSwitchReminders(env: Env): Promise<number> {
+	const today = new Date().toISOString().slice(0, 10);
+	const throughDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+	const repository = new ShiftSwitchRepository(env.DB);
+	const members = new MemberRepository(env.DB);
+	const requests = await repository.listDueReminders(today, throughDate);
+	let sent = 0;
+	for (const request of requests) {
+		const [requester, replacement] = await Promise.all([
+			members.findById(request.requesterMemberId),
+			members.findById(request.replacementMemberId)
+		]);
+		for (const member of [requester, replacement]) {
+			if (!member?.email) continue;
+			try {
+				await sendShiftSwitchEmail(
+					env.EMAIL,
+					env.LOGIN_FROM_EMAIL,
+					env.LOGIN_FROM_NAME,
+					member.email,
+					request,
+					'reminder'
+				);
+				sent += 1;
+			} catch (cause) {
+				console.error(
+					JSON.stringify({
+						event: 'shift_switch_reminder_failed',
+						requestId: request.id,
+						memberId: member.id,
+						message: cause instanceof Error ? cause.message : 'Unknown email error'
+					})
+				);
+			}
+		}
+		await repository.markReminded(request.id, new Date().toISOString());
+	}
+	return sent;
+}
 
 export async function runScheduledShiftSync(
-	env: Pick<Env, 'DB' | 'MONDAY_API_TOKEN'>,
+	env: Env,
 	scheduledTime: number,
 	cron: string
 ): Promise<void> {
 	const startedAt = Date.now();
 	try {
-		const [shifts, events, members, givebutter] = await Promise.all([
+		const [shifts, events, members, givebutter, switchReminders] = await Promise.all([
 			syncShiftsFromMonday(env),
 			syncEventsFromMonday(env),
 			syncMembersFromMonday(env),
-			syncGivebutterFromMonday(env)
+			syncGivebutterFromMonday(env),
+			sendShiftSwitchReminders(env)
 		]);
 		console.log(
 			JSON.stringify({
@@ -31,6 +74,7 @@ export async function runScheduledShiftSync(
 				givebutterCount: givebutter.count,
 				givebutterFailed: givebutter.failed,
 				givebutterRemoved: givebutter.removed,
+				switchReminders,
 				syncedAt: shifts.syncedAt > events.syncedAt ? shifts.syncedAt : events.syncedAt,
 				durationMs: Date.now() - startedAt
 			})

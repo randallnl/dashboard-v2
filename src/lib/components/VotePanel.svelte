@@ -104,7 +104,7 @@
 			message="Checking current community votes."
 		/>
 	{:else if failed && votes.length === 0}
-		<ContentState kind="error" title="Votes unavailable" {message} />
+		<ContentState kind="error" title="Votes unavailable" {message} onretry={load} />
 	{:else if votes.length === 0}
 		<ContentState
 			kind="empty"

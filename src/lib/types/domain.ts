@@ -47,12 +47,41 @@ export type Shift = {
 	syncedAt: string;
 };
 
+export type ShiftSwitchRequest = {
+	id: string;
+	shiftId: string;
+	requesterMemberId: string;
+	replacementMemberId: string;
+	requestType: 'replacement' | 'release';
+	status: 'pending' | 'accepted' | 'declined' | 'completed' | 'cancelled';
+	shiftTitle: string;
+	shiftDate: string;
+	shiftTime: string;
+	requesterLabel: string;
+	replacementLabel: string;
+	createdAt: string;
+	respondedAt: string;
+	lastRemindedAt: string;
+	direction?: 'incoming' | 'outgoing';
+};
+
 export type ProjectEventSource = 'project' | 'community';
 
 export type EventAttachment = {
 	name: string;
 	url: string;
 	isImage: boolean;
+};
+
+export type ProjectTask = {
+	id: string;
+	title: string;
+	owner: string;
+	status: string;
+	dueDate: string;
+	completionDate: string;
+	completed: boolean;
+	attachments: EventAttachment[];
 };
 
 export type ProjectEventRecord<T extends Record<string, unknown> = Record<string, unknown>> = {

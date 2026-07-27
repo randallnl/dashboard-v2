@@ -213,4 +213,16 @@ export class ShiftDirectory {
 			})
 		});
 	}
+
+	async release(shift: Pick<Shift, 'id' | 'boardId'>): Promise<void> {
+		await this.monday.request(COVER_MUTATION, {
+			boardId: shift.boardId,
+			itemId: shift.id,
+			columnValues: JSON.stringify({
+				[SHIFT_COLUMNS.person]: '',
+				[SHIFT_COLUMNS.memberId]: '',
+				[SHIFT_COLUMNS.coverageStatus]: { label: 'Open' }
+			})
+		});
+	}
 }

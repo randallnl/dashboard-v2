@@ -1,19 +1,90 @@
 <script lang="ts">
-	import type { Shift, UpcomingProjectAssignment } from '$lib/types/domain';
+	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
+	import type { Shift, ShiftSwitchRequest, UpcomingProjectAssignment } from '$lib/types/domain';
+	import { onMount } from 'svelte';
 
 	let {
 		shifts,
 		projects,
-		availableShifts
+		availableShifts,
+		readOnly = false
 	}: {
 		shifts: Shift[];
 		projects: UpcomingProjectAssignment[];
 		availableShifts: Shift[];
+		readOnly?: boolean;
 	} = $props();
 
 	const visibleShifts = $derived(shifts.slice(0, 3));
 	const visibleProjects = $derived(projects.slice(0, 3));
 	const visibleOpenShifts = $derived(availableShifts.slice(0, 3));
+	let switchRequests = $state<ShiftSwitchRequest[]>([]);
+	let selectedShift = $state<Shift | null>(null);
+	let replacement = $state<{ id: string; label: string } | null>(null);
+	let switchMessage = $state('');
+	let switching = $state(false);
+
+	async function loadSwitchRequests() {
+		const response = await fetch('/api/shifts/switch');
+		if (!response.ok) return;
+		const result = (await response.json()) as { requests?: ShiftSwitchRequest[] };
+		switchRequests = result.requests ?? [];
+	}
+
+	async function requestSwitch(release = false) {
+		if (!selectedShift || (!release && !replacement)) return;
+		if (
+			release &&
+			!window.confirm('Release this shift as open? This will update Monday immediately.')
+		)
+			return;
+		switching = true;
+		switchMessage = '';
+		try {
+			const response = await fetch('/api/shifts/switch', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					shiftId: selectedShift.id,
+					replacementMemberId: replacement?.id,
+					release
+				})
+			});
+			const result = (await response.json()) as { message?: string };
+			if (!response.ok) throw new Error(result.message || 'Could not create the switch request.');
+			switchMessage = result.message || 'Switch request created.';
+			selectedShift = null;
+			replacement = null;
+			await loadSwitchRequests();
+		} catch (cause) {
+			switchMessage =
+				cause instanceof Error ? cause.message : 'Could not create the switch request.';
+		} finally {
+			switching = false;
+		}
+	}
+
+	async function respond(request: ShiftSwitchRequest, responseChoice: 'accept' | 'decline') {
+		switching = true;
+		try {
+			const response = await fetch('/api/shifts/switch', {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ requestId: request.id, response: responseChoice })
+			});
+			const result = (await response.json()) as { message?: string };
+			if (!response.ok) throw new Error(result.message || 'Could not respond to this request.');
+			switchMessage =
+				result.message || (responseChoice === 'accept' ? 'Switch accepted.' : 'Switch declined.');
+			await loadSwitchRequests();
+		} catch (cause) {
+			switchMessage = cause instanceof Error ? cause.message : 'Could not respond.';
+		} finally {
+			switching = false;
+		}
+	}
+
+	onMount(loadSwitchRequests);
 
 	function dateLabel(value: string): string {
 		const parsed = new Date(`${value}T12:00:00Z`);
@@ -53,6 +124,36 @@
 		<div><strong>{projects.length}</strong><span>Projects and events</span></div>
 		<div><strong>{availableShifts.length}</strong><span>Open shifts</span></div>
 	</div>
+	{#if switchMessage}<p class="shift-message" role="status">{switchMessage}</p>{/if}
+	{#if switchRequests.length}
+		<div class="shift-switch-statuses">
+			{#each switchRequests as request (request.id)}
+				<article>
+					<div>
+						<strong>{request.shiftTitle}</strong>
+						<span>
+							{request.direction === 'incoming'
+								? `${request.requesterLabel} requested you as replacement`
+								: request.requestType === 'release'
+									? 'Released as open'
+									: `Requested ${request.replacementLabel}`}
+						</span>
+					</div>
+					<span class={`switch-status status-${request.status}`}>{request.status}</span>
+					{#if request.direction === 'incoming' && request.status === 'pending'}
+						<div class="switch-response-actions">
+							<button type="button" onclick={() => respond(request, 'accept')} disabled={switching}
+								>Accept</button
+							>
+							<button type="button" onclick={() => respond(request, 'decline')} disabled={switching}
+								>Decline</button
+							>
+						</div>
+					{/if}
+				</article>
+			{/each}
+		</div>
+	{/if}
 
 	<div class="upcoming-member-grid">
 		<div class="upcoming-group">
@@ -63,14 +164,19 @@
 			{#if visibleShifts.length}
 				<div class="upcoming-shift-list">
 					{#each visibleShifts as shift (shift.id)}
-						<a href="#calendar">
-							<time datetime={shift.dateValue}>{dateLabel(shift.dateValue)}</time>
-							<div>
-								<strong>{shift.title}</strong>
-								<span>{shift.timeLabel || shift.dateLabel}</span>
-							</div>
-							<span class="upcoming-action-label secondary">View details</span>
-						</a>
+						<article class="assigned-shift-row">
+							<a href="#calendar">
+								<time datetime={shift.dateValue}>{dateLabel(shift.dateValue)}</time>
+								<div>
+									<strong>{shift.title}</strong>
+									<span>{shift.timeLabel || shift.dateLabel}</span>
+								</div>
+								<span class="upcoming-action-label secondary">View details</span>
+							</a>
+							<button type="button" onclick={() => (selectedShift = shift)} disabled={readOnly}
+								>Request a switch</button
+							>
+						</article>
 					{/each}
 				</div>
 			{:else}
@@ -140,4 +246,48 @@
 			{/if}
 		</div>
 	</div>
+
+	{#if selectedShift}
+		<div class="event-dialog-backdrop" role="presentation">
+			<div
+				class="event-dialog shift-switch-dialog"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="switch-title"
+			>
+				<div class="card-heading">
+					<div>
+						<p class="eyebrow">Shift exchange</p>
+						<h3 id="switch-title">Request a switch</h3>
+					</div>
+					<button type="button" class="text-button" onclick={() => (selectedShift = null)}
+						>Close</button
+					>
+				</div>
+				<p>
+					<strong>{selectedShift.title}</strong> · {dateLabel(selectedShift.dateValue)} · {selectedShift.timeLabel}
+				</p>
+				<MemberPredictivePicker
+					id="shift-switch-replacement"
+					placeholder="Type @ and choose a replacement"
+					includeSelf={false}
+					bind:selection={replacement}
+					disabled={switching}
+				/>
+				<div class="switch-dialog-actions">
+					<button
+						type="button"
+						onclick={() => requestSwitch(false)}
+						disabled={!replacement || switching}>Send request</button
+					>
+					<button type="button" onclick={() => requestSwitch(true)} disabled={switching}
+						>Release as open</button
+					>
+				</div>
+				<p class="automatic-sync-note">
+					Monday updates only after acceptance. The replacement will be notified by email.
+				</p>
+			</div>
+		</div>
+	{/if}
 </section>

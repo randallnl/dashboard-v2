@@ -186,6 +186,7 @@
 			shifts={upcomingMemberShifts}
 			projects={upcomingProjects}
 			availableShifts={initialAvailableShifts}
+			readOnly={isViewingAs}
 		/>
 
 		<article class="resources-card dashboard-top-resources" id="resources">

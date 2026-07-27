@@ -91,7 +91,7 @@
 			message="Checking activity and transaction records."
 		/>
 	{:else if errorMessage}
-		<ContentState kind="error" title="History unavailable" message={errorMessage} />
+		<ContentState kind="error" title="History unavailable" message={errorMessage} onretry={load} />
 	{:else}
 		<div class="history-grid">
 			<article class="history-card activity-card">

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { datesInRange, monthBounds } from '$lib/calendar/month';
 	import ContentState from '$lib/components/ContentState.svelte';
+	import DataFreshness from '$lib/components/DataFreshness.svelte';
 	import ItemComments from '$lib/components/ItemComments.svelte';
-	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
 	import type { CalendarEvent } from '$lib/types/domain';
 	import { onMount } from 'svelte';
 	import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -23,10 +23,9 @@
 	let selected = $state<CalendarEvent | null>(null);
 	let signingUp = $state(false);
 	let signupMessage = $state('');
-	let shiftHostSelection = $state<{ id: string; label: string } | null>(null);
-	let shiftPickerKey = $state(0);
 	let subscriptionUrl = $state('');
 	let subscriptionLoading = $state(false);
+	let syncedAt = $state('');
 	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local time';
 
 	const bounds = $derived(monthBounds(month)!);
@@ -114,7 +113,12 @@
 			);
 			const results = await Promise.all(
 				responses.map(
-					(response) => response.json() as Promise<{ events?: CalendarEvent[]; message?: string }>
+					(response) =>
+						response.json() as Promise<{
+							events?: CalendarEvent[];
+							message?: string;
+							syncedAt?: string;
+						}>
 				)
 			);
 			const failedIndex = responses.findIndex((response) => !response.ok);
@@ -128,6 +132,11 @@
 						.map((event) => [`${event.source}:${event.id}`, event])
 				).values()
 			];
+			syncedAt = results.reduce(
+				(latest, result) =>
+					result.syncedAt && result.syncedAt > latest ? result.syncedAt : latest,
+				''
+			);
 		} catch (cause) {
 			message = cause instanceof Error ? cause.message : 'Could not load the calendar.';
 		} finally {
@@ -313,43 +322,6 @@
 		}
 	}
 
-	async function reassignShift() {
-		if (!selected || selected.source !== 'shift') return;
-		if (!shiftHostSelection) {
-			signupMessage = 'Type and choose a member from the suggestions.';
-			return;
-		}
-		const member = shiftHostSelection;
-		signingUp = true;
-		try {
-			const response = await fetch('/api/admin/shifts/host', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ shiftId: selected.id, memberId: member.id })
-			});
-			const result = (await response.json()) as {
-				shift?: { coveredBy: string };
-				message?: string;
-			};
-			if (!response.ok || !result.shift) {
-				throw new Error(result.message || 'Could not reassign this shift.');
-			}
-			selected.details = `${selected.details.split(' · ')[0]} · ${result.shift.coveredBy}`;
-			events = events.map((event) =>
-				event.source === 'shift' && event.id === selected?.id
-					? { ...event, details: selected.details }
-					: event
-			);
-			shiftHostSelection = null;
-			shiftPickerKey += 1;
-			signupMessage = result.message || 'Shift reassigned.';
-		} catch (cause) {
-			signupMessage = cause instanceof Error ? cause.message : 'Could not reassign this shift.';
-		} finally {
-			signingUp = false;
-		}
-	}
-
 	onMount(load);
 </script>
 
@@ -374,6 +346,7 @@
 			>
 		</div>
 	</div>
+	<DataFreshness {syncedAt} syncing={loading} />
 	<div class="calendar-legend" aria-label="Calendar color legend">
 		<span><i class="legend-swatch legend-shift-open"></i>Open CoLab shift</span>
 		<span><i class="legend-swatch legend-shift-covered"></i>Covered CoLab shift</span>
@@ -427,7 +400,7 @@
 	{#if loading}
 		<ContentState kind="loading" title="Loading calendar" message="Gathering shifts and events." />
 	{:else if message}
-		<ContentState kind="error" title="Calendar unavailable" {message} />
+		<ContentState kind="error" title="Calendar unavailable" {message} onretry={load} />
 	{:else}
 		{#if view === 'month'}
 			<div class="calendar-grid" aria-label={title}>
@@ -632,21 +605,10 @@
 				</div>
 				{#if isAdmin && selected.source === 'shift' && selected.status === 'Covered'}
 					<div class="calendar-shift-reassign">
-						<label>
-							<span>Change shift coverage</span>
-							{#key shiftPickerKey}
-								<MemberPredictivePicker
-									id="calendar-shift-member"
-									placeholder="Type @ and a member’s name"
-									includeSelf={true}
-									bind:selection={shiftHostSelection}
-									disabled={signingUp}
-								/>
-							{/key}
-						</label>
-						<button type="button" onclick={reassignShift} disabled={signingUp}>
-							{signingUp ? 'Saving…' : 'Assign new person'}
-						</button>
+						<p>
+							Shift changes now use replacement requests. The assigned member can start one from
+							“What’s next.”
+						</p>
 					</div>
 				{/if}
 				{#if signupMessage}<p role="status" class="calendar-message">{signupMessage}</p>{/if}

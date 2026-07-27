@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import DataFreshness from '$lib/components/DataFreshness.svelte';
 	import ItemComments from '$lib/components/ItemComments.svelte';
 	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
 	import ProjectDashboardHeader from '$lib/components/ProjectDashboardHeader.svelte';
-	import type { EventAttachment } from '$lib/types/domain';
+	import type { EventAttachment, ProjectTask } from '$lib/types/domain';
 	import { onMount } from 'svelte';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -63,14 +64,21 @@
 			? (attachments.find((attachment) => attachment.isImage && safeUrl(attachment.url))?.url ?? '')
 			: ''
 	);
+	const tasks = $derived(
+		Array.isArray(data.record.record.tasks) ? (data.record.record.tasks as ProjectTask[]) : []
+	);
 	const milestone = $derived.by(() => {
+		const today = new Date().toISOString().slice(0, 10);
+		const nextTask = tasks
+			.filter((task) => !task.completed && task.dueDate && task.dueDate >= today)
+			.sort((left, right) => left.dueDate.localeCompare(right.dueDate))[0];
 		const candidates = [
 			{ label: 'Next milestone', value: field('nextMilestone'), explicit: true },
 			{ label: 'Deadline', value: field('deadline'), explicit: true },
+			...(nextTask ? [{ label: nextTask.title, value: nextTask.dueDate, explicit: true }] : []),
 			{ label: 'Project start', value: data.record.dateValue, explicit: false },
 			{ label: 'Project end', value: data.record.endDateValue, explicit: false }
 		].filter((entry) => Boolean(entry.value));
-		const today = new Date().toISOString().slice(0, 10);
 		return candidates.find(({ value }) => value >= today) ?? candidates.at(-1) ?? null;
 	});
 	const activity = $derived(
@@ -196,7 +204,7 @@
 			attendeeSelection = null;
 			attendeePickerKey += 1;
 			attendeeMessage = result.message || 'Attendee added.';
-			window.location.reload();
+			window.setTimeout(() => window.location.reload(), 1200);
 		} catch (cause) {
 			attendeeMessage = cause instanceof Error ? cause.message : 'Could not add attendee.';
 		} finally {
@@ -254,7 +262,7 @@
 			if (!response.ok) throw new Error(result.message || 'Could not save changes.');
 			editMessage = result.message || 'Changes saved.';
 			editingDetails = false;
-			window.location.reload();
+			window.setTimeout(() => window.location.reload(), 1200);
 		} catch (cause) {
 			editMessage = cause instanceof Error ? cause.message : 'Could not save changes.';
 			savingDetails = false;
@@ -327,6 +335,7 @@
 			>
 		{/each}
 	</nav>
+	<DataFreshness syncedAt={data.record.syncedAt} />
 
 	{#if activeTab === 'overview'}
 		<section class="item-dashboard-grid workspace-panel">
@@ -417,6 +426,12 @@
 						<dt>Files</dt>
 						<dd>{attachments.length} attachments</dd>
 					</div>
+					{#if tasks.length}
+						<div>
+							<dt>Tasks</dt>
+							<dd>{tasks.filter((task) => task.completed).length} of {tasks.length} completed</dd>
+						</div>
+					{/if}
 				</dl>
 			</article>
 		</section>
@@ -479,6 +494,42 @@
 						<span>End</span><strong>{dateTimeLabel(data.record.endDateValue)}</strong>
 					</li>{/if}
 			</ol>
+			{#if tasks.length}
+				<div class="project-task-heading">
+					<h3>Project tasks</h3>
+					<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
+				</div>
+				<div class="project-task-list">
+					{#each [...tasks].sort( (left, right) => (left.dueDate || '9999').localeCompare(right.dueDate || '9999') ) as task (task.id)}
+						<article class:completed={task.completed}>
+							<span class="task-check" aria-hidden="true">{task.completed ? '✓' : ''}</span>
+							<div>
+								<strong>{task.title}</strong>
+								<div class="task-meta">
+									{#if task.status}<span>{task.status}</span>{/if}
+									{#if task.owner}<span>{task.owner}</span>{/if}
+									{#if task.dueDate}<time datetime={task.dueDate}
+											>Due {dateTimeLabel(task.dueDate)}</time
+										>{/if}
+									{#if task.completionDate}<time datetime={task.completionDate}
+											>Completed {dateTimeLabel(task.completionDate)}</time
+										>{/if}
+								</div>
+								{#if task.attachments.length}
+									<div class="task-files">
+										{#each task.attachments as attachment (`${task.id}-${attachment.url}`)}
+											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+											<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer"
+												>{attachment.name} ↗</a
+											>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						</article>
+					{/each}
+				</div>
+			{/if}
 			{#if field('calendarUrl')}
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				<a

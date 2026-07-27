@@ -144,8 +144,12 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 			})
 	];
 
+	const syncedAt = [...shifts, ...records].reduce(
+		(latest, record) => (record.syncedAt > latest ? record.syncedAt : latest),
+		''
+	);
 	return json(
-		{ month: requestedMonth, events },
+		{ month: requestedMonth, events, syncedAt },
 		{ headers: { 'cache-control': 'private, no-store' } }
 	);
 };

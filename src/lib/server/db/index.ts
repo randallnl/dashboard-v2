@@ -10,6 +10,7 @@ export type { NewMagicLoginToken, NewMagicSession } from './auth-repository';
 export { ProjectEventRepository } from './project-repository';
 export type { ProjectEventFilters, ProjectEventPage, ProjectEventSort } from './project-repository';
 export { ShiftRepository } from './shift-repository';
+export { ShiftSwitchRepository } from './shift-switch-repository';
 export { VolunteerRepository } from './volunteer-repository';
 export type { VolunteerSignup } from './volunteer-repository';
 export { VoteRepository } from './vote-repository';

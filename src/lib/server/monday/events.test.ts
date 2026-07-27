@@ -102,6 +102,43 @@ describe('Monday event mapping', () => {
 		]);
 	});
 
+	it('maps project subitems into dated project tasks', () => {
+		const event = mapProjectEvent(
+			{
+				id: 'event-tasks',
+				name: 'Field trip',
+				column_values: [
+					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-08-08"}' },
+					{ id: 'dropdown_mknqezw8', text: 'CoLab', value: null }
+				],
+				subitems: [
+					{
+						id: 'task-1',
+						name: 'Confirm transportation',
+						column_values: [
+							{ id: 'person', text: 'Alex Morgan', value: null },
+							{ id: 'status', text: 'Working on it', value: null },
+							{ id: 'date_mm0yt95b', text: '', value: '{"date":"2026-08-02"}' },
+							{ id: 'date0', text: '', value: null }
+						]
+					}
+				]
+			},
+			'2026-07-27T11:00:00.000Z'
+		);
+
+		expect(event.record.tasks).toEqual([
+			expect.objectContaining({
+				id: 'task-1',
+				title: 'Confirm transportation',
+				owner: 'Alex Morgan',
+				status: 'Working on it',
+				dueDate: '2026-08-02',
+				completed: false
+			})
+		]);
+	});
+
 	it('prefers the original public asset URL over Monday’s small thumbnail', () => {
 		const event = mapProjectEvent(
 			{

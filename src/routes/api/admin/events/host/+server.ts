@@ -68,8 +68,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			host,
 			message:
 				record.source === 'project'
-					? `${host.hostLabel} assigned as host and added to attendees.`
-					: `${host.hostLabel} assigned as host.`
+					? `${host.hostLabel} assigned as host, added to attendees, and confirmed by Monday.`
+					: `${host.hostLabel} assigned as host. Monday confirmed the update.`
 		},
 		{ headers: { 'cache-control': 'private, no-store' } }
 	);

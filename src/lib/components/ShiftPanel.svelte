@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ContentState from '$lib/components/ContentState.svelte';
+	import DataFreshness from '$lib/components/DataFreshness.svelte';
 	import type { Shift } from '$lib/types/domain';
 	import { onMount, untrack } from 'svelte';
 
@@ -20,6 +21,14 @@
 	let failed = $state(false);
 	let showShiftPicker = $state(false);
 	let selectedShiftId = $state('');
+	let syncedAt = $state(
+		untrack(() =>
+			initialAvailableShifts.reduce(
+				(latest, shift) => (shift.syncedAt > latest ? shift.syncedAt : latest),
+				''
+			)
+		)
+	);
 	const visibleShifts = $derived(shifts.slice(0, 3));
 
 	async function loadShifts() {
@@ -31,9 +40,11 @@
 				available?: Shift[];
 				covered?: Shift[];
 				message?: string;
+				syncedAt?: string;
 			};
 			if (!response.ok) throw new Error(result.message || 'Could not load shifts.');
 			shifts = result.available ?? [];
+			syncedAt = result.syncedAt ?? syncedAt;
 		} catch (cause) {
 			failed = true;
 			message = cause instanceof Error ? cause.message : 'Could not load shifts.';
@@ -45,6 +56,8 @@
 	async function claim(shift: Shift) {
 		claimingId = shift.id;
 		message = '';
+		const previousShifts = shifts;
+		shifts = shifts.filter((candidate) => candidate.id !== shift.id);
 		try {
 			const response = await fetch('/api/shifts/signup', {
 				method: 'POST',
@@ -53,15 +66,14 @@
 			});
 			const result = (await response.json()) as { shift?: Shift; message?: string };
 			if (!response.ok) throw new Error(result.message || 'Could not claim this shift.');
-			shifts = shifts.filter((candidate) => candidate.id !== shift.id);
-			message = `You’re covering ${shift.title} on ${shift.dateLabel || shift.dateValue}.`;
+			message = `You’re covering ${shift.title} on ${shift.dateLabel || shift.dateValue}. Monday confirmed the assignment.`;
 			failed = false;
 			selectedShiftId = '';
 			if (shifts.length === 0) showShiftPicker = false;
 		} catch (cause) {
+			shifts = previousShifts;
 			failed = true;
 			message = cause instanceof Error ? cause.message : 'Could not claim this shift.';
-			await loadShifts();
 		} finally {
 			claimingId = '';
 		}
@@ -76,7 +88,7 @@
 			<p class="eyebrow">Studio coverage</p>
 			<h2 id="available-shifts-title">Available shifts</h2>
 		</div>
-		{#if isAdmin}<p class="automatic-sync-note">Updates automatically every 15 minutes.</p>{/if}
+		<DataFreshness {syncedAt} syncing={loading} />
 	</div>
 
 	{#if message}
@@ -93,7 +105,7 @@
 			message="Checking current studio coverage."
 		/>
 	{:else if failed && shifts.length === 0}
-		<ContentState kind="error" title="Shifts unavailable" {message} />
+		<ContentState kind="error" title="Shifts unavailable" {message} onretry={loadShifts} />
 	{:else if shifts.length === 0}
 		<ContentState
 			kind="empty"

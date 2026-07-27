@@ -2331,6 +2331,242 @@ h2 {
 	color: #5f6963;
 }
 
+.data-freshness {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	color: #68736d;
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+
+.data-freshness > span {
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: 50%;
+	background: #4c9a72;
+	box-shadow: 0 0 0 0.2rem rgb(76 154 114 / 14%);
+}
+
+.data-freshness.syncing > span {
+	animation: sync-pulse 1s infinite alternate;
+	background: #d49a25;
+}
+
+@keyframes sync-pulse {
+	to {
+		opacity: 0.35;
+		transform: scale(0.75);
+	}
+}
+
+.state-skeleton {
+	display: grid;
+	width: min(12rem, 35vw);
+	gap: 0.4rem;
+}
+
+.state-skeleton span {
+	height: 0.7rem;
+	border-radius: 999px;
+	background: linear-gradient(90deg, #e4ded3 25%, #f6f1e8 50%, #e4ded3 75%);
+	background-size: 200% 100%;
+	animation: skeleton-shimmer 1.2s infinite linear;
+}
+
+.state-skeleton span:nth-child(2) {
+	width: 75%;
+}
+.state-skeleton span:nth-child(3) {
+	width: 55%;
+}
+
+@keyframes skeleton-shimmer {
+	to {
+		background-position: -200% 0;
+	}
+}
+
+.content-state button {
+	margin-top: 0.7rem;
+	padding: 0.5rem 0.7rem;
+	border: 1px solid #194639;
+	border-radius: 0.55rem;
+	background: #fff;
+	color: #194639;
+	font: inherit;
+	font-weight: 800;
+	cursor: pointer;
+}
+
+.assigned-shift-row {
+	display: grid;
+	gap: 0.4rem;
+}
+
+.assigned-shift-row > button {
+	justify-self: end;
+	border: 0;
+	background: transparent;
+	color: #8b4b34;
+	font: inherit;
+	font-size: 0.75rem;
+	font-weight: 800;
+	cursor: pointer;
+}
+
+.shift-switch-statuses {
+	display: grid;
+	gap: 0.55rem;
+	margin: 1rem 0;
+}
+
+.shift-switch-statuses article {
+	display: flex;
+	align-items: center;
+	gap: 0.8rem;
+	padding: 0.8rem 1rem;
+	border: 1px solid #d8d1c5;
+	border-radius: 0.8rem;
+	background: #fffdf8;
+}
+
+.shift-switch-statuses article > div:first-child {
+	display: grid;
+	flex: 1;
+}
+
+.shift-switch-statuses span {
+	color: #69736d;
+	font-size: 0.75rem;
+}
+
+.switch-status {
+	padding: 0.3rem 0.55rem;
+	border-radius: 999px;
+	background: #eee9df;
+	text-transform: capitalize;
+}
+
+.switch-status.status-pending {
+	background: #fff0c7;
+	color: #765313;
+}
+.switch-status.status-accepted,
+.switch-status.status-completed {
+	background: #dff1e7;
+	color: #245f43;
+}
+.switch-status.status-declined {
+	background: #f3dfdc;
+	color: #873f36;
+}
+
+.switch-response-actions,
+.switch-dialog-actions {
+	display: flex;
+	gap: 0.45rem;
+}
+
+.switch-response-actions button,
+.switch-dialog-actions button {
+	padding: 0.55rem 0.75rem;
+	border: 1px solid #194639;
+	border-radius: 0.55rem;
+	background: #194639;
+	color: #fff;
+	font: inherit;
+	font-weight: 750;
+	cursor: pointer;
+}
+
+.switch-response-actions button:last-child,
+.switch-dialog-actions button:last-child {
+	border-color: #b77962;
+	background: #fff;
+	color: #8b4b34;
+}
+
+.shift-switch-dialog {
+	max-width: 36rem;
+}
+
+.project-task-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-top: 1.8rem;
+}
+
+.project-task-heading h3 {
+	margin: 0;
+}
+
+.project-task-heading span {
+	color: #68736d;
+	font-size: 0.75rem;
+	font-weight: 800;
+}
+
+.project-task-list {
+	display: grid;
+	gap: 0.6rem;
+	margin-top: 0.8rem;
+}
+
+.project-task-list > article {
+	display: grid;
+	grid-template-columns: 1.35rem 1fr;
+	gap: 0.7rem;
+	padding: 0.9rem;
+	border: 1px solid #ddd6ca;
+	border-radius: 0.75rem;
+	background: #fffdf8;
+}
+
+.project-task-list > article.completed {
+	opacity: 0.68;
+	background: #edf5f0;
+}
+
+.task-check {
+	display: grid;
+	place-items: center;
+	width: 1.2rem;
+	height: 1.2rem;
+	border: 2px solid #9eaaa3;
+	border-radius: 50%;
+	color: #fff;
+	font-size: 0.7rem;
+	font-weight: 900;
+}
+
+.project-task-list > article.completed .task-check {
+	border-color: #397657;
+	background: #397657;
+}
+
+.task-meta,
+.task-files {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem 0.75rem;
+	margin-top: 0.35rem;
+}
+
+.task-meta span,
+.task-meta time {
+	color: #68736d;
+	font-size: 0.75rem;
+}
+
+.task-files a {
+	color: #194639;
+	font-size: 0.75rem;
+	font-weight: 750;
+}
+
 .item-previews a.link-calendar {
 	border-color: #9ec5dc;
 	background: #e4f3fb;
