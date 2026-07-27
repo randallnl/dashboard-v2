@@ -41,6 +41,18 @@ export class HostRepository {
 		return row ? mapHost(row) : null;
 	}
 
+	async listKeysForMember(memberId: string): Promise<Set<string>> {
+		const result = await this.db
+			.prepare(
+				`SELECT source, event_id
+				 FROM project_event_hosts
+				 WHERE member_id = ?1`
+			)
+			.bind(memberId)
+			.all<{ source: ProjectEventSource; event_id: string }>();
+		return new Set(result.results.map((row) => `${row.source}:${row.event_id}`));
+	}
+
 	async upsert(
 		source: ProjectEventSource,
 		eventId: string,

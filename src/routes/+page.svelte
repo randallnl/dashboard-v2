@@ -22,6 +22,8 @@
 		viewerCapabilities={data.viewerCapabilities}
 		isViewingAs={data.isViewingAs}
 		initialAvailableShifts={data.initialAvailableShifts}
+		upcomingMemberShifts={data.upcomingMemberShifts}
+		upcomingProjects={data.upcomingProjects}
 	/>
 {:else}
 	<LoginSplash authStatus={data.authStatus} />

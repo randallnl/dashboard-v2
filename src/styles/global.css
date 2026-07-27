@@ -526,6 +526,135 @@ h2 {
 	font-size: 0.85rem;
 }
 
+.upcoming-member-panel {
+	margin-top: 1rem;
+	padding: clamp(1.4rem, 3vw, 2rem);
+	border: 1px solid #d8d1c5;
+	border-radius: 1.2rem;
+	background: #faf7f0;
+}
+
+.upcoming-member-panel .section-heading h2 {
+	max-width: none;
+	font-size: clamp(2rem, 4vw, 3.2rem);
+}
+
+.upcoming-member-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+	margin-top: 1.25rem;
+}
+
+.upcoming-group {
+	min-width: 0;
+	padding: 1rem;
+	border-radius: 0.9rem;
+	background: #f0ece3;
+}
+
+.upcoming-group-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.65rem;
+}
+
+.upcoming-group-heading h3 {
+	margin: 0;
+}
+
+.upcoming-group-heading a {
+	color: #194639;
+	font-size: 0.72rem;
+	font-weight: 700;
+}
+
+.upcoming-shift-list,
+.upcoming-project-list {
+	display: grid;
+	gap: 0.5rem;
+}
+
+.upcoming-shift-list > a,
+.upcoming-project-list > a {
+	display: grid;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.7rem;
+	border: 1px solid #ddd5c8;
+	border-radius: 0.7rem;
+	background: #fffdf8;
+	color: #17251e;
+	text-decoration: none;
+}
+
+.upcoming-shift-list > a {
+	grid-template-columns: 5rem minmax(0, 1fr) auto;
+}
+
+.upcoming-project-list > a {
+	grid-template-columns: 3.8rem minmax(0, 1fr) auto;
+}
+
+.upcoming-shift-list time,
+.upcoming-project-list time {
+	color: #6d756f;
+	font-size: 0.7rem;
+	font-weight: 700;
+}
+
+.upcoming-shift-list div,
+.upcoming-project-list div {
+	display: grid;
+	min-width: 0;
+	gap: 0.15rem;
+}
+
+.upcoming-shift-list div > span,
+.upcoming-project-list div > span {
+	overflow: hidden;
+	color: #6d756f;
+	font-size: 0.72rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.upcoming-project-list img,
+.upcoming-project-placeholder {
+	width: 3.8rem;
+	height: 3.2rem;
+	border-radius: 0.45rem;
+	object-fit: cover;
+}
+
+.upcoming-project-placeholder {
+	display: grid;
+	place-items: center;
+	background: #dfeae3;
+	color: #194639;
+	font-weight: 800;
+}
+
+.upcoming-role {
+	padding: 0.32rem 0.55rem;
+	border-radius: 999px;
+	font-size: 0.62rem;
+	font-weight: 800;
+	white-space: nowrap;
+}
+
+.role-shift {
+	background: #dce9f5;
+	color: #285879;
+}
+
+.role-project {
+	background: #e6dff2;
+	color: #59427b;
+}
+
 .foundation-grid {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
@@ -2459,6 +2588,20 @@ h2 {
 
 	.member-details-grid {
 		grid-template-columns: 1fr;
+	}
+
+	.upcoming-member-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.upcoming-shift-list > a,
+	.upcoming-project-list > a {
+		grid-template-columns: 3.8rem minmax(0, 1fr);
+	}
+
+	.upcoming-role {
+		grid-column: 2;
+		justify-self: start;
 	}
 
 	.profile-list {

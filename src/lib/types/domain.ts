@@ -68,6 +68,11 @@ export type ProjectEventRecord<T extends Record<string, unknown> = Record<string
 	syncedAt: string;
 };
 
+export type UpcomingProjectAssignment = {
+	record: ProjectEventRecord;
+	roles: Array<'Host' | 'Attendee'>;
+};
+
 export type ProjectEventComment = {
 	id: string;
 	source: ProjectEventSource;

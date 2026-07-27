@@ -4,9 +4,15 @@
 	import ContentState from '$lib/components/ContentState.svelte';
 	import MemberHistoryPanel from '$lib/components/MemberHistoryPanel.svelte';
 	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
+	import UpcomingMemberPanel from '$lib/components/UpcomingMemberPanel.svelte';
 	import ViewAsControl from '$lib/components/ViewAsControl.svelte';
 	import VotePanel from '$lib/components/VotePanel.svelte';
-	import type { Member, MemberCapabilities } from '$lib/types/domain';
+	import type {
+		Member,
+		MemberCapabilities,
+		Shift,
+		UpcomingProjectAssignment
+	} from '$lib/types/domain';
 	import { resolve } from '$app/paths';
 
 	let {
@@ -15,14 +21,18 @@
 		capabilities,
 		viewerCapabilities,
 		isViewingAs,
-		initialAvailableShifts
+		initialAvailableShifts,
+		upcomingMemberShifts,
+		upcomingProjects
 	}: {
 		viewer: Member;
 		member: Member;
 		capabilities: MemberCapabilities;
 		viewerCapabilities: MemberCapabilities;
 		isViewingAs: boolean;
-		initialAvailableShifts: import('$lib/types/domain').Shift[];
+		initialAvailableShifts: Shift[];
+		upcomingMemberShifts: Shift[];
+		upcomingProjects: UpcomingProjectAssignment[];
 	} = $props();
 
 	const firstName = $derived(member.preferredName.split(/\s+/u)[0] || member.preferredName);
@@ -89,6 +99,8 @@
 			</div>
 			<span class="membership-pill">{member.membershipType || 'CoLab Member'}</span>
 		</section>
+
+		<UpcomingMemberPanel shifts={upcomingMemberShifts} projects={upcomingProjects} />
 
 		<section class="portal-section" id="portal-areas" aria-labelledby="portal-title">
 			<div class="section-heading">
