@@ -541,9 +541,38 @@ h2 {
 
 .upcoming-member-grid {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: 1rem;
 	margin-top: 1.25rem;
+}
+
+.upcoming-summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	margin-top: 1.25rem;
+	border-block: 1px solid #ded7cb;
+}
+
+.upcoming-summary > div {
+	display: flex;
+	align-items: baseline;
+	gap: 0.55rem;
+	padding: 0.8rem 1rem;
+}
+
+.upcoming-summary > div + div {
+	border-left: 1px solid #ded7cb;
+}
+
+.upcoming-summary strong {
+	color: #194639;
+	font-size: 1.45rem;
+}
+
+.upcoming-summary span {
+	color: #69716c;
+	font-size: 0.72rem;
+	font-weight: 700;
 }
 
 .upcoming-group {
@@ -572,13 +601,15 @@ h2 {
 }
 
 .upcoming-shift-list,
-.upcoming-project-list {
+.upcoming-project-list,
+.upcoming-open-shift-list {
 	display: grid;
 	gap: 0.5rem;
 }
 
 .upcoming-shift-list > a,
-.upcoming-project-list > a {
+.upcoming-project-list > a,
+.upcoming-open-shift-list > a {
 	display: grid;
 	align-items: center;
 	gap: 0.75rem;
@@ -598,22 +629,29 @@ h2 {
 	grid-template-columns: 3.8rem minmax(0, 1fr) auto;
 }
 
+.upcoming-open-shift-list > a {
+	grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .upcoming-shift-list time,
-.upcoming-project-list time {
+.upcoming-project-list time,
+.upcoming-open-shift-list time {
 	color: #6d756f;
 	font-size: 0.7rem;
 	font-weight: 700;
 }
 
 .upcoming-shift-list div,
-.upcoming-project-list div {
+.upcoming-project-list div,
+.upcoming-open-shift-list div {
 	display: grid;
 	min-width: 0;
 	gap: 0.15rem;
 }
 
 .upcoming-shift-list div > span,
-.upcoming-project-list div > span {
+.upcoming-project-list div > span,
+.upcoming-open-shift-list div > span {
 	overflow: hidden;
 	color: #6d756f;
 	font-size: 0.72rem;
@@ -653,6 +691,28 @@ h2 {
 .role-project {
 	background: #e6dff2;
 	color: #59427b;
+}
+
+.upcoming-action-group {
+	background: #e5eee8;
+}
+
+.upcoming-action-label {
+	padding: 0.42rem 0.65rem;
+	border-radius: 999px;
+	background: #194639;
+	color: #fff !important;
+	font-size: 0.68rem !important;
+	font-weight: 800;
+	white-space: nowrap;
+}
+
+.upcoming-empty {
+	margin: 0;
+	padding: 1rem 0.25rem;
+	color: #69716c;
+	font-size: 0.82rem;
+	line-height: 1.5;
 }
 
 .foundation-grid {

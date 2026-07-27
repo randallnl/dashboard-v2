@@ -3,11 +3,17 @@
 
 	let {
 		shifts,
-		projects
+		projects,
+		availableShifts
 	}: {
 		shifts: Shift[];
 		projects: UpcomingProjectAssignment[];
+		availableShifts: Shift[];
 	} = $props();
+
+	const visibleShifts = $derived(shifts.slice(0, 3));
+	const visibleProjects = $derived(projects.slice(0, 3));
+	const visibleOpenShifts = $derived(availableShifts.slice(0, 3));
 
 	function dateLabel(value: string): string {
 		const parsed = new Date(`${value}T12:00:00Z`);
@@ -33,68 +39,98 @@
 	}
 </script>
 
-{#if shifts.length || projects.length}
-	<section class="upcoming-member-panel" aria-labelledby="coming-up-title">
-		<div class="section-heading compact">
-			<div>
-				<p class="eyebrow">Your schedule</p>
-				<h2 id="coming-up-title">Coming up</h2>
+<section class="upcoming-member-panel" aria-labelledby="coming-up-title">
+	<div class="section-heading compact">
+		<div>
+			<p class="eyebrow">Your week</p>
+			<h2 id="coming-up-title">What’s next</h2>
+		</div>
+		<p>Your commitments and the next ways to participate.</p>
+	</div>
+
+	<div class="upcoming-summary" aria-label="Upcoming summary">
+		<div><strong>{shifts.length}</strong><span>Assigned shifts</span></div>
+		<div><strong>{projects.length}</strong><span>Projects and events</span></div>
+		<div><strong>{availableShifts.length}</strong><span>Open shifts</span></div>
+	</div>
+
+	<div class="upcoming-member-grid">
+		<div class="upcoming-group">
+			<div class="upcoming-group-heading">
+				<h3>Your shifts</h3>
+				<a href="#calendar">View calendar</a>
 			</div>
-			<p>Your next shifts, hosted projects, and volunteer commitments.</p>
+			{#if visibleShifts.length}
+				<div class="upcoming-shift-list">
+					{#each visibleShifts as shift (shift.id)}
+						<a href="#calendar">
+							<time datetime={shift.dateValue}>{dateLabel(shift.dateValue)}</time>
+							<div>
+								<strong>{shift.title}</strong>
+								<span>{shift.timeLabel || shift.dateLabel}</span>
+							</div>
+						</a>
+					{/each}
+				</div>
+			{:else}
+				<p class="upcoming-empty">You don’t have an upcoming CoLab shift.</p>
+			{/if}
 		</div>
 
-		<div class="upcoming-member-grid">
-			{#if shifts.length}
-				<div class="upcoming-group">
-					<div class="upcoming-group-heading">
-						<h3>CoLab shifts</h3>
-						<a href="#calendar">View calendar</a>
-					</div>
-					<div class="upcoming-shift-list">
-						{#each shifts as shift (shift.id)}
-							<a href="#calendar">
+		<div class="upcoming-group">
+			<div class="upcoming-group-heading">
+				<h3>Your projects</h3>
+				<a href="#calendar">View calendar</a>
+			</div>
+			{#if visibleProjects.length}
+				<div class="upcoming-project-list">
+					{#each visibleProjects as assignment (`${assignment.record.source}:${assignment.record.id}`)}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={`/items/${assignment.record.source}/${assignment.record.id}`}>
+							{#if safeImage(assignment.record)}
+								<img src={safeImage(assignment.record)} alt="" />
+							{:else}
+								<span class="upcoming-project-placeholder" aria-hidden="true">
+									{assignment.record.source === 'project' ? 'P' : 'E'}
+								</span>
+							{/if}
+							<div>
+								<time datetime={assignment.record.dateValue}>
+									{dateLabel(assignment.record.dateValue)}
+								</time>
+								<strong>{assignment.record.title}</strong>
+								<span>{assignment.record.location || assignment.record.status}</span>
+							</div>
+							<span class="upcoming-role role-project">{assignment.roles.join(' · ')}</span>
+						</a>
+					{/each}
+				</div>
+			{:else}
+				<p class="upcoming-empty">You aren’t assigned to an upcoming project or event.</p>
+			{/if}
+		</div>
+
+		<div class="upcoming-group upcoming-action-group">
+			<div class="upcoming-group-heading">
+				<h3>Ways to help</h3>
+				<a href="#available-shifts-title">See all</a>
+			</div>
+			{#if visibleOpenShifts.length}
+				<div class="upcoming-open-shift-list">
+					{#each visibleOpenShifts as shift (shift.id)}
+						<a href="#available-shifts-title">
+							<div>
 								<time datetime={shift.dateValue}>{dateLabel(shift.dateValue)}</time>
-								<div>
-									<strong>{shift.title}</strong>
-									<span>{shift.timeLabel || shift.dateLabel}</span>
-								</div>
-								<span class="upcoming-role role-shift">Your shift</span>
-							</a>
-						{/each}
-					</div>
+								<strong>{shift.title}</strong>
+								<span>{shift.timeLabel || shift.dateLabel}</span>
+							</div>
+							<span class="upcoming-action-label">Sign up</span>
+						</a>
+					{/each}
 				</div>
-			{/if}
-
-			{#if projects.length}
-				<div class="upcoming-group">
-					<div class="upcoming-group-heading">
-						<h3>Projects and events</h3>
-						<a href="#calendar">View calendar</a>
-					</div>
-					<div class="upcoming-project-list">
-						{#each projects as assignment (`${assignment.record.source}:${assignment.record.id}`)}
-							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-							<a href={`/items/${assignment.record.source}/${assignment.record.id}`}>
-								{#if safeImage(assignment.record)}
-									<img src={safeImage(assignment.record)} alt="" />
-								{:else}
-									<span class="upcoming-project-placeholder" aria-hidden="true">
-										{assignment.record.source === 'project' ? 'P' : 'E'}
-									</span>
-								{/if}
-								<div>
-									<time datetime={assignment.record.dateValue}>
-										{dateLabel(assignment.record.dateValue)}
-									</time>
-									<strong>{assignment.record.title}</strong>
-									<span>{assignment.record.location || assignment.record.status}</span>
-								</div>
-								<span class="upcoming-role role-project">{assignment.roles.join(' · ')}</span>
-							</a>
-						{/each}
-					</div>
-				</div>
+			{:else}
+				<p class="upcoming-empty">All currently listed shifts are covered.</p>
 			{/if}
 		</div>
-	</section>
-{/if}
+	</div>
+</section>

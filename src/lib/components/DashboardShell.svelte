@@ -100,6 +100,12 @@
 			<span class="membership-pill">{member.membershipType || 'CoLab Member'}</span>
 		</section>
 
+		<UpcomingMemberPanel
+			shifts={upcomingMemberShifts}
+			projects={upcomingProjects}
+			availableShifts={initialAvailableShifts}
+		/>
+
 		<article class="resources-card dashboard-top-resources" id="resources">
 			<p class="eyebrow">Quick links</p>
 			<h2>Resources</h2>
@@ -126,8 +132,6 @@
 				{/if}
 			</div>
 		</article>
-
-		<UpcomingMemberPanel shifts={upcomingMemberShifts} projects={upcomingProjects} />
 
 		<section class="portal-section" id="portal-areas" aria-labelledby="portal-title">
 			<div class="section-heading">
