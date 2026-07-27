@@ -1503,8 +1503,26 @@ h2 {
 	gap: 2rem;
 	margin: 2rem 0;
 	padding: clamp(1.5rem, 4vw, 3rem);
+	min-height: clamp(18rem, 36vw, 30rem);
 	border-radius: 1.2rem;
 	background: #e8eee8;
+}
+
+.item-dashboard > header.has-hero-image {
+	align-items: end;
+	color: #fff;
+	background-position: center;
+	background-size: cover;
+	box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%);
+}
+
+.item-dashboard > header.has-hero-image .eyebrow {
+	color: #dcebe3;
+}
+
+.item-dashboard > header.has-hero-image .project-pill {
+	border-color: rgb(255 255 255 / 35%);
+	box-shadow: 0 0.2rem 0.8rem rgb(0 0 0 / 18%);
 }
 
 .item-dashboard > header > div {

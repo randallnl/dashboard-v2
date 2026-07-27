@@ -54,6 +54,11 @@
 			? (data.record.record.attachments as EventAttachment[])
 			: []
 	);
+	const heroImage = $derived(
+		data.record.source === 'project'
+			? (attachments.find((attachment) => attachment.isImage && safeUrl(attachment.url))?.url ?? '')
+			: ''
+	);
 
 	function label(key: string): string {
 		return key
@@ -181,7 +186,12 @@
 
 <main class="item-dashboard" id="main-content">
 	<a href={resolve('/#calendar')}>← Back to dashboard</a>
-	<header>
+	<header
+		class:has-hero-image={Boolean(heroImage)}
+		style:background-image={heroImage
+			? `linear-gradient(90deg, rgba(18, 30, 25, 0.88) 0%, rgba(18, 30, 25, 0.7) 52%, rgba(18, 30, 25, 0.3) 100%), url("${safeUrl(heroImage)}")`
+			: undefined}
+	>
 		<div>
 			<p class="eyebrow">{data.record.source} dashboard</p>
 			<h1>{data.record.title}</h1>
