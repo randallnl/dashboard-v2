@@ -100,6 +100,33 @@
 			<span class="membership-pill">{member.membershipType || 'CoLab Member'}</span>
 		</section>
 
+		<article class="resources-card dashboard-top-resources" id="resources">
+			<p class="eyebrow">Quick links</p>
+			<h2>Resources</h2>
+			<div class="resource-links">
+				{#if capabilities.canSubmitCommunityEvents}
+					<a href="https://wkf.ms/4aSHDGu" target="_blank" rel="noreferrer">
+						<span>Submit a community-led event</span><span aria-hidden="true">↗</span>
+					</a>
+				{/if}
+				<a href="mailto:Randall@queerlective.com">
+					<span>Contact CoLab support</span><span aria-hidden="true">→</span>
+				</a>
+				{#if websiteUrl}
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href={websiteUrl} target="_blank" rel="noreferrer">
+						<span>Your website</span><span aria-hidden="true">↗</span>
+					</a>
+				{/if}
+				{#if creativeGroundUrl}
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href={creativeGroundUrl} target="_blank" rel="noreferrer">
+						<span>Your CreativeGround profile</span><span aria-hidden="true">↗</span>
+					</a>
+				{/if}
+			</div>
+		</article>
+
 		<UpcomingMemberPanel shifts={upcomingMemberShifts} projects={upcomingProjects} />
 
 		<section class="portal-section" id="portal-areas" aria-labelledby="portal-title">
@@ -163,7 +190,7 @@
 
 		<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />
 
-		<section class="member-details-grid" aria-label="Member identity and resources">
+		<section class="member-details-grid profile-only" aria-label="Member identity">
 			<article class="profile-card">
 				<div class="section-heading compact">
 					<div>
@@ -201,33 +228,6 @@
 						message="Additional profile details can be added through the CoLab team."
 					/>
 				{/if}
-			</article>
-
-			<article class="resources-card" id="resources">
-				<p class="eyebrow">Quick links</p>
-				<h2>Resources</h2>
-				<div class="resource-links">
-					{#if capabilities.canSubmitCommunityEvents}
-						<a href="https://wkf.ms/4aSHDGu" target="_blank" rel="noreferrer">
-							<span>Submit a community-led event</span><span aria-hidden="true">↗</span>
-						</a>
-					{/if}
-					<a href="mailto:Randall@queerlective.com">
-						<span>Contact CoLab support</span><span aria-hidden="true">→</span>
-					</a>
-					{#if websiteUrl}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={websiteUrl} target="_blank" rel="noreferrer">
-							<span>Your website</span><span aria-hidden="true">↗</span>
-						</a>
-					{/if}
-					{#if creativeGroundUrl}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={creativeGroundUrl} target="_blank" rel="noreferrer">
-							<span>Your CreativeGround profile</span><span aria-hidden="true">↗</span>
-						</a>
-					{/if}
-				</div>
 			</article>
 		</section>
 

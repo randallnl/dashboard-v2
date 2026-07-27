@@ -1663,6 +1663,33 @@ h2 {
 	text-decoration: none;
 }
 
+.item-previews a.link-calendar {
+	border-color: #9ec5dc;
+	background: #e4f3fb;
+	color: #185675;
+}
+
+.item-previews a.link-calendar span {
+	color: #47758b;
+}
+
+.item-previews a.link-monday {
+	border-color: #c9b8e8;
+	background: #eee8fa;
+	color: #563e86;
+}
+
+.item-previews a.link-monday span {
+	color: #76629c;
+}
+
+.item-previews a.link-calendar:hover,
+.item-previews a.link-monday:hover {
+	border-color: currentColor;
+	box-shadow: 0 0.35rem 1rem rgb(23 37 30 / 10%);
+	transform: translateY(-1px);
+}
+
 .item-previews img {
 	width: 100%;
 	aspect-ratio: 16 / 9;
@@ -2027,6 +2054,10 @@ h2 {
 	margin-top: 4rem;
 }
 
+.member-details-grid.profile-only {
+	grid-template-columns: 1fr;
+}
+
 .profile-card,
 .resources-card,
 .admin-card {
@@ -2078,6 +2109,10 @@ h2 {
 .resources-card {
 	scroll-margin-top: 2rem;
 	background: #e8eee8;
+}
+
+.dashboard-top-resources {
+	margin-top: 1rem;
 }
 
 .resource-links {

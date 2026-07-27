@@ -252,14 +252,21 @@
 						<span>{new URL(safeUrl(attachment.url)).hostname} ↗</span>
 					</a>
 				{/each}
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				{#each entries.filter(([, value]) => safeUrl(value)) as [key, value] (key)}
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-					<a href={safeUrl(value)} target="_blank" rel="noreferrer">
+					<a
+						href={safeUrl(value)}
+						target="_blank"
+						rel="noreferrer"
+						class:link-calendar={key === 'calendarUrl'}
+						class:link-monday={key === 'mondayUrl'}
+					>
 						{#if imageUrl(value)}<img src={imageUrl(value)} alt="" />{/if}
 						<strong>{label(key)}</strong>
 						<span>{new URL(safeUrl(value)).hostname} ↗</span>
 					</a>
 				{/each}
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			</div>
 		</article>
 	</section>
