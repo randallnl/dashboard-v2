@@ -9,6 +9,7 @@ const COLUMNS = {
 	donorEmail: 'text_mm2f5770',
 	campaignId: 'text_mm2fnp7s',
 	eventTitle: 'text_mm2fb4c7',
+	ticketType: 'text_mm5n53e0',
 	transactionDate: 'text_mm35qyja'
 } as const;
 
@@ -52,6 +53,7 @@ export function mapGivebutterSignup(item: Item, syncedAt: string): GivebutterSig
 		donorEmail: normalizeEmail(text(columns, COLUMNS.donorEmail)),
 		campaignId: text(columns, COLUMNS.campaignId),
 		eventTitle: text(columns, COLUMNS.eventTitle),
+		ticketType: text(columns, COLUMNS.ticketType),
 		transactionDate: text(columns, COLUMNS.transactionDate),
 		syncedAt
 	};

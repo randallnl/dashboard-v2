@@ -64,9 +64,18 @@
 			? (attachments.find((attachment) => attachment.isImage && safeUrl(attachment.url))?.url ?? '')
 			: ''
 	);
-	const tasks = $derived(
-		Array.isArray(data.record.record.tasks) ? (data.record.record.tasks as ProjectTask[]) : []
+	let tasks = $state(
+		untrack(() =>
+			Array.isArray(data.record.record.tasks) ? (data.record.record.tasks as ProjectTask[]) : []
+		)
 	);
+	let newTaskTitle = $state('');
+	let newTaskStatus = $state('');
+	let newTaskDueDate = $state('');
+	let creatingTask = $state(false);
+	let taskMessage = $state('');
+	let taskCommentBodies = $state<Record<string, string>>({});
+	let postingTaskComment = $state('');
 	const milestone = $derived.by(() => {
 		const today = new Date().toISOString().slice(0, 10);
 		const nextTask = tasks
@@ -268,6 +277,70 @@
 			savingDetails = false;
 		}
 	}
+
+	async function createTask() {
+		if (!newTaskTitle.trim()) return;
+		creatingTask = true;
+		taskMessage = '';
+		try {
+			const response = await fetch('/api/projects/tasks', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					projectId: data.record.id,
+					title: newTaskTitle,
+					status: newTaskStatus,
+					dueDate: newTaskDueDate
+				})
+			});
+			const result = (await response.json()) as { task?: ProjectTask; message?: string };
+			if (!response.ok || !result.task) {
+				throw new Error(result.message || 'Could not create the task.');
+			}
+			tasks = [...tasks, result.task];
+			newTaskTitle = '';
+			newTaskStatus = '';
+			newTaskDueDate = '';
+			taskMessage = result.message || 'Task created and confirmed by Monday.';
+		} catch (cause) {
+			taskMessage = cause instanceof Error ? cause.message : 'Could not create the task.';
+		} finally {
+			creatingTask = false;
+		}
+	}
+
+	async function postTaskComment(task: ProjectTask) {
+		const body = taskCommentBodies[task.id]?.trim() ?? '';
+		if (!body) return;
+		postingTaskComment = task.id;
+		taskMessage = '';
+		try {
+			const response = await fetch('/api/projects/tasks/comments', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ projectId: data.record.id, taskId: task.id, body })
+			});
+			const result = (await response.json()) as {
+				comment?: ProjectTask['comments'][number];
+				message?: string;
+			};
+			if (!response.ok || !result.comment) {
+				throw new Error(result.message || 'Could not post the task comment.');
+			}
+			const comment = result.comment;
+			tasks = tasks.map((candidate) =>
+				candidate.id === task.id
+					? { ...candidate, comments: [...(candidate.comments ?? []), comment] }
+					: candidate
+			);
+			taskCommentBodies = { ...taskCommentBodies, [task.id]: '' };
+			taskMessage = result.message || 'Comment confirmed by Monday.';
+		} catch (cause) {
+			taskMessage = cause instanceof Error ? cause.message : 'Could not post the task comment.';
+		} finally {
+			postingTaskComment = '';
+		}
+	}
 </script>
 
 <svelte:head><title>{data.record.title} · CoLab</title></svelte:head>
@@ -402,6 +475,34 @@
 							{/if}
 						{/each}
 					</dl>
+					{#if tasks.length}
+						<div class="overview-task-preview">
+							<div>
+								<h3>Tasks</h3>
+								<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
+							</div>
+							{#each [...tasks].filter((task) => !task.completed).slice(0, 4) as task (task.id)}
+								<article>
+									<span class="task-check" aria-hidden="true"></span>
+									<div>
+										<strong>{task.title}</strong>
+										<small>
+											{task.dueDate
+												? `Due ${dateTimeLabel(task.dueDate)}`
+												: task.status || 'No due date'}
+										</small>
+										{#if task.comments?.length}
+											<p class="overview-task-comment">
+												<strong>{task.comments.at(-1)?.author}:</strong>
+												{task.comments.at(-1)?.body}
+											</p>
+										{/if}
+									</div>
+								</article>
+							{/each}
+							<button type="button" onclick={() => (activeTab = 'schedule')}>View all tasks</button>
+						</div>
+					{/if}
 				{/if}
 				{#if editMessage}<p role="status">{editMessage}</p>{/if}
 			</article>
@@ -434,6 +535,9 @@
 					{/if}
 				</dl>
 			</article>
+		</section>
+		<section class="overview-comments workspace-panel">
+			<ItemComments source={data.record.source} eventId={data.record.id} readOnly={data.readOnly} />
 		</section>
 	{/if}
 
@@ -494,6 +598,40 @@
 						<span>End</span><strong>{dateTimeLabel(data.record.endDateValue)}</strong>
 					</li>{/if}
 			</ol>
+			{#if data.canEdit && data.record.source === 'project'}
+				<form
+					class="task-create-form"
+					onsubmit={(event) => {
+						event.preventDefault();
+						void createTask();
+					}}
+				>
+					<div class="project-task-heading">
+						<h3>Add a task</h3>
+						<span>Creates a Monday subitem</span>
+					</div>
+					<label
+						><span>Task name</span><input
+							bind:value={newTaskTitle}
+							required
+							maxlength="255"
+						/></label
+					>
+					<div>
+						<label
+							><span>Status</span><input
+								bind:value={newTaskStatus}
+								placeholder="Not started"
+							/></label
+						>
+						<label><span>Due date</span><input bind:value={newTaskDueDate} type="date" /></label>
+					</div>
+					<button type="submit" disabled={creatingTask}>
+						{creatingTask ? 'Creating in Monday…' : 'Create task'}
+					</button>
+				</form>
+			{/if}
+			{#if taskMessage}<p class="task-message" role="status">{taskMessage}</p>{/if}
 			{#if tasks.length}
 				<div class="project-task-heading">
 					<h3>Project tasks</h3>
@@ -525,6 +663,43 @@
 										{/each}
 									</div>
 								{/if}
+								<div class="task-comments">
+									{#if task.comments?.length}
+										<ul>
+											{#each task.comments.slice(-4) as comment (comment.id)}
+												<li>
+													<div>
+														<strong>{comment.author}</strong><time datetime={comment.createdAt}
+															>{dateTimeLabel(comment.createdAt)}</time
+														>
+													</div>
+													<p>{comment.body}</p>
+												</li>
+											{/each}
+										</ul>
+									{/if}
+									{#if data.canEdit}
+										<form
+											onsubmit={(event) => {
+												event.preventDefault();
+												void postTaskComment(task);
+											}}
+										>
+											<label>
+												<span>Comment on this task</span>
+												<textarea bind:value={taskCommentBodies[task.id]} rows="2" maxlength="5000"
+												></textarea>
+											</label>
+											<button
+												type="submit"
+												disabled={postingTaskComment === task.id ||
+													!taskCommentBodies[task.id]?.trim()}
+											>
+												{postingTaskComment === task.id ? 'Posting to Monday…' : 'Post comment'}
+											</button>
+										</form>
+									{/if}
+								</div>
 							</div>
 						</article>
 					{/each}
@@ -560,6 +735,7 @@
 								<th scope="col">Donor</th>
 								<th scope="col">Email</th>
 								<th scope="col">Event</th>
+								<th scope="col">Ticket type</th>
 								<th scope="col">Transaction date</th>
 							</tr>
 						</thead>
@@ -569,6 +745,7 @@
 									<td>{signup.donorName || 'Name not provided'}</td>
 									<td><a href={`mailto:${signup.donorEmail}`}>{signup.donorEmail}</a></td>
 									<td>{signup.eventTitle || data.record.title}</td>
+									<td>{signup.ticketType || 'Not specified'}</td>
 									<td>
 										<time datetime={signup.transactionDate}>
 											{dateTimeLabel(signup.transactionDate)}

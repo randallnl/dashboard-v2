@@ -82,6 +82,14 @@ export type ProjectTask = {
 	completionDate: string;
 	completed: boolean;
 	attachments: EventAttachment[];
+	comments: ProjectTaskComment[];
+};
+
+export type ProjectTaskComment = {
+	id: string;
+	body: string;
+	author: string;
+	createdAt: string;
 };
 
 export type ProjectEventRecord<T extends Record<string, unknown> = Record<string, unknown>> = {
@@ -147,6 +155,7 @@ export type GivebutterSignup = {
 	donorEmail: string;
 	campaignId: string;
 	eventTitle: string;
+	ticketType: string;
 	transactionDate: string;
 	syncedAt: string;
 };

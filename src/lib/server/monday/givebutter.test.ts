@@ -18,6 +18,7 @@ describe('Givebutter transaction mapping', () => {
 						{ id: 'text_mm2f5770', text: ' ALEX@Example.com ', value: null },
 						{ id: 'text_mm2fnp7s', text: 'campaign-42', value: null },
 						{ id: 'text_mm2fb4c7', text: 'Open Studio', value: null },
+						{ id: 'text_mm5n53e0', text: 'General admission', value: null },
 						{ id: 'text_mm35qyja', text: '2026-08-04T14:30:00Z', value: null }
 					]
 				},
@@ -29,6 +30,7 @@ describe('Givebutter transaction mapping', () => {
 			donorEmail: 'alex@example.com',
 			campaignId: 'campaign-42',
 			eventTitle: 'Open Studio',
+			ticketType: 'General admission',
 			transactionDate: '2026-08-04T14:30:00Z',
 			syncedAt: '2026-08-04T15:00:00Z'
 		});

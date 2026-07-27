@@ -7,6 +7,7 @@ type SignupRow = {
 	donor_email: string;
 	campaign_id: string;
 	event_title: string;
+	ticket_type: string;
 	transaction_date: string;
 	synced_at: string;
 };
@@ -18,6 +19,7 @@ function mapSignup(row: SignupRow): GivebutterSignup {
 		donorEmail: row.donor_email,
 		campaignId: row.campaign_id,
 		eventTitle: row.event_title,
+		ticketType: row.ticket_type,
 		transactionDate: row.transaction_date,
 		syncedAt: row.synced_at
 	};
@@ -30,13 +32,14 @@ export class GivebutterRepository {
 		await this.db
 			.prepare(
 				`INSERT INTO givebutter_signups (
-					id, donor_name, donor_email, campaign_id, event_title, transaction_date, synced_at
-				) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+					id, donor_name, donor_email, campaign_id, event_title, ticket_type, transaction_date, synced_at
+				) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
 				ON CONFLICT(id) DO UPDATE SET
 					donor_name = excluded.donor_name,
 					donor_email = excluded.donor_email,
 					campaign_id = excluded.campaign_id,
 					event_title = excluded.event_title,
+					ticket_type = excluded.ticket_type,
 					transaction_date = excluded.transaction_date,
 					synced_at = excluded.synced_at`
 			)
@@ -46,6 +49,7 @@ export class GivebutterRepository {
 				signup.donorEmail,
 				signup.campaignId,
 				signup.eventTitle,
+				signup.ticketType,
 				signup.transactionDate,
 				signup.syncedAt
 			)

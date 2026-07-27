@@ -115,6 +115,15 @@ describe('Monday event mapping', () => {
 					{
 						id: 'task-1',
 						name: 'Confirm transportation',
+						updates: [
+							{
+								id: 'task-update-1',
+								text_body: 'Bus quote received.',
+								created_at: '2026-07-28T10:00:00.000Z',
+								creator_id: 'user-1',
+								creator: { name: 'Alex Morgan' }
+							}
+						],
 						column_values: [
 							{ id: 'person', text: 'Alex Morgan', value: null },
 							{ id: 'status', text: 'Working on it', value: null },
@@ -134,7 +143,8 @@ describe('Monday event mapping', () => {
 				owner: 'Alex Morgan',
 				status: 'Working on it',
 				dueDate: '2026-08-02',
-				completed: false
+				completed: false,
+				comments: [expect.objectContaining({ id: 'task-update-1', body: 'Bus quote received.' })]
 			})
 		]);
 	});
@@ -242,6 +252,43 @@ describe('Monday event mapping', () => {
 					}
 				})
 			})
+		);
+	});
+
+	it('creates project tasks and task comments in Monday', async () => {
+		const request = vi
+			.fn()
+			.mockResolvedValueOnce({ create_subitem: { id: 'task-1', name: 'Book the bus' } })
+			.mockResolvedValueOnce({
+				create_update: {
+					id: 'update-1',
+					text_body: 'Bus booked.',
+					created_at: '2026-07-28T12:00:00.000Z',
+					creator: { name: 'Alex Morgan' }
+				}
+			});
+		const directory = new EventDirectory({ request } as unknown as MondayClient);
+
+		await expect(
+			directory.createProjectTask('project-1', {
+				title: 'Book the bus',
+				status: 'Not started',
+				dueDate: '2026-08-02'
+			})
+		).resolves.toEqual({ id: 'task-1', title: 'Book the bus' });
+		await expect(directory.createTaskComment('task-1', 'Bus booked.')).resolves.toMatchObject({
+			id: 'update-1',
+			body: 'Bus booked.'
+		});
+		expect(request).toHaveBeenNthCalledWith(
+			1,
+			expect.stringContaining('create_subitem'),
+			expect.objectContaining({ parentItemId: 'project-1' })
+		);
+		expect(request).toHaveBeenNthCalledWith(
+			2,
+			expect.stringContaining('create_update'),
+			expect.objectContaining({ itemId: 'task-1' })
 		);
 	});
 });

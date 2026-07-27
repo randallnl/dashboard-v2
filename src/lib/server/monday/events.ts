@@ -117,6 +117,10 @@ const INITIAL = `
 					}
 					subitems {
 						id name
+						updates(limit: 100) {
+							id text_body created_at creator_id creator { name }
+							replies { id text_body created_at creator_id creator { name } }
+						}
 						column_values(ids: ["person", "status", "date_mm0yt95b", "date0", "file_mm196z8c"]) {
 							id text value
 							... on FileValue {
@@ -163,6 +167,10 @@ const NEXT = `
 				}
 				subitems {
 					id name
+					updates(limit: 100) {
+						id text_body created_at creator_id creator { name }
+						replies { id text_body created_at creator_id creator { name } }
+					}
 					column_values(ids: ["person", "status", "date_mm0yt95b", "date0", "file_mm196z8c"]) {
 						id text value
 						... on FileValue {
@@ -203,6 +211,25 @@ const UPDATE_ITEM = `
 			column_values: $columnValues
 			create_labels_if_missing: true
 		) { id name }
+	}
+`;
+
+const CREATE_SUBITEM = `
+	mutation CreateProjectTask($parentItemId: ID!, $itemName: String!, $columnValues: JSON!) {
+		create_subitem(
+			parent_item_id: $parentItemId
+			item_name: $itemName
+			column_values: $columnValues
+			create_labels_if_missing: true
+		) { id name }
+	}
+`;
+
+const CREATE_UPDATE = `
+	mutation CreateTaskComment($itemId: ID!, $body: String!) {
+		create_update(item_id: $itemId, body: $body) {
+			id text_body created_at creator { name }
+		}
 	}
 `;
 
@@ -291,7 +318,18 @@ function projectTasks(item: Item): ProjectTask[] {
 			dueDate: date(columns, TASK_COLUMNS.dueDate),
 			completionDate,
 			completed: Boolean(completionDate) || /^(?:complete|completed|done)$/iu.test(status),
-			attachments: attachments(columns, TASK_COLUMNS.files)
+			attachments: attachments(columns, TASK_COLUMNS.files),
+			comments: mondayUpdates(subitem).map((update) => {
+				const dashboardAuthor = update.textBody.match(/^\[CoLab member: ([^\]]+)\]\s*/u);
+				return {
+					id: update.id,
+					body: dashboardAuthor
+						? update.textBody.slice(dashboardAuthor[0].length)
+						: update.textBody,
+					author: dashboardAuthor?.[1]?.trim() || update.creatorName,
+					createdAt: update.createdAt
+				};
+			})
 		};
 	});
 }
@@ -477,5 +515,42 @@ export class EventDirectory {
 				[PROJECT_COLUMNS.attendees]: { labels }
 			})
 		});
+	}
+
+	async createProjectTask(
+		projectId: string,
+		input: { title: string; status: string; dueDate: string }
+	): Promise<{ id: string; title: string }> {
+		const columnValues: Record<string, unknown> = {};
+		if (input.status) columnValues[TASK_COLUMNS.status] = { label: input.status };
+		if (input.dueDate) columnValues[TASK_COLUMNS.dueDate] = { date: input.dueDate };
+		const result = await this.monday.request<{
+			create_subitem: { id: string; name: string };
+		}>(CREATE_SUBITEM, {
+			parentItemId: projectId,
+			itemName: input.title,
+			columnValues: JSON.stringify(columnValues)
+		});
+		return { id: result.create_subitem.id, title: result.create_subitem.name };
+	}
+
+	async createTaskComment(
+		taskId: string,
+		body: string
+	): Promise<{ id: string; body: string; author: string; createdAt: string }> {
+		const result = await this.monday.request<{
+			create_update: {
+				id: string;
+				text_body: string | null;
+				created_at: string | null;
+				creator: { name: string | null } | null;
+			};
+		}>(CREATE_UPDATE, { itemId: taskId, body });
+		return {
+			id: result.create_update.id,
+			body: result.create_update.text_body?.trim() || body,
+			author: result.create_update.creator?.name?.trim() || 'Monday user',
+			createdAt: result.create_update.created_at || new Date().toISOString()
+		};
 	}
 }
