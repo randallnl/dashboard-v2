@@ -78,6 +78,15 @@ export function requireAdmin(context: Pick<MemberContext, 'viewerCapabilities'>)
 	}
 }
 
+export function requireProjectManager(
+	context: Pick<MemberContext, 'viewerCapabilities' | 'isViewingAs'>
+): void {
+	requireWritableMemberView(context);
+	if (!context.viewerCapabilities.canManageProjects) {
+		error(403, 'Project management access required');
+	}
+}
+
 export function requireWritableMemberView(context: Pick<MemberContext, 'isViewingAs'>): void {
 	if (context.isViewingAs) {
 		error(403, 'This action is disabled while viewing as another member.');

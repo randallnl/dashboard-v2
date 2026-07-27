@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ContentState from '$lib/components/ContentState.svelte';
 	import type { ProjectEventRecord } from '$lib/types/domain';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	type Page = {
@@ -12,10 +12,11 @@
 		statuses: string[];
 	};
 
+	let { isAdmin = false }: { isAdmin?: boolean } = $props();
 	let records = $state<ProjectEventRecord[]>([]);
 	let statuses = $state<string[]>([]);
 	let search = $state('');
-	let source = $state('');
+	let source = $state(untrack(() => (isAdmin ? '' : 'project')));
 	let status = $state('');
 	let sort = $state('upcoming');
 	let from = $state(new Date().toISOString().slice(0, 10));
@@ -139,15 +140,17 @@
 <section class="admin-projects" id="admin" aria-labelledby="admin-projects-title">
 	<div class="section-heading">
 		<div>
-			<p class="eyebrow">Administrator workspace</p>
-			<h2 id="admin-projects-title">Projects and events</h2>
+			<p class="eyebrow">{isAdmin ? 'Administrator workspace' : 'Project workspace'}</p>
+			<h2 id="admin-projects-title">{isAdmin ? 'Projects and events' : 'Projects'}</h2>
 		</div>
-		<div class="admin-sync-controls">
-			<p class="automatic-sync-note">Updates automatically every 15 minutes.</p>
-			<button type="button" class="secondary-button" onclick={syncNow} disabled={syncing}>
-				{syncing ? 'Syncing D1…' : 'Sync D1 now'}
-			</button>
-		</div>
+		{#if isAdmin}
+			<div class="admin-sync-controls">
+				<p class="automatic-sync-note">Updates automatically every 15 minutes.</p>
+				<button type="button" class="secondary-button" onclick={syncNow} disabled={syncing}>
+					{syncing ? 'Syncing D1…' : 'Sync D1 now'}
+				</button>
+			</div>
+		{/if}
 	</div>
 
 	{#if syncMessage}
@@ -164,14 +167,16 @@
 				placeholder="Title, owner, location"
 			/></label
 		>
-		<label>
-			<span>Source</span>
-			<select bind:value={source}>
-				<option value="">All sources</option>
-				<option value="project">Project management</option>
-				<option value="community">Community submissions</option>
-			</select>
-		</label>
+		{#if isAdmin}
+			<label>
+				<span>Source</span>
+				<select bind:value={source}>
+					<option value="">All sources</option>
+					<option value="project">Project management</option>
+					<option value="community">Community submissions</option>
+				</select>
+			</label>
+		{/if}
 		<label>
 			<span>Status</span>
 			<select bind:value={status}>

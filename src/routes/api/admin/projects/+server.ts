@@ -1,4 +1,4 @@
-import { loadMemberContext, requireAdmin } from '$lib/server/auth/member-context';
+import { loadMemberContext, requireProjectManager } from '$lib/server/auth/member-context';
 import { ProjectEventRepository } from '$lib/server/db';
 import type { ProjectEventSort } from '$lib/server/db/project-repository';
 import type { ProjectEventSource } from '$lib/types/domain';
@@ -10,9 +10,10 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 export const GET: RequestHandler = async ({ locals, platform, url }) => {
 	const env = platform?.env;
 	const context = await loadMemberContext({ session: locals.session, env });
-	requireAdmin(context);
+	requireProjectManager(context);
 
-	const sourceValue = url.searchParams.get('source')?.trim() ?? '';
+	const requestedSource = url.searchParams.get('source')?.trim() ?? '';
+	const sourceValue = context.viewerCapabilities.isAdmin ? requestedSource : 'project';
 	if (sourceValue && sourceValue !== 'project' && sourceValue !== 'community') {
 		error(400, 'Source must be project or community.');
 	}

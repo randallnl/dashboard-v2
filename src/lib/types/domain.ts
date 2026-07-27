@@ -21,6 +21,7 @@ export type MemberCapabilities = {
 	isAdmin: boolean;
 	isRetailOnly: boolean;
 	canViewAdminTools: boolean;
+	canManageProjects: boolean;
 	canViewShifts: boolean;
 	canViewOpenOrders: boolean;
 	canSubmitCommunityEvents: boolean;

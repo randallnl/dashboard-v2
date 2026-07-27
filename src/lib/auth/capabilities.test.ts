@@ -24,4 +24,17 @@ describe('memberCapabilities', () => {
 		expect(capabilities.canViewShifts).toBe(true);
 		expect(capabilities.canVote).toBe(true);
 	});
+
+	it.each(['Admin', 'Key Holder', 'Keyholder', 'CoLab Member', 'Volunteer'])(
+		'grants project management to %s',
+		(membershipType) => {
+			expect(memberCapabilities({ membershipType }).canManageProjects).toBe(true);
+		}
+	);
+
+	it('does not grant project management to retail-only members', () => {
+		expect(memberCapabilities({ membershipType: 'Retail Only Member' }).canManageProjects).toBe(
+			false
+		);
+	});
 });

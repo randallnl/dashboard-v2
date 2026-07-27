@@ -1,4 +1,4 @@
-import { loadMemberContext, requireAdmin } from '$lib/server/auth/member-context';
+import { loadMemberContext, requireProjectManager } from '$lib/server/auth/member-context';
 import { MemberRepository, ProjectEventRepository, VolunteerRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { attendeeEmails, EventDirectory } from '$lib/server/monday/events';
@@ -8,7 +8,7 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform!.env;
 	const context = await loadMemberContext({ session: locals.session, env });
-	requireAdmin(context);
+	requireProjectManager(context);
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const eventId = typeof body?.eventId === 'string' ? body.eventId.trim() : '';
 	const memberId = typeof body?.memberId === 'string' ? body.memberId.trim() : '';

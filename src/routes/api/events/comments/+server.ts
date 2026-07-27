@@ -19,7 +19,12 @@ async function requestedRecord(
 		source as ProjectEventSource,
 		eventId
 	);
-	if (!record || (record.adminOnly && !context.viewerCapabilities.isAdmin)) {
+	if (
+		!record ||
+		(record.adminOnly &&
+			!context.viewerCapabilities.isAdmin &&
+			!(record.source === 'project' && context.viewerCapabilities.canManageProjects))
+	) {
 		error(404, 'Project or event not found.');
 	}
 	if (context.capabilities.isRetailOnly && record.source === 'community') {

@@ -13,7 +13,17 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 	}
 	const source = params.source as ProjectEventSource;
 	const record = await new ProjectEventRepository(platform!.env.DB).findById(source, params.id);
-	if (!record || (record.adminOnly && !layout.viewerCapabilities.isAdmin)) {
+	const canEdit =
+		!layout.isViewingAs &&
+		(source === 'project'
+			? layout.viewerCapabilities.canManageProjects
+			: layout.viewerCapabilities.isAdmin);
+	if (
+		!record ||
+		(record.adminOnly &&
+			!layout.viewerCapabilities.isAdmin &&
+			!(source === 'project' && layout.viewerCapabilities.canManageProjects))
+	) {
 		error(404, 'Project or event not found');
 	}
 	if (layout.capabilities.isRetailOnly && record.source === 'community') {
@@ -39,6 +49,7 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		member: layout.member,
 		capabilities: layout.capabilities,
 		isAdmin: layout.viewerCapabilities.isAdmin && !layout.isViewingAs,
+		canEdit,
 		readOnly: layout.isViewingAs
 	};
 };

@@ -35,7 +35,8 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
 		const [records, hostKeys, volunteerKeys] = await Promise.all([
 			new ProjectEventRepository(db).list({
 				fromDate: today,
-				includeAdminOnly: layout.viewerCapabilities.isAdmin
+				includeAdminOnly:
+					layout.viewerCapabilities.isAdmin || layout.viewerCapabilities.canManageProjects
 			}),
 			new HostRepository(db).listKeysForMember(layout.member.id),
 			new VolunteerRepository(db).listKeysForMember(layout.member.id)

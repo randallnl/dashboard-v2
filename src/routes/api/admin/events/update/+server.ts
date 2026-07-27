@@ -1,4 +1,8 @@
-import { loadMemberContext, requireAdmin } from '$lib/server/auth/member-context';
+import {
+	loadMemberContext,
+	requireAdmin,
+	requireProjectManager
+} from '$lib/server/auth/member-context';
 import { ProjectEventRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { EventDirectory, type ProjectEventUpdate } from '$lib/server/monday/events';
@@ -11,11 +15,12 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform!.env;
 	const context = await loadMemberContext({ session: locals.session, env });
-	requireAdmin(context);
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const source = body?.source === 'project' || body?.source === 'community' ? body.source : null;
 	const eventId = typeof body?.eventId === 'string' ? body.eventId.trim() : '';
 	if (!source || !eventId) error(400, 'A valid project or event is required.');
+	if (source === 'project') requireProjectManager(context);
+	else requireAdmin(context);
 
 	const repository = new ProjectEventRepository(env.DB);
 	const existing = await repository.findById(source, eventId);

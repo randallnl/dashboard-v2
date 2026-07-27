@@ -69,7 +69,7 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 		new ProjectEventRepository(env!.DB).listForCalendar(
 			bounds.from,
 			bounds.through,
-			context.capabilities.isAdmin
+			context.capabilities.isAdmin || context.capabilities.canManageProjects
 		),
 		new VolunteerRepository(env!.DB).listKeysForMember(context.member.id),
 		new HostRepository(env!.DB).listKeysForMember(context.member.id)

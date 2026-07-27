@@ -321,7 +321,7 @@
 		</section>
 	{/if}
 
-	{#if data.isAdmin}
+	{#if data.canEdit}
 		<details class="event-editor">
 			<summary>
 				<span>Edit project or event</span>

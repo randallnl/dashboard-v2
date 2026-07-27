@@ -25,7 +25,9 @@
 		{#if capabilities.canViewCalendar}<a href={resolve('/#calendar')}>Calendar</a>{/if}
 		<a class="nav-active" href="#main-content">Project</a>
 		<a href={resolve('/#resources')}>Resources</a>
-		{#if capabilities.canViewAdminTools}<a href={resolve('/#admin')}>Admin</a>{/if}
+		{#if capabilities.canManageProjects}
+			<a href={resolve('/#admin')}>{capabilities.isAdmin ? 'Admin' : 'Projects'}</a>
+		{/if}
 	</nav>
 	<div class="member-menu">
 		<div>

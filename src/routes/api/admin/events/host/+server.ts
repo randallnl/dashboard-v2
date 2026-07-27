@@ -1,4 +1,8 @@
-import { loadMemberContext, requireAdmin } from '$lib/server/auth/member-context';
+import {
+	loadMemberContext,
+	requireAdmin,
+	requireProjectManager
+} from '$lib/server/auth/member-context';
 import {
 	HostRepository,
 	MemberRepository,
@@ -15,7 +19,6 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform!.env;
 	const context = await loadMemberContext({ session: locals.session, env });
-	requireAdmin(context);
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const source = typeof body?.source === 'string' ? body.source : '';
 	const eventId = typeof body?.eventId === 'string' ? body.eventId.trim() : '';
@@ -23,6 +26,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	if ((source !== 'project' && source !== 'community') || !eventId || !memberId) {
 		error(400, 'A project or event and member are required.');
 	}
+	if (source === 'project') requireProjectManager(context);
+	else requireAdmin(context);
 	const projects = new ProjectEventRepository(env.DB);
 	const record = await projects.findById(source as ProjectEventSource, eventId);
 	if (!record) error(404, 'Project or event not found.');

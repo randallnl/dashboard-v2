@@ -142,8 +142,10 @@
 			{/if}
 			<a class:nav-active={activeSection === 'history'} href="#history">History</a>
 			<a class:nav-active={activeSection === 'resources'} href="#resources">Resources</a>
-			{#if viewerCapabilities.canViewAdminTools && !isViewingAs}
-				<a class:nav-active={activeSection === 'admin'} href="#admin">Admin</a>
+			{#if viewerCapabilities.canManageProjects && !isViewingAs}
+				<a class:nav-active={activeSection === 'admin'} href="#admin">
+					{viewerCapabilities.isAdmin ? 'Admin' : 'Projects'}
+				</a>
 			{/if}
 		</nav>
 		<div class="dashboard-header-actions">
@@ -315,8 +317,8 @@
 			</article>
 		</section>
 
-		{#if viewerCapabilities.canViewAdminTools && !isViewingAs}
-			<AdminProjectsPanel />
+		{#if viewerCapabilities.canManageProjects && !isViewingAs}
+			<AdminProjectsPanel isAdmin={viewerCapabilities.isAdmin} />
 		{/if}
 	</main>
 
@@ -361,7 +363,7 @@
 				<a href="#history" onclick={closeMobileMenu}>History and payments</a>
 				<a href="#resources" onclick={closeMobileMenu}>Resources</a>
 				<a href="#profile" onclick={closeMobileMenu}>Profile</a>
-				{#if viewerCapabilities.canViewAdminTools && !isViewingAs}
+				{#if viewerCapabilities.canManageProjects && !isViewingAs}
 					<a href="#admin" onclick={closeMobileMenu}>Project management</a>
 				{/if}
 			</nav>
