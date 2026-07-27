@@ -65,13 +65,13 @@
 	);
 	const milestone = $derived.by(() => {
 		const candidates = [
-			['Next milestone', field('nextMilestone')],
-			['Deadline', field('deadline')],
-			['Project start', data.record.dateValue],
-			['Project end', data.record.endDateValue]
-		].filter((entry): entry is [string, string] => Boolean(entry[1]));
+			{ label: 'Next milestone', value: field('nextMilestone'), explicit: true },
+			{ label: 'Deadline', value: field('deadline'), explicit: true },
+			{ label: 'Project start', value: data.record.dateValue, explicit: false },
+			{ label: 'Project end', value: data.record.endDateValue, explicit: false }
+		].filter((entry) => Boolean(entry.value));
 		const today = new Date().toISOString().slice(0, 10);
-		return candidates.find(([, value]) => value >= today) ?? candidates.at(-1) ?? null;
+		return candidates.find(({ value }) => value >= today) ?? candidates.at(-1) ?? null;
 	});
 	const activity = $derived(
 		[
@@ -159,6 +159,11 @@
 	}
 
 	function dateTimeLabel(value: string): string {
+		if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) {
+			const [year, month, day] = value.split('-').map(Number);
+			const localDate = new Date(year, month - 1, day);
+			return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(localDate);
+		}
 		const parsed = new Date(value);
 		return Number.isNaN(parsed.getTime())
 			? value
@@ -305,10 +310,10 @@
 	{#if milestone}
 		<section class="next-milestone" aria-labelledby="next-milestone-title">
 			<div>
-				<p class="eyebrow">Next milestone</p>
-				<h2 id="next-milestone-title">{milestone[0]}</h2>
+				<p class="eyebrow">{milestone.explicit ? 'Next milestone' : 'Next project date'}</p>
+				<h2 id="next-milestone-title">{milestone.label}</h2>
 			</div>
-			<strong>{dateTimeLabel(milestone[1])}</strong>
+			<strong>{dateTimeLabel(milestone.value)}</strong>
 		</section>
 	{/if}
 
