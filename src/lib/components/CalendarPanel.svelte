@@ -104,6 +104,12 @@
 		return event.attachments.filter((attachment) => attachment.url !== event.imageUrl);
 	}
 
+	function eventStatusLabel(event: CalendarEvent): string {
+		if (event.source !== 'shift' || event.status !== 'Covered') return event.status;
+		const coveredBy = event.details.split(' · ').slice(1).join(' · ').trim();
+		return coveredBy ? `Covered by ${coveredBy}` : 'Covered by a member';
+	}
+
 	async function load() {
 		loading = true;
 		message = '';
@@ -402,7 +408,7 @@
 	<DataFreshness {syncedAt} syncing={loading} />
 	<div class="calendar-legend" aria-label="Calendar color legend">
 		<span><i class="legend-swatch legend-shift-open"></i>Open CoLab shift</span>
-		<span><i class="legend-swatch legend-shift-covered"></i>Covered CoLab shift</span>
+		<span><i class="legend-swatch legend-shift-covered"></i>Covered by a member</span>
 		<span><i class="legend-swatch legend-project"></i>Project</span>
 		<span><i class="legend-swatch legend-community"></i>Community event</span>
 	</div>
@@ -478,7 +484,7 @@
 											<img class="calendar-event-thumbnail" src={safeUrl(event.imageUrl)} alt="" />
 										{/if}
 										<span class="calendar-event-copy">
-											<strong>{event.title}</strong><span>{event.status}</span>
+											<strong>{event.title}</strong><span>{eventStatusLabel(event)}</span>
 										</span>
 									</button>
 								{/each}
@@ -504,7 +510,7 @@
 									class:shift-covered={event.source === 'shift' && event.status === 'Covered'}
 								>
 									<span class="calendar-event-copy">
-										<strong>{event.title}</strong><span>{event.status}</span>
+										<strong>{event.title}</strong><span>{eventStatusLabel(event)}</span>
 									</span>
 								</button>
 							{/each}
@@ -537,7 +543,7 @@
 							<time datetime={event.startDate}>{event.startDate}</time>
 							<div><strong>{event.title}</strong><span>{event.location || event.status}</span></div>
 							<span class={`source-pill source-${event.source}`}>
-								{event.source === 'shift' ? `${event.status} shift` : event.source}
+								{event.source === 'shift' ? eventStatusLabel(event) : event.source}
 							</span>
 						</button>
 					{/each}
@@ -592,7 +598,7 @@
 						</div>{/if}
 					{#if selected.status}<div>
 							<dt>Status</dt>
-							<dd>{selected.status}</dd>
+							<dd>{eventStatusLabel(selected)}</dd>
 						</div>{/if}
 				</dl>
 				{#if selected.details}<p>{selected.details}</p>{/if}
