@@ -3,6 +3,7 @@
 	import ContentState from '$lib/components/ContentState.svelte';
 	import DataFreshness from '$lib/components/DataFreshness.svelte';
 	import ItemComments from '$lib/components/ItemComments.svelte';
+	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
 	import type { CalendarEvent } from '$lib/types/domain';
 	import { onMount } from 'svelte';
 	import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -23,6 +24,9 @@
 	let selected = $state<CalendarEvent | null>(null);
 	let signingUp = $state(false);
 	let signupMessage = $state('');
+	let shiftHostSelection = $state<{ id: string; label: string } | null>(null);
+	let assigningShiftHost = $state(false);
+	let shiftHostPickerKey = $state(0);
 	let subscriptionUrl = $state('');
 	let subscriptionLoading = $state(false);
 	let syncedAt = $state('');
@@ -171,6 +175,8 @@
 	function openDetails(event: CalendarEvent) {
 		selected = event;
 		signupMessage = '';
+		shiftHostSelection = null;
+		shiftHostPickerKey += 1;
 	}
 
 	function compactDate(value: string): string {
@@ -319,6 +325,53 @@
 			signupMessage = cause instanceof Error ? cause.message : 'Could not cover this shift.';
 		} finally {
 			signingUp = false;
+		}
+	}
+
+	async function assignShiftHost() {
+		if (!selected || selected.source !== 'shift' || !shiftHostSelection) return;
+		const member = shiftHostSelection;
+		if (
+			!window.confirm(
+				`Assign ${member.label} to this CoLab shift? Monday will be updated immediately.`
+			)
+		) {
+			return;
+		}
+		assigningShiftHost = true;
+		signupMessage = '';
+		try {
+			const response = await fetch('/api/admin/shifts/host', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ shiftId: selected.id, memberId: member.id })
+			});
+			const result = (await response.json()) as {
+				shift?: { coveredBy: string };
+				isMine?: boolean;
+				message?: string;
+			};
+			if (!response.ok || !result.shift) {
+				throw new Error(result.message || 'Could not assign the shift host.');
+			}
+			const details = `${selected.details.split(' · ')[0]} · ${result.shift.coveredBy}`;
+			selected = {
+				...selected,
+				status: 'Covered',
+				canVolunteer: false,
+				isMine: Boolean(result.isMine),
+				details
+			};
+			events = events.map((event) =>
+				event.source === 'shift' && event.id === selected?.id ? { ...selected } : event
+			);
+			shiftHostSelection = null;
+			shiftHostPickerKey += 1;
+			signupMessage = result.message || `Shift assigned to ${member.label}.`;
+		} catch (cause) {
+			signupMessage = cause instanceof Error ? cause.message : 'Could not assign the shift host.';
+		} finally {
+			assigningShiftHost = false;
 		}
 	}
 
@@ -603,12 +656,24 @@
 						>Apple / ICS</button
 					>
 				</div>
-				{#if isAdmin && selected.source === 'shift' && selected.status === 'Covered'}
+				{#if isAdmin && selected.source === 'shift'}
 					<div class="calendar-shift-reassign">
-						<p>
-							Shift changes now use replacement requests. The assigned member can start one from
-							“What’s next.”
-						</p>
+						{#key shiftHostPickerKey}
+							<MemberPredictivePicker
+								id="calendar-shift-host"
+								placeholder="Type @ to choose a host"
+								includeSelf={true}
+								bind:selection={shiftHostSelection}
+								disabled={assigningShiftHost || readOnly}
+							/>
+						{/key}
+						<button
+							type="button"
+							onclick={assignShiftHost}
+							disabled={assigningShiftHost || !shiftHostSelection || readOnly}
+						>
+							{assigningShiftHost ? 'Updating Monday…' : 'Assign host'}
+						</button>
 					</div>
 				{/if}
 				{#if signupMessage}<p role="status" class="calendar-message">{signupMessage}</p>{/if}

@@ -66,6 +66,15 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	return json(
 		{
 			host,
+			hostContact: {
+				email: member.email,
+				phone: member.phone,
+				name: member.preferredName
+			},
+			attendee:
+				record.source === 'project' && member.email
+					? { email: member.email, name: member.preferredName, memberId: member.id }
+					: null,
 			message:
 				record.source === 'project'
 					? `${host.hostLabel} assigned as host, added to attendees, and confirmed by Monday.`

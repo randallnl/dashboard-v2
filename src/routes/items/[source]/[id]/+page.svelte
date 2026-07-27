@@ -11,8 +11,10 @@
 
 	let { data }: { data: PageData } = $props();
 	type MemberOption = { id: string; label: string };
+	type Attendee = (typeof data.attendees)[number];
 
 	let host = $state(untrack(() => data.host));
+	let hostContact = $state(untrack(() => data.hostContact));
 	let hostSelection = $state<MemberOption | null>(null);
 	let savingHost = $state(false);
 	let hostMessage = $state('');
@@ -21,15 +23,19 @@
 	let savingAttendee = $state(false);
 	let attendeeMessage = $state('');
 	let attendeePickerKey = $state(0);
-	let editTitle = $state(untrack(() => data.record.title));
-	let editDate = $state(untrack(() => data.record.dateValue));
-	let editEndDate = $state(untrack(() => data.record.endDateValue));
-	let editStatus = $state(untrack(() => data.record.status));
-	let editLocation = $state(untrack(() => data.record.location));
+	let recordTitle = $state(untrack(() => data.record.title));
+	let recordDate = $state(untrack(() => data.record.dateValue));
+	let recordEndDate = $state(untrack(() => data.record.endDateValue));
+	let recordStatus = $state(untrack(() => data.record.status));
+	let recordLocation = $state(untrack(() => data.record.location));
+	let recordFields = $state(untrack(() => ({ ...data.record.record })));
+	let editTitle = $state(untrack(() => recordTitle));
+	let editDate = $state(untrack(() => recordDate));
+	let editEndDate = $state(untrack(() => recordEndDate));
+	let editStatus = $state(untrack(() => recordStatus));
+	let editLocation = $state(untrack(() => recordLocation));
 	let editDescription = $state(
-		untrack(() =>
-			typeof data.record.record.description === 'string' ? data.record.record.description : ''
-		)
+		untrack(() => (typeof recordFields.description === 'string' ? recordFields.description : ''))
 	);
 	let savingDetails = $state(false);
 	let editMessage = $state('');
@@ -47,7 +53,7 @@
 	];
 
 	const entries = $derived(
-		Object.entries(data.record.record).filter(
+		Object.entries(recordFields).filter(
 			([key, value]) =>
 				!['attendees', 'goal', 'category', 'strategicGoal', 'priority'].includes(key) &&
 				typeof value === 'string' &&
@@ -55,9 +61,7 @@
 		) as Array<[string, string]>
 	);
 	const attachments = $derived(
-		Array.isArray(data.record.record.attachments)
-			? (data.record.record.attachments as EventAttachment[])
-			: []
+		Array.isArray(recordFields.attachments) ? (recordFields.attachments as EventAttachment[]) : []
 	);
 	const heroImage = $derived(
 		data.record.source === 'project'
@@ -65,9 +69,7 @@
 			: ''
 	);
 	let tasks = $state(
-		untrack(() =>
-			Array.isArray(data.record.record.tasks) ? (data.record.record.tasks as ProjectTask[]) : []
-		)
+		untrack(() => (Array.isArray(recordFields.tasks) ? (recordFields.tasks as ProjectTask[]) : []))
 	);
 	let newTaskTitle = $state('');
 	let newTaskStatus = $state('');
@@ -85,8 +87,8 @@
 			{ label: 'Next milestone', value: field('nextMilestone'), explicit: true },
 			{ label: 'Deadline', value: field('deadline'), explicit: true },
 			...(nextTask ? [{ label: nextTask.title, value: nextTask.dueDate, explicit: true }] : []),
-			{ label: 'Project start', value: data.record.dateValue, explicit: false },
-			{ label: 'Project end', value: data.record.endDateValue, explicit: false }
+			{ label: 'Project start', value: recordDate, explicit: false },
+			{ label: 'Project end', value: recordEndDate, explicit: false }
 		].filter((entry) => Boolean(entry.value));
 		return candidates.find(({ value }) => value >= today) ?? candidates.at(-1) ?? null;
 	});
@@ -156,7 +158,7 @@
 	}
 
 	function field(key: string): string {
-		const value = data.record.record[key];
+		const value = recordFields[key];
 		return typeof value === 'string' ? value : '';
 	}
 
@@ -207,13 +209,21 @@
 			});
 			const result = (await response.json()) as {
 				attendees?: string[];
+				attendee?: Attendee;
 				message?: string;
 			};
 			if (!response.ok) throw new Error(result.message || 'Could not add attendee.');
+			if (
+				result.attendee &&
+				!attendees.some((attendee) => attendee.email === result.attendee?.email)
+			) {
+				attendees = [...attendees, result.attendee];
+			}
+			if (result.attendees)
+				recordFields = { ...recordFields, attendees: result.attendees.join(', ') };
 			attendeeSelection = null;
 			attendeePickerKey += 1;
 			attendeeMessage = result.message || 'Attendee added.';
-			window.setTimeout(() => window.location.reload(), 1200);
 		} catch (cause) {
 			attendeeMessage = cause instanceof Error ? cause.message : 'Could not add attendee.';
 		} finally {
@@ -238,9 +248,25 @@
 				memberId: member.id
 			})
 		});
-		const result = (await response.json()) as { host?: typeof host; message?: string };
+		const result = (await response.json()) as {
+			host?: typeof host;
+			hostContact?: typeof hostContact;
+			attendee?: Attendee | null;
+			message?: string;
+		};
 		if (response.ok && result.host) {
 			host = result.host;
+			hostContact = result.hostContact ?? null;
+			if (
+				result.attendee &&
+				!attendees.some((attendee) => attendee.email === result.attendee?.email)
+			) {
+				attendees = [...attendees, result.attendee];
+				recordFields = {
+					...recordFields,
+					attendees: attendees.map((attendee) => attendee.email).join(', ')
+				};
+			}
 			hostMessage = result.message || `Host changed to ${result.host.hostLabel}.`;
 		} else {
 			hostMessage = result.message || 'Could not change host.';
@@ -267,13 +293,31 @@
 					description: editDescription
 				})
 			});
-			const result = (await response.json()) as { message?: string };
-			if (!response.ok) throw new Error(result.message || 'Could not save changes.');
+			const result = (await response.json()) as {
+				record?: {
+					title: string;
+					dateValue: string;
+					endDateValue: string;
+					status: string;
+					location: string;
+					record: Record<string, unknown>;
+				};
+				message?: string;
+			};
+			if (!response.ok || !result.record) {
+				throw new Error(result.message || 'Could not save changes.');
+			}
+			recordTitle = result.record.title;
+			recordDate = result.record.dateValue;
+			recordEndDate = result.record.endDateValue;
+			recordStatus = result.record.status;
+			recordLocation = result.record.location;
+			recordFields = { ...recordFields, ...result.record.record };
 			editMessage = result.message || 'Changes saved.';
 			editingDetails = false;
-			window.setTimeout(() => window.location.reload(), 1200);
 		} catch (cause) {
 			editMessage = cause instanceof Error ? cause.message : 'Could not save changes.';
+		} finally {
 			savingDetails = false;
 		}
 	}
@@ -343,13 +387,13 @@
 	}
 </script>
 
-<svelte:head><title>{data.record.title} · CoLab</title></svelte:head>
+<svelte:head><title>{recordTitle} · CoLab</title></svelte:head>
 
 <ProjectDashboardHeader
 	member={data.member}
 	capabilities={data.capabilities}
 	source={data.record.source}
-	title={data.record.title}
+	title={recordTitle}
 />
 
 <main class="item-dashboard" id="main-content">
@@ -362,19 +406,19 @@
 	>
 		<div>
 			<p class="eyebrow">{data.record.source} dashboard</p>
-			<h1>{data.record.title}</h1>
-			<p>{data.record.dateValue}</p>
+			<h1>{recordTitle}</h1>
+			<p>{recordDate}</p>
 			<div class="project-pills item-dashboard-pills" aria-label="Project attributes">
-				{#if data.record.status}
-					<span class="project-pill pill-status">Status · {data.record.status}</span>
+				{#if recordStatus}
+					<span class="project-pill pill-status">Status · {recordStatus}</span>
 				{/if}
 				{#if field('goal') || field('category')}
 					<span class="project-pill pill-goal">
 						Goal · {field('goal') || field('category')}
 					</span>
 				{/if}
-				{#if data.record.location}
-					<span class="project-pill pill-location">Location · {data.record.location}</span>
+				{#if recordLocation}
+					<span class="project-pill pill-location">Location · {recordLocation}</span>
 				{/if}
 				{#if field('strategicGoal')}
 					<span class="project-pill pill-strategic">
@@ -511,12 +555,12 @@
 				<dl class="event-extra-fields">
 					<div>
 						<dt>Starts</dt>
-						<dd>{dateTimeLabel(data.record.dateValue)}</dd>
+						<dd>{dateTimeLabel(recordDate)}</dd>
 					</div>
-					{#if data.record.endDateValue}
+					{#if recordEndDate}
 						<div>
 							<dt>Ends</dt>
-							<dd>{dateTimeLabel(data.record.endDateValue)}</dd>
+							<dd>{dateTimeLabel(recordEndDate)}</dd>
 						</div>
 					{/if}
 					<div>
@@ -590,12 +634,12 @@
 			<p class="eyebrow">Schedule</p>
 			<h2>Project timeline</h2>
 			<ol class="project-timeline">
-				<li><span>Start</span><strong>{dateTimeLabel(data.record.dateValue)}</strong></li>
+				<li><span>Start</span><strong>{dateTimeLabel(recordDate)}</strong></li>
 				{#if field('deadline')}<li>
 						<span>Deadline</span><strong>{dateTimeLabel(field('deadline'))}</strong>
 					</li>{/if}
-				{#if data.record.endDateValue}<li>
-						<span>End</span><strong>{dateTimeLabel(data.record.endDateValue)}</strong>
+				{#if recordEndDate}<li>
+						<span>End</span><strong>{dateTimeLabel(recordEndDate)}</strong>
 					</li>{/if}
 			</ol>
 			<div class="project-task-heading">
@@ -719,11 +763,11 @@
 		</section>
 	{/if}
 
-	{#if activeTab === 'people' && data.isAdmin && typeof data.record.record.campaignId === 'string' && data.record.record.campaignId}
+	{#if activeTab === 'people' && data.isAdmin && typeof recordFields.campaignId === 'string' && recordFields.campaignId}
 		<section class="signup-roster">
 			<div class="card-heading">
 				<div>
-					<p class="eyebrow">Givebutter campaign {data.record.record.campaignId}</p>
+					<p class="eyebrow">Givebutter campaign {recordFields.campaignId}</p>
 					<h2>Signups</h2>
 				</div>
 				<span class="status-pill">{data.signups.length} registered</span>
@@ -745,7 +789,7 @@
 								<tr>
 									<td>{signup.donorName || 'Name not provided'}</td>
 									<td><a href={`mailto:${signup.donorEmail}`}>{signup.donorEmail}</a></td>
-									<td>{signup.eventTitle || data.record.title}</td>
+									<td>{signup.eventTitle || recordTitle}</td>
 									<td>{signup.ticketType || 'Not specified'}</td>
 									<td>
 										<time datetime={signup.transactionDate}>
@@ -771,11 +815,10 @@
 						<p class="eyebrow">Host</p>
 						<h2>{host?.hostLabel || data.record.owner || 'Not assigned'}</h2>
 					</div>
-					{#if data.hostContact}
+					{#if hostContact}
 						<div class="host-contact-actions">
-							{#if data.hostContact.email}<a href={`mailto:${data.hostContact.email}`}>Email</a
-								>{/if}
-							{#if data.hostContact.phone}<a href={`tel:${data.hostContact.phone}`}>Call</a>{/if}
+							{#if hostContact.email}<a href={`mailto:${hostContact.email}`}>Email</a>{/if}
+							{#if hostContact.phone}<a href={`tel:${hostContact.phone}`}>Call</a>{/if}
 						</div>
 					{/if}
 				</div>

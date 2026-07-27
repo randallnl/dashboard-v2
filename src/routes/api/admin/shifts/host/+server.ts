@@ -39,7 +39,11 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	};
 	await new ShiftRepository(env.DB).upsert(updated);
 	return json(
-		{ shift: updated, message: `Shift reassigned to ${updated.coveredBy}.` },
+		{
+			shift: updated,
+			isMine: member.id === context.member.id,
+			message: `Shift reassigned to ${updated.coveredBy}.`
+		},
 		{ headers: { 'cache-control': 'private, no-store' } }
 	);
 };

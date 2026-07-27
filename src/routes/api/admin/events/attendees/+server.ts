@@ -41,6 +41,11 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	return json(
 		{
 			attendees: emails,
+			attendee: {
+				email: member.email,
+				name: member.preferredName,
+				memberId: member.id
+			},
 			message: `${member.preferredName} was added and Monday confirmed the update.`
 		},
 		{ headers: { 'cache-control': 'private, no-store' } }
