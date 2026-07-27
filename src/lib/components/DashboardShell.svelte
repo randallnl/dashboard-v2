@@ -3,6 +3,7 @@
 	import AdminProjectsPanel from '$lib/components/AdminProjectsPanel.svelte';
 	import ContentState from '$lib/components/ContentState.svelte';
 	import MemberHistoryPanel from '$lib/components/MemberHistoryPanel.svelte';
+	import NotificationCenter from '$lib/components/NotificationCenter.svelte';
 	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
 	import UpcomingMemberPanel from '$lib/components/UpcomingMemberPanel.svelte';
 	import ViewAsControl from '$lib/components/ViewAsControl.svelte';
@@ -75,14 +76,22 @@
 			<a href="#resources">Resources</a>
 			{#if viewerCapabilities.canViewAdminTools && !isViewingAs}<a href="#admin">Admin</a>{/if}
 		</nav>
-		<div class="member-menu">
-			<div>
-				<strong>{member.preferredName}</strong>
-				<span>{member.membershipType}</span>
+		<div class="dashboard-header-actions">
+			<NotificationCenter
+				shifts={upcomingMemberShifts}
+				projects={upcomingProjects}
+				availableShifts={initialAvailableShifts}
+				canVote={capabilities.canVote}
+			/>
+			<div class="member-menu">
+				<div>
+					<strong>{member.preferredName}</strong>
+					<span>{member.membershipType}</span>
+				</div>
+				<form method="POST" action={resolve('/api/auth/logout')}>
+					<button type="submit" class="text-button">Sign out</button>
+				</form>
 			</div>
-			<form method="POST" action={resolve('/api/auth/logout')}>
-				<button type="submit" class="text-button">Sign out</button>
-			</form>
 		</div>
 	</header>
 
