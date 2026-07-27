@@ -344,4 +344,16 @@ describe('ProjectEventRepository', () => {
 			20
 		);
 	});
+
+	it('uses the requested safe project sort expression', async () => {
+		const mock = createDatabaseMock();
+		const repository = new ProjectEventRepository(mock.db);
+
+		await repository.listPage({ sort: 'priority', includeAdminOnly: true });
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining("WHEN 'high' THEN 0"));
+		expect(mock.prepare).toHaveBeenCalledWith(
+			expect.stringContaining("json_extract(record_json, '$.priority')")
+		);
+	});
 });

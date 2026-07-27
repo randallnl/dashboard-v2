@@ -207,6 +207,12 @@
 			>
 		</div>
 	</div>
+	<div class="calendar-legend" aria-label="Calendar color legend">
+		<span><i class="legend-swatch legend-shift-open"></i>Open CoLab shift</span>
+		<span><i class="legend-swatch legend-shift-covered"></i>Covered CoLab shift</span>
+		<span><i class="legend-swatch legend-project"></i>Project</span>
+		<span><i class="legend-swatch legend-community"></i>Community event</span>
+	</div>
 
 	{#if loading}
 		<ContentState kind="loading" title="Loading calendar" message="Gathering shifts and events." />
@@ -227,6 +233,8 @@
 									type="button"
 									onclick={() => openDetails(event)}
 									class={`calendar-event event-${event.source}`}
+									class:shift-open={event.source === 'shift' && event.status === 'Open'}
+									class:shift-covered={event.source === 'shift' && event.status === 'Covered'}
 									aria-label={`View details for ${event.title}`}
 								>
 									{#if safeUrl(event.imageUrl)}
@@ -254,13 +262,21 @@
 				/>
 			{:else}
 				{#each events as event (`agenda-${event.source}-${event.id}`)}
-					<button type="button" class="agenda-event" onclick={() => openDetails(event)}>
+					<button
+						type="button"
+						class="agenda-event"
+						class:shift-open={event.source === 'shift' && event.status === 'Open'}
+						class:shift-covered={event.source === 'shift' && event.status === 'Covered'}
+						onclick={() => openDetails(event)}
+					>
 						{#if safeUrl(event.imageUrl)}
 							<img class="agenda-event-thumbnail" src={safeUrl(event.imageUrl)} alt="" />
 						{/if}
 						<time datetime={event.startDate}>{event.startDate}</time>
 						<div><strong>{event.title}</strong><span>{event.location || event.status}</span></div>
-						<span class={`source-pill source-${event.source}`}>{event.source}</span>
+						<span class={`source-pill source-${event.source}`}>
+							{event.source === 'shift' ? `${event.status} shift` : event.source}
+						</span>
 					</button>
 				{/each}
 			{/if}

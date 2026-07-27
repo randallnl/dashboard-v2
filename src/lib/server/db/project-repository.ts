@@ -9,7 +9,11 @@ export type ProjectEventFilters = {
 	throughDate?: string;
 	search?: string;
 	includeAdminOnly?: boolean;
+	sort?: ProjectEventSort;
 };
+
+export type ProjectEventSort =
+	'upcoming' | 'date-desc' | 'date-asc' | 'title' | 'status' | 'priority';
 
 export type ProjectEventPage = {
 	records: ProjectEventRecord[];
@@ -74,7 +78,6 @@ export class ProjectEventRepository {
 		const status = filters.status ?? '';
 		const fromDate = filters.fromDate ?? '';
 		const includeAdminOnly = filters.includeAdminOnly ? 1 : 0;
-
 		const result = await this.db
 			.prepare(
 				`SELECT * FROM project_event_records
@@ -104,6 +107,25 @@ export class ProjectEventRepository {
 		const safePage = Math.max(page, 1);
 		const offset = (safePage - 1) * safePageSize;
 		const includeAdminOnly = filters.includeAdminOnly ? 1 : 0;
+		const orderBy: Record<ProjectEventSort, string> = {
+			upcoming: `CASE WHEN date_value >= date('now') THEN 0 ELSE 1 END ASC,
+					   CASE WHEN date_value >= date('now') THEN date_value END ASC,
+					   CASE WHEN date_value < date('now') THEN date_value END DESC,
+					   title ASC`,
+			'date-desc': `date_value DESC, title ASC`,
+			'date-asc': `date_value ASC, title ASC`,
+			title: `title COLLATE NOCASE ASC, date_value ASC`,
+			status: `status COLLATE NOCASE ASC, date_value ASC, title ASC`,
+			priority: `CASE lower(coalesce(json_extract(record_json, '$.priority'), ''))
+						 WHEN 'high' THEN 0
+						 WHEN 'medium' THEN 1
+						 WHEN 'low' THEN 2
+						 ELSE 3
+					   END ASC,
+					   date_value ASC,
+					   title ASC`
+		};
+		const sort = filters.sort ?? 'upcoming';
 		const where = `WHERE (?1 = '' OR source = ?1)
 				   AND (?2 = '' OR status = ?2)
 				   AND (?3 = '' OR date_value >= ?3)
@@ -117,11 +139,7 @@ export class ProjectEventRepository {
 				.prepare(
 					`SELECT * FROM project_event_records
 					 ${where}
-					 ORDER BY
-					   CASE WHEN date_value >= date('now') THEN 0 ELSE 1 END ASC,
-					   CASE WHEN date_value >= date('now') THEN date_value END ASC,
-					   CASE WHEN date_value < date('now') THEN date_value END DESC,
-					   title ASC
+					 ORDER BY ${orderBy[sort]}
 					 LIMIT ?7 OFFSET ?8`
 				)
 				.bind(...bindings, safePageSize, offset)

@@ -1,5 +1,6 @@
 import { loadMemberContext, requireAdmin } from '$lib/server/auth/member-context';
 import { ProjectEventRepository } from '$lib/server/db';
+import type { ProjectEventSort } from '$lib/server/db/project-repository';
 import type { ProjectEventSource } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -22,6 +23,18 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 	}
 	const requestedPage = Number(url.searchParams.get('page') ?? '1');
 	const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+	const sortValue = url.searchParams.get('sort')?.trim() || 'upcoming';
+	const validSorts = new Set<ProjectEventSort>([
+		'upcoming',
+		'date-desc',
+		'date-asc',
+		'title',
+		'status',
+		'priority'
+	]);
+	if (!validSorts.has(sortValue as ProjectEventSort)) {
+		error(400, 'Invalid project sort.');
+	}
 
 	const result = await new ProjectEventRepository(env!.DB).listPage(
 		{
@@ -30,7 +43,8 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 			search: url.searchParams.get('search')?.trim() ?? '',
 			fromDate,
 			throughDate,
-			includeAdminOnly: true
+			includeAdminOnly: true,
+			sort: sortValue as ProjectEventSort
 		},
 		page
 	);
