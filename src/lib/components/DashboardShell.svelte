@@ -15,6 +15,7 @@
 		UpcomingProjectAssignment
 	} from '$lib/types/domain';
 	import { resolve } from '$app/paths';
+	import { onMount } from 'svelte';
 
 	let {
 		viewer,
@@ -49,6 +50,8 @@
 	);
 	const websiteUrl = $derived(safeExternalUrl(member.website));
 	const creativeGroundUrl = $derived(safeExternalUrl(member.creativeGroundUrl));
+	let activeSection = $state('overview');
+	let moreMenuOpen = $state(false);
 
 	function safeExternalUrl(value: string): string {
 		if (!value) return '';
@@ -59,7 +62,64 @@
 			return '';
 		}
 	}
+
+	function closeMobileMenu() {
+		moreMenuOpen = false;
+	}
+
+	onMount(() => {
+		const sectionIds = [
+			'overview',
+			'resources',
+			'portal-areas',
+			'shifts',
+			'calendar',
+			'votes',
+			'history',
+			'admin'
+		];
+		const sections = sectionIds
+			.map((id) => document.getElementById(id))
+			.filter((section): section is HTMLElement => Boolean(section));
+		let frame = 0;
+		const updateActiveSection = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(() => {
+				const offset = 130;
+				const current =
+					[...sections]
+						.reverse()
+						.find((section) => section.getBoundingClientRect().top <= offset) ?? sections[0];
+				if (current) activeSection = current.id;
+			});
+		};
+		const rememberDetailPosition = (event: MouseEvent) => {
+			const target = event.target instanceof Element ? event.target.closest('a') : null;
+			if (target?.getAttribute('href')?.startsWith('/items/')) {
+				sessionStorage.setItem('colab-dashboard-scroll', String(window.scrollY));
+			}
+		};
+		const savedPosition = sessionStorage.getItem('colab-dashboard-scroll');
+		if (savedPosition) {
+			sessionStorage.removeItem('colab-dashboard-scroll');
+			requestAnimationFrame(() =>
+				requestAnimationFrame(() =>
+					window.scrollTo({ top: Number(savedPosition), behavior: 'instant' })
+				)
+			);
+		}
+		window.addEventListener('scroll', updateActiveSection, { passive: true });
+		document.addEventListener('click', rememberDetailPosition);
+		updateActiveSection();
+		return () => {
+			cancelAnimationFrame(frame);
+			window.removeEventListener('scroll', updateActiveSection);
+			document.removeEventListener('click', rememberDetailPosition);
+		};
+	});
 </script>
+
+<svelte:window onkeydown={(event) => event.key === 'Escape' && closeMobileMenu()} />
 
 <div class="dashboard-shell">
 	<header class="dashboard-header">
@@ -68,13 +128,23 @@
 			<span>CoLab</span>
 		</a>
 		<nav aria-label="Member navigation">
-			<a class="nav-active" href="#overview">Overview</a>
-			{#if capabilities.canViewShifts}<a href="#portal-areas">Shifts</a>{/if}
-			{#if capabilities.canViewCalendar}<a href="#calendar">Calendar</a>{/if}
-			{#if capabilities.canVote}<a href="#votes">Votes</a>{/if}
-			<a href="#history">History</a>
-			<a href="#resources">Resources</a>
-			{#if viewerCapabilities.canViewAdminTools && !isViewingAs}<a href="#admin">Admin</a>{/if}
+			<a class:nav-active={activeSection === 'overview'} href="#overview">Overview</a>
+			{#if capabilities.canViewShifts}
+				<a class:nav-active={['portal-areas', 'shifts'].includes(activeSection)} href="#shifts">
+					Shifts
+				</a>
+			{/if}
+			{#if capabilities.canViewCalendar}
+				<a class:nav-active={activeSection === 'calendar'} href="#calendar">Calendar</a>
+			{/if}
+			{#if capabilities.canVote}
+				<a class:nav-active={activeSection === 'votes'} href="#votes">Votes</a>
+			{/if}
+			<a class:nav-active={activeSection === 'history'} href="#history">History</a>
+			<a class:nav-active={activeSection === 'resources'} href="#resources">Resources</a>
+			{#if viewerCapabilities.canViewAdminTools && !isViewingAs}
+				<a class:nav-active={activeSection === 'admin'} href="#admin">Admin</a>
+			{/if}
 		</nav>
 		<div class="dashboard-header-actions">
 			<NotificationCenter
@@ -82,6 +152,7 @@
 				projects={upcomingProjects}
 				availableShifts={initialAvailableShifts}
 				canVote={capabilities.canVote}
+				readOnly={isViewingAs}
 			/>
 			<div class="member-menu">
 				<div>
@@ -203,7 +274,7 @@
 
 		<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />
 
-		<section class="member-details-grid profile-only" aria-label="Member identity">
+		<section class="member-details-grid profile-only" id="profile" aria-label="Member identity">
 			<article class="profile-card">
 				<div class="section-heading compact">
 					<div>
@@ -249,12 +320,51 @@
 		{/if}
 	</main>
 
-	<nav class="mobile-nav" aria-label="Mobile member navigation">
-		<a href="#overview">Overview</a>
-		<a href="#portal-areas">Tools</a>
-		<a href="#calendar">Calendar</a>
-		<a href="#history">History</a>
-		<a href="#resources">Resources</a>
-		{#if viewerCapabilities.canViewAdminTools && !isViewingAs}<a href="#admin">Admin</a>{/if}
+	<nav class="mobile-nav dashboard-mobile-nav" aria-label="Mobile member navigation">
+		<a class:active={activeSection === 'overview'} href="#overview">Overview</a>
+		{#if capabilities.canViewCalendar}
+			<a class:active={activeSection === 'calendar'} href="#calendar">Calendar</a>
+		{:else}
+			<a class:active={['portal-areas', 'shifts'].includes(activeSection)} href="#portal-areas">
+				Tools
+			</a>
+		{/if}
+		<a class:active={activeSection === 'resources'} href="#resources">Resources</a>
+		<button
+			type="button"
+			class:active={moreMenuOpen}
+			aria-expanded={moreMenuOpen}
+			aria-controls="mobile-more-menu"
+			onclick={() => (moreMenuOpen = !moreMenuOpen)}
+		>
+			More
+		</button>
 	</nav>
+
+	{#if moreMenuOpen}
+		<button
+			class="mobile-more-backdrop"
+			type="button"
+			aria-label="Close more navigation"
+			onclick={closeMobileMenu}
+		></button>
+		<div class="mobile-more-menu" id="mobile-more-menu">
+			<div>
+				<p class="eyebrow">Navigate</p>
+				<h2>More</h2>
+				<button type="button" class="text-button" onclick={closeMobileMenu}>Close</button>
+			</div>
+			<nav aria-label="More dashboard sections">
+				{#if capabilities.canViewShifts}<a href="#shifts" onclick={closeMobileMenu}>Shifts</a>{/if}
+				{#if capabilities.canVote}<a href="#votes" onclick={closeMobileMenu}>Community votes</a
+					>{/if}
+				<a href="#history" onclick={closeMobileMenu}>History and payments</a>
+				<a href="#resources" onclick={closeMobileMenu}>Resources</a>
+				<a href="#profile" onclick={closeMobileMenu}>Profile</a>
+				{#if viewerCapabilities.canViewAdminTools && !isViewingAs}
+					<a href="#admin" onclick={closeMobileMenu}>Project management</a>
+				{/if}
+			</nav>
+		</div>
+	{/if}
 </div>

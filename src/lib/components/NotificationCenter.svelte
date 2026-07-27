@@ -16,17 +16,23 @@
 		shifts,
 		projects,
 		availableShifts,
-		canVote
+		canVote,
+		readOnly = false
 	}: {
 		shifts: Shift[];
 		projects: UpcomingProjectAssignment[];
 		availableShifts: Shift[];
 		canVote: boolean;
+		readOnly?: boolean;
 	} = $props();
 
 	let open = $state(false);
 	let pendingVotes = $state<EligibleVote[]>([]);
 	let votesLoading = $state(false);
+	let readsLoading = $state(true);
+	let readKeys = $state<Set<string>>(new Set());
+	let markingRead = $state('');
+	let readMessage = $state('');
 
 	const notices = $derived.by(() => {
 		const items: Notice[] = [];
@@ -75,6 +81,7 @@
 		}
 		return items;
 	});
+	const unreadCount = $derived(notices.filter((notice) => !readKeys.has(notice.id)).length);
 
 	function dateLabel(value: string): string {
 		if (!value) return 'Date unavailable';
@@ -100,11 +107,42 @@
 		}
 	}
 
+	async function loadReadKeys() {
+		try {
+			const response = await fetch('/api/notifications/read');
+			const result = (await response.json()) as { readKeys?: string[] };
+			if (response.ok) readKeys = new Set(result.readKeys ?? []);
+		} finally {
+			readsLoading = false;
+		}
+	}
+
+	async function markRead(notice: Notice) {
+		if (readOnly || readKeys.has(notice.id)) return;
+		markingRead = notice.id;
+		readMessage = '';
+		try {
+			const response = await fetch('/api/notifications/read', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ key: notice.id })
+			});
+			if (!response.ok) throw new Error('Could not mark this item as read.');
+			readKeys = new Set([...readKeys, notice.id]);
+		} catch (cause) {
+			readMessage = cause instanceof Error ? cause.message : 'Could not mark this item as read.';
+		} finally {
+			markingRead = '';
+		}
+	}
+
 	function followNotice() {
 		open = false;
 	}
 
-	onMount(loadVotes);
+	onMount(() => {
+		void Promise.all([loadVotes(), loadReadKeys()]);
+	});
 </script>
 
 <svelte:window onkeydown={(event) => event.key === 'Escape' && (open = false)} />
@@ -113,13 +151,13 @@
 	<button
 		class="notification-trigger"
 		type="button"
-		aria-label={`Open notifications${notices.length ? `, ${notices.length} items` : ''}`}
+		aria-label={`Open notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
 		aria-expanded={open}
 		aria-controls="notification-panel"
 		onclick={() => (open = !open)}
 	>
 		<span aria-hidden="true">●</span>
-		{#if notices.length}<strong>{notices.length > 9 ? '9+' : notices.length}</strong>{/if}
+		{#if unreadCount}<strong>{unreadCount > 9 ? '9+' : unreadCount}</strong>{/if}
 	</button>
 
 	{#if open}
@@ -131,21 +169,33 @@
 				</div>
 				<button type="button" class="text-button" onclick={() => (open = false)}>Close</button>
 			</div>
+			{#if readMessage}<p class="notification-message" role="alert">{readMessage}</p>{/if}
 
-			{#if votesLoading && notices.length === 0}
+			{#if (votesLoading || readsLoading) && notices.length === 0}
 				<p class="notification-empty" role="status">Checking for updates…</p>
 			{:else if notices.length}
 				<div class="notification-list">
 					{#each notices as notice (notice.id)}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={notice.href} onclick={followNotice}>
+						<article class:read={readKeys.has(notice.id)}>
 							<span class={`notification-icon notice-${notice.kind}`} aria-hidden="true"></span>
-							<span>
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={notice.href} onclick={followNotice}>
 								<strong>{notice.title}</strong>
 								<small>{notice.detail}</small>
-							</span>
-							<b>{notice.action}</b>
-						</a>
+								<b>{notice.action}</b>
+							</a>
+							<button
+								type="button"
+								onclick={() => markRead(notice)}
+								disabled={readOnly || markingRead === notice.id || readKeys.has(notice.id)}
+							>
+								{readKeys.has(notice.id)
+									? 'Read'
+									: markingRead === notice.id
+										? 'Saving…'
+										: 'Mark as read'}
+							</button>
+						</article>
 					{/each}
 				</div>
 			{:else}

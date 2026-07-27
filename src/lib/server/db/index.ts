@@ -3,6 +3,7 @@ export { CommentRepository } from './comment-repository';
 export { GivebutterRepository } from './givebutter-repository';
 export { HostRepository } from './host-repository';
 export { MemberRepository, memberNames } from './member-repository';
+export { NotificationRepository } from './notification-repository';
 export type { ProjectEventHost } from './host-repository';
 export type { NewMagicLoginToken, NewMagicSession } from './auth-repository';
 export { ProjectEventRepository } from './project-repository';

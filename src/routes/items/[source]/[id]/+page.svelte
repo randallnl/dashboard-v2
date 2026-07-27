@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import ItemComments from '$lib/components/ItemComments.svelte';
 	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
+	import ProjectDashboardHeader from '$lib/components/ProjectDashboardHeader.svelte';
 	import type { EventAttachment } from '$lib/types/domain';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -183,6 +184,13 @@
 </script>
 
 <svelte:head><title>{data.record.title} · CoLab</title></svelte:head>
+
+<ProjectDashboardHeader
+	member={data.member}
+	capabilities={data.capabilities}
+	source={data.record.source}
+	title={data.record.title}
+/>
 
 <main class="item-dashboard" id="main-content">
 	<a href={resolve('/#calendar')}>← Back to dashboard</a>

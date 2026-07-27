@@ -343,6 +343,9 @@ h2 {
 }
 
 .dashboard-header {
+	position: sticky;
+	z-index: 20;
+	top: 0;
 	display: grid;
 	grid-template-columns: 1fr auto 1fr;
 	align-items: center;
@@ -463,24 +466,51 @@ h2 {
 	overflow-y: auto;
 }
 
-.notification-list a {
+.notification-list article {
 	display: grid;
 	grid-template-columns: auto minmax(0, 1fr) auto;
 	align-items: center;
 	gap: 0.75rem;
 	padding: 0.9rem 1.1rem;
 	border-bottom: 1px solid #e4ddd2;
+}
+
+.notification-list article.read {
+	opacity: 0.58;
+}
+
+.notification-list article:hover {
+	background: #f0ece3;
+}
+
+.notification-list a {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 0.2rem 0.75rem;
 	color: #17251e;
 	text-decoration: none;
 }
 
-.notification-list a:hover {
-	background: #f0ece3;
+.notification-list a strong,
+.notification-list a small {
+	grid-column: 1;
 }
 
-.notification-list a > span:nth-child(2) {
-	display: grid;
-	gap: 0.2rem;
+.notification-list article > button {
+	padding: 0.35rem 0.5rem;
+	border: 1px solid #cfc7ba;
+	border-radius: 0.4rem;
+	background: transparent;
+	color: #5d6862;
+	cursor: pointer;
+	font-size: 0.65rem;
+	white-space: nowrap;
+}
+
+.notification-list article > button:disabled {
+	cursor: default;
+	opacity: 0.7;
 }
 
 .notification-list small {
@@ -488,6 +518,8 @@ h2 {
 }
 
 .notification-list b {
+	grid-column: 2;
+	grid-row: 1 / span 2;
 	color: #194639;
 	font-size: 0.7rem;
 	white-space: nowrap;
@@ -523,6 +555,14 @@ h2 {
 	line-height: 1.5;
 }
 
+.notification-message {
+	margin: 0;
+	padding: 0.75rem 1.1rem;
+	background: #f5dfd9;
+	color: #8d3f2c;
+	font-size: 0.75rem;
+}
+
 .member-menu > div {
 	display: flex;
 	flex-direction: column;
@@ -545,6 +585,15 @@ h2 {
 	max-width: 88rem;
 	margin: 0 auto;
 	padding: clamp(2rem, 5vw, 5rem) clamp(1.5rem, 4vw, 4rem);
+}
+
+.dashboard-main > [id],
+.shift-panel,
+.calendar-panel,
+.vote-panel,
+.history-panel,
+.admin-projects {
+	scroll-margin-top: 6rem;
 }
 
 .view-as-control,
@@ -602,7 +651,7 @@ h2 {
 .view-as-banner {
 	position: sticky;
 	z-index: 9;
-	top: 0;
+	top: 4.9rem;
 	justify-content: space-between;
 	background: #dca340;
 	color: #17251e;
@@ -1688,6 +1737,29 @@ h2 {
 	width: min(76rem, calc(100% - 2rem));
 	margin: 0 auto;
 	padding: 2rem 0 5rem;
+}
+
+.item-breadcrumbs {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	width: min(76rem, calc(100% - 2rem));
+	margin: 1rem auto 0;
+	color: #717973;
+	font-size: 0.78rem;
+}
+
+.item-breadcrumbs a {
+	color: #194639;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.item-breadcrumbs strong {
+	overflow: hidden;
+	color: #4e5b54;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .item-dashboard > a,
@@ -2857,6 +2929,15 @@ h2 {
 		justify-self: start;
 	}
 
+	.notification-list article {
+		grid-template-columns: auto minmax(0, 1fr);
+	}
+
+	.notification-list article > button {
+		grid-column: 2;
+		justify-self: start;
+	}
+
 	.profile-list {
 		grid-template-columns: 1fr;
 	}
@@ -2983,9 +3064,71 @@ h2 {
 		box-shadow: 0 0.7rem 2rem rgb(23 37 30 / 24%);
 	}
 
-	.mobile-nav a {
+	.mobile-nav a,
+	.mobile-nav button {
+		padding: 0;
+		border: 0;
+		background: transparent;
 		color: #f8f3e9;
+		cursor: pointer;
+		font: inherit;
 		font-size: 0.8rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
+
+	.mobile-nav .active {
+		color: #edbd65;
+	}
+
+	.mobile-more-backdrop {
+		position: fixed;
+		z-index: 11;
+		inset: 0;
+		border: 0;
+		background: rgb(14 24 19 / 48%);
+	}
+
+	.mobile-more-menu {
+		position: fixed;
+		z-index: 12;
+		right: 0.75rem;
+		bottom: 5.4rem;
+		left: 0.75rem;
+		overflow: hidden;
+		border: 1px solid #d2cabd;
+		border-radius: 1rem;
+		background: #faf7f0;
+		box-shadow: 0 1rem 3rem rgb(23 37 30 / 28%);
+	}
+
+	.mobile-more-menu > div {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 1rem 1.1rem;
+		border-bottom: 1px solid #ded7cb;
+	}
+
+	.mobile-more-menu p,
+	.mobile-more-menu h2 {
+		margin: 0;
+	}
+
+	.mobile-more-menu h2 {
+		max-width: none;
+		font-size: 1.5rem;
+	}
+
+	.mobile-more-menu nav {
+		display: grid;
+	}
+
+	.mobile-more-menu nav a {
+		padding: 0.9rem 1.1rem;
+		border-bottom: 1px solid #e4ddd2;
+		color: #194639;
 		font-weight: 700;
 		text-decoration: none;
 	}

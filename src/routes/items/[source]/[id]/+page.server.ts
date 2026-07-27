@@ -36,6 +36,8 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		},
 		host,
 		signups,
+		member: layout.member,
+		capabilities: layout.capabilities,
 		isAdmin: layout.viewerCapabilities.isAdmin && !layout.isViewingAs,
 		readOnly: layout.isViewingAs
 	};

@@ -70,7 +70,7 @@
 	onMount(loadShifts);
 </script>
 
-<section class="shift-panel" aria-labelledby="available-shifts-title">
+<section class="shift-panel" id="shifts" aria-labelledby="available-shifts-title">
 	<div class="section-heading">
 		<div>
 			<p class="eyebrow">Studio coverage</p>
