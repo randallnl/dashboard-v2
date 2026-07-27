@@ -1,6 +1,12 @@
 import { monthBounds } from '$lib/calendar/month';
 import { loadMemberContext } from '$lib/server/auth/member-context';
-import { ProjectEventRepository, ShiftRepository, VolunteerRepository } from '$lib/server/db';
+import {
+	HostRepository,
+	ProjectEventRepository,
+	ShiftRepository,
+	VolunteerRepository
+} from '$lib/server/db';
+import { attendeeEmails } from '$lib/server/monday/events';
 import { coveredByLabel } from '$lib/server/monday/shifts';
 import type { CalendarEvent, EventAttachment } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
@@ -58,15 +64,21 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 	const bounds = monthBounds(requestedMonth);
 	if (!bounds) error(400, 'Month must use YYYY-MM.');
 
-	const [shifts, records, volunteerKeys] = await Promise.all([
+	const [shifts, records, volunteerKeys, hostKeys] = await Promise.all([
 		new ShiftRepository(env!.DB).listBetween(bounds.from, bounds.through),
 		new ProjectEventRepository(env!.DB).listForCalendar(
 			bounds.from,
 			bounds.through,
 			context.capabilities.isAdmin
 		),
-		new VolunteerRepository(env!.DB).listKeysForMember(context.member.id)
+		new VolunteerRepository(env!.DB).listKeysForMember(context.member.id),
+		new HostRepository(env!.DB).listKeysForMember(context.member.id)
 	]);
+	const memberEmails = new Set(
+		[context.member.email, ...context.member.otherEmails].map((email) =>
+			email.trim().toLocaleLowerCase('en-US')
+		)
+	);
 
 	const events: CalendarEvent[] = [
 		...(context.capabilities.canViewShifts ? shifts : []).map((shift) => ({
@@ -81,6 +93,8 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 			url: '',
 			canVolunteer: !shift.isCovered,
 			isVolunteering: false,
+			isMine: shift.memberId === context.member.id,
+			isDeadline: false,
 			fields: [],
 			imageUrl: '',
 			attachments: [],
@@ -88,23 +102,46 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 		})),
 		...records
 			.filter((record) => !(context.capabilities.isRetailOnly && record.source === 'community'))
-			.map((record) => ({
-				id: record.id,
-				source: record.source,
-				title: record.title,
-				startDate: record.dateValue,
-				endDate: record.endDateValue || record.dateValue,
-				status: record.status,
-				location: record.location,
-				details: recordString(record.record, 'description'),
-				url: recordString(record.record, 'registrationUrl') || recordString(record.record, 'link'),
-				canVolunteer: !record.adminOnly,
-				isVolunteering: volunteerKeys.has(`${record.source}:${record.id}`),
-				fields: recordFields(record.record, context.viewerCapabilities.isAdmin),
-				imageUrl: recordString(record.record, 'posterUrl'),
-				attachments: recordAttachments(record.record),
-				pageUrl: `/items/${record.source}/${record.id}`
-			}))
+			.flatMap((record) => {
+				const isMine =
+					hostKeys.has(`${record.source}:${record.id}`) ||
+					volunteerKeys.has(`${record.source}:${record.id}`) ||
+					attendeeEmails(record.record.attendees).some((email) => memberEmails.has(email));
+				const event: CalendarEvent = {
+					id: record.id,
+					source: record.source,
+					title: record.title,
+					startDate: record.dateValue,
+					endDate: record.endDateValue || record.dateValue,
+					status: record.status,
+					location: record.location,
+					details: recordString(record.record, 'description'),
+					url:
+						recordString(record.record, 'registrationUrl') || recordString(record.record, 'link'),
+					canVolunteer: !record.adminOnly,
+					isVolunteering: volunteerKeys.has(`${record.source}:${record.id}`),
+					isMine,
+					isDeadline: false,
+					fields: recordFields(record.record, context.viewerCapabilities.isAdmin),
+					imageUrl: recordString(record.record, 'posterUrl'),
+					attachments: recordAttachments(record.record),
+					pageUrl: `/items/${record.source}/${record.id}`
+				};
+				if (!record.endDateValue || record.endDateValue === record.dateValue) return [event];
+				return [
+					event,
+					{
+						...event,
+						id: `${record.id}-deadline`,
+						title: `${record.title} deadline`,
+						startDate: record.endDateValue,
+						endDate: record.endDateValue,
+						status: 'Deadline',
+						canVolunteer: false,
+						isDeadline: true
+					}
+				];
+			})
 	];
 
 	return json(

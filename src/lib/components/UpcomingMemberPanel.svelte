@@ -69,6 +69,7 @@
 								<strong>{shift.title}</strong>
 								<span>{shift.timeLabel || shift.dateLabel}</span>
 							</div>
+							<span class="upcoming-action-label secondary">View details</span>
 						</a>
 					{/each}
 				</div>
@@ -101,7 +102,13 @@
 								<strong>{assignment.record.title}</strong>
 								<span>{assignment.record.location || assignment.record.status}</span>
 							</div>
-							<span class="upcoming-role role-project">{assignment.roles.join(' · ')}</span>
+							<span class="upcoming-action-label secondary">
+								{assignment.roles.includes('Host')
+									? 'Manage'
+									: assignment.record.source === 'community'
+										? 'View event'
+										: 'View project'}
+							</span>
 						</a>
 					{/each}
 				</div>
@@ -124,7 +131,7 @@
 								<strong>{shift.title}</strong>
 								<span>{shift.timeLabel || shift.dateLabel}</span>
 							</div>
-							<span class="upcoming-action-label">Sign up</span>
+							<span class="upcoming-action-label">View & sign up</span>
 						</a>
 					{/each}
 				</div>

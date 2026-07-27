@@ -1,4 +1,5 @@
 export { AuthRepository } from './auth-repository';
+export { CalendarSubscriptionRepository } from './calendar-subscription-repository';
 export { CommentRepository } from './comment-repository';
 export { GivebutterRepository } from './givebutter-repository';
 export { HostRepository } from './host-repository';

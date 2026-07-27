@@ -262,6 +262,7 @@
 								record.syncedAt.slice(0, 10)
 							)}</small
 						>
+						<span class="card-primary-action">Manage →</span>
 					</div>
 				</a>
 			{/each}

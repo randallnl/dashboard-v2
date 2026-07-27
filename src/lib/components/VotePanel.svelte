@@ -149,7 +149,7 @@
 								onclick={() => submit(vote)}
 								disabled={Boolean(submitting) || readOnly}
 							>
-								{submitting === vote.id ? 'Recording…' : readOnly ? 'View only' : 'Submit response'}
+								{submitting === vote.id ? 'Recording…' : readOnly ? 'View only' : 'Vote now'}
 							</button>
 						</div>
 					{/if}

@@ -116,11 +116,14 @@
 					</div>
 					<button
 						type="button"
-						onclick={() => claim(shift)}
+						onclick={() => {
+							selectedShiftId = shift.id;
+							showShiftPicker = true;
+						}}
 						disabled={Boolean(claimingId) || readOnly}
-						aria-label={`Claim ${shift.title} on ${shift.dateLabel || shift.dateValue}`}
+						aria-label={`View and sign up for ${shift.title} on ${shift.dateLabel || shift.dateValue}`}
 					>
-						{claimingId === shift.id ? 'Claiming…' : readOnly ? 'View only' : 'Claim shift'}
+						{readOnly ? 'View details' : 'View & sign up'}
 					</button>
 				</article>
 			{/each}

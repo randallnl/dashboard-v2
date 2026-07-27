@@ -1,6 +1,7 @@
 import type { Member, ProjectEventRecord, Shift } from '$lib/types/domain';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthRepository } from './auth-repository';
+import { CalendarSubscriptionRepository } from './calendar-subscription-repository';
 import { CommentRepository } from './comment-repository';
 import { HostRepository } from './host-repository';
 import { memberNames, MemberRepository } from './member-repository';
@@ -113,6 +114,28 @@ describe('CommentRepository', () => {
 			'["Rae J."]',
 			'2026-07-26T21:30:00.000Z'
 		);
+	});
+});
+
+describe('CalendarSubscriptionRepository', () => {
+	it('stores one stable private subscription token per member', async () => {
+		const mock = createDatabaseMock();
+		await new CalendarSubscriptionRepository(mock.db).save('member-1', 'private-token');
+
+		expect(mock.prepare).toHaveBeenCalledWith(
+			expect.stringContaining('ON CONFLICT(member_id) DO UPDATE')
+		);
+		expect(mock.bind).toHaveBeenCalledWith('member-1', 'private-token');
+		expect(mock.run).toHaveBeenCalledOnce();
+	});
+
+	it('resolves a calendar capability token to its member', async () => {
+		const mock = createDatabaseMock({ first: { member_id: 'member-1' } });
+
+		await expect(
+			new CalendarSubscriptionRepository(mock.db).findMemberId('private-token')
+		).resolves.toBe('member-1');
+		expect(mock.bind).toHaveBeenCalledWith('private-token');
 	});
 });
 

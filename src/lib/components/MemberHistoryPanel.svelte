@@ -180,6 +180,10 @@
 									<div class="order-meta">
 										<span class="status-pill">{order.fulfillmentStatus}</span>
 										<time datetime={order.orderDate}>{dateLabel(order.orderDate)}</time>
+										{#if shopifyAdminUrl}
+											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+											<a href={shopifyAdminUrl} target="_blank" rel="noreferrer">Help fulfill ↗</a>
+										{/if}
 									</div>
 								</li>
 							{/each}
