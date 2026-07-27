@@ -192,6 +192,10 @@
 			<p class="eyebrow">Quick links</p>
 			<h2>Resources</h2>
 			<div class="resource-links">
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+				<a href="https://portal.queerlective.com/login" target="_blank" rel="noreferrer">
+					<span>Manage CoLab member retail</span><span aria-hidden="true">↗</span>
+				</a>
 				{#if capabilities.canSubmitCommunityEvents}
 					<a href="https://wkf.ms/4aSHDGu" target="_blank" rel="noreferrer">
 						<span>Submit a community-led event</span><span aria-hidden="true">↗</span>

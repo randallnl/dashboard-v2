@@ -1978,6 +1978,83 @@ h2 {
 	font-size: clamp(2rem, 5vw, 4rem);
 }
 
+.next-milestone {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1rem;
+	padding: 1.1rem 1.3rem;
+	border: 1px solid #e3b864;
+	border-radius: 1rem;
+	background: #fff5d9;
+}
+
+.next-milestone h2,
+.next-milestone p {
+	margin: 0;
+}
+
+.next-milestone h2 {
+	margin-top: 0.15rem;
+	font-size: 1.1rem;
+}
+
+.workspace-tabs {
+	position: sticky;
+	top: 4.7rem;
+	z-index: 8;
+	display: flex;
+	gap: 0.35rem;
+	overflow-x: auto;
+	margin: 1rem 0;
+	padding: 0.45rem;
+	border: 1px solid #d8d1c5;
+	border-radius: 0.9rem;
+	background: rgb(250 247 240 / 96%);
+	box-shadow: 0 0.4rem 1rem rgb(23 37 30 / 8%);
+}
+
+.workspace-tabs button {
+	flex: 0 0 auto;
+	padding: 0.65rem 0.85rem;
+	border: 0;
+	border-radius: 0.65rem;
+	background: transparent;
+	color: #536159;
+	font: inherit;
+	font-size: 0.82rem;
+	font-weight: 750;
+	cursor: pointer;
+}
+
+.workspace-tabs button.active {
+	background: #194639;
+	color: #fff;
+}
+
+.workspace-panel {
+	animation: workspace-panel-in 160ms ease-out;
+}
+
+.workspace-card {
+	padding: clamp(1.4rem, 3vw, 2rem);
+	border: 1px solid #d8d1c5;
+	border-radius: 1rem;
+	background: #faf7f0;
+}
+
+@keyframes workspace-panel-in {
+	from {
+		opacity: 0;
+		transform: translateY(0.2rem);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 .item-dashboard-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1994,6 +2071,89 @@ h2 {
 	border: 1px solid #d8d1c5;
 	border-radius: 1rem;
 	background: #faf7f0;
+}
+
+.inline-project-details.editing {
+	grid-column: 1 / -1;
+}
+
+.inline-editor-heading {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+.inline-editor-heading h2,
+.inline-editor-heading p {
+	margin: 0;
+}
+
+.inline-editor-heading h2 {
+	margin-top: 0.15rem;
+}
+
+.inline-editor-heading > button {
+	padding: 0.5rem 0.8rem;
+	border: 1px solid #9fb5a8;
+	border-radius: 999px;
+	background: #edf5f0;
+	color: #194639;
+	font: inherit;
+	font-size: 0.78rem;
+	font-weight: 800;
+	cursor: pointer;
+}
+
+.inline-project-form,
+.inline-project-form label {
+	display: grid;
+	gap: 0.4rem;
+}
+
+.inline-project-form {
+	gap: 0.8rem;
+	padding-top: 0.3rem;
+}
+
+.inline-project-form > div:not(.inline-editor-actions) {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.8rem;
+}
+
+.inline-project-form input,
+.inline-project-form textarea {
+	width: 100%;
+	padding: 0.7rem 0.8rem;
+	border: 1px solid #c9c1b5;
+	border-radius: 0.55rem;
+	background: #fffdf8;
+	font: inherit;
+}
+
+.inline-editor-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+
+.inline-editor-actions button {
+	padding: 0.65rem 0.9rem;
+	border: 1px solid #194639;
+	border-radius: 0.6rem;
+	background: #194639;
+	color: #fff;
+	font: inherit;
+	font-weight: 750;
+	cursor: pointer;
+}
+
+.inline-editor-actions button:last-child {
+	border-color: #c9c1b5;
+	background: transparent;
+	color: #4d5a53;
 }
 
 .event-editor {
@@ -2096,6 +2256,79 @@ h2 {
 	border-radius: 0.7rem;
 	color: #194639;
 	text-decoration: none;
+}
+
+.resource-tile {
+	position: relative;
+	overflow: hidden;
+	border: 2px solid transparent;
+	border-radius: 0.8rem;
+}
+
+.resource-tile.pinned-resource {
+	border-color: #d49a25;
+	background: #fff8e6;
+}
+
+.resource-tile > button {
+	position: absolute;
+	top: 0.55rem;
+	right: 0.55rem;
+	padding: 0.35rem 0.55rem;
+	border: 1px solid rgb(255 255 255 / 75%);
+	border-radius: 999px;
+	background: rgb(25 70 57 / 90%);
+	color: #fff;
+	font: inherit;
+	font-size: 0.7rem;
+	font-weight: 800;
+	cursor: pointer;
+}
+
+.host-contact-actions {
+	display: flex;
+	gap: 0.4rem;
+}
+
+.host-contact-actions a,
+.workspace-action {
+	padding: 0.5rem 0.7rem;
+	border-radius: 999px;
+	background: #e1eee6;
+	color: #194639;
+	font-size: 0.78rem;
+	font-weight: 800;
+	text-decoration: none;
+}
+
+.project-timeline,
+.project-activity {
+	display: grid;
+	gap: 0;
+	margin: 1rem 0;
+	padding: 0;
+	list-style: none;
+}
+
+.project-timeline li,
+.project-activity li {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1rem 0;
+	border-bottom: 1px solid #ddd6ca;
+}
+
+.project-timeline span,
+.project-activity time {
+	color: #68736d;
+	font-size: 0.78rem;
+}
+
+.project-activity p {
+	margin: 0.25rem 0 0;
+	color: #5f6963;
 }
 
 .item-previews a.link-calendar {

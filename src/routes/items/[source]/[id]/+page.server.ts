@@ -1,4 +1,11 @@
-import { GivebutterRepository, HostRepository, ProjectEventRepository } from '$lib/server/db';
+import {
+	CommentRepository,
+	GivebutterRepository,
+	HostRepository,
+	MemberRepository,
+	ProjectEventRepository
+} from '$lib/server/db';
+import { attendeeEmails } from '$lib/server/monday/events';
 import type { ProjectEventSource } from '$lib/types/domain';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -29,7 +36,29 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 	if (layout.capabilities.isRetailOnly && record.source === 'community') {
 		error(403, 'This event is not included with this membership.');
 	}
-	const host = await new HostRepository(platform!.env.DB).find(record.source, record.id);
+	const db = platform!.env.DB;
+	const host = await new HostRepository(db).find(record.source, record.id);
+	const memberRepository = new MemberRepository(db);
+	const [hostMember, members, comments] = await Promise.all([
+		host?.memberId ? memberRepository.findById(host.memberId) : Promise.resolve(null),
+		record.source === 'project' ? memberRepository.search('', 100) : Promise.resolve([]),
+		new CommentRepository(db).list(record.source, record.id)
+	]);
+	const memberByEmail = new Map(
+		members.flatMap((member) =>
+			[member.email, ...member.otherEmails]
+				.filter(Boolean)
+				.map((email) => [email.trim().toLocaleLowerCase('en-US'), member] as const)
+		)
+	);
+	const attendees = attendeeEmails(record.record.attendees).map((email) => {
+		const member = memberByEmail.get(email.toLocaleLowerCase('en-US'));
+		return {
+			email,
+			name: member?.preferredName || email,
+			memberId: member?.id || ''
+		};
+	});
 	const campaignId =
 		typeof record.record.campaignId === 'string' ? record.record.campaignId.trim() : '';
 	const signups =
@@ -45,6 +74,11 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 			record: Object.fromEntries(Object.entries(record.record).filter(([key]) => !hidden.has(key)))
 		},
 		host,
+		hostContact: hostMember
+			? { email: hostMember.email, phone: hostMember.phone, name: hostMember.preferredName }
+			: null,
+		attendees,
+		recentComments: comments.slice(-5).reverse(),
 		signups,
 		member: layout.member,
 		capabilities: layout.capabilities,
