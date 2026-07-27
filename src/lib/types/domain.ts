@@ -108,7 +108,7 @@ export type ProjectEventRecord<T extends Record<string, unknown> = Record<string
 
 export type UpcomingProjectAssignment = {
 	record: ProjectEventRecord;
-	roles: Array<'Host' | 'Attendee'>;
+	roles: Array<'Host' | 'Attendee' | 'Volunteer'>;
 };
 
 export type ProjectEventComment = {

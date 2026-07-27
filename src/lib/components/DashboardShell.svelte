@@ -68,16 +68,7 @@
 	}
 
 	onMount(() => {
-		const sectionIds = [
-			'overview',
-			'resources',
-			'portal-areas',
-			'shifts',
-			'calendar',
-			'votes',
-			'history',
-			'admin'
-		];
+		const sectionIds = ['overview', 'resources', 'shifts', 'calendar', 'votes', 'history', 'admin'];
 		const sections = sectionIds
 			.map((id) => document.getElementById(id))
 			.filter((section): section is HTMLElement => Boolean(section));
@@ -130,9 +121,7 @@
 		<nav aria-label="Member navigation">
 			<a class:nav-active={activeSection === 'overview'} href="#overview">Overview</a>
 			{#if capabilities.canViewShifts}
-				<a class:nav-active={['portal-areas', 'shifts'].includes(activeSection)} href="#shifts">
-					Shifts
-				</a>
+				<a class:nav-active={activeSection === 'shifts'} href="#shifts">Shifts</a>
 			{/if}
 			{#if capabilities.canViewCalendar}
 				<a class:nav-active={activeSection === 'calendar'} href="#calendar">Calendar</a>
@@ -220,49 +209,6 @@
 			</div>
 		</article>
 
-		<section class="portal-section" id="portal-areas" aria-labelledby="portal-title">
-			<div class="section-heading">
-				<div>
-					<p class="eyebrow">Your portal</p>
-					<h2 id="portal-title">Member tools</h2>
-				</div>
-				<p>Features will become active as each data workflow is connected.</p>
-			</div>
-
-			<div class="foundation-grid">
-				{#if capabilities.canViewShifts}
-					<article>
-						<span class="card-number">01</span>
-						<h3>Available shifts</h3>
-						<p>Browse and claim upcoming studio coverage times.</p>
-						<span class="coming-soon">Next milestone</span>
-					</article>
-				{/if}
-				<article>
-					<span class="card-number">02</span>
-					<h3>Studio calendar</h3>
-					<p>See shifts, member events, and community programming.</p>
-					<span class="coming-soon">Coming soon</span>
-				</article>
-				{#if capabilities.canVote}
-					<article>
-						<span class="card-number">03</span>
-						<h3>Community votes</h3>
-						<p>Review active motions and participate in decisions.</p>
-						<span class="coming-soon">Coming soon</span>
-					</article>
-				{/if}
-				{#if capabilities.isRetailOnly}
-					<article class="access-note">
-						<span class="card-number">Retail membership</span>
-						<h3>Your focused portal</h3>
-						<p>Shift signup, open orders, and event submissions are not part of this membership.</p>
-						<span class="coming-soon">Access applied</span>
-					</article>
-				{/if}
-			</div>
-		</section>
-
 		{#if capabilities.canViewShifts}
 			<ShiftPanel
 				isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
@@ -331,10 +277,10 @@
 		<a class:active={activeSection === 'overview'} href="#overview">Overview</a>
 		{#if capabilities.canViewCalendar}
 			<a class:active={activeSection === 'calendar'} href="#calendar">Calendar</a>
+		{:else if capabilities.canViewShifts}
+			<a class:active={activeSection === 'shifts'} href="#shifts">Shifts</a>
 		{:else}
-			<a class:active={['portal-areas', 'shifts'].includes(activeSection)} href="#portal-areas">
-				Tools
-			</a>
+			<a class:active={activeSection === 'history'} href="#history">History</a>
 		{/if}
 		<a class:active={activeSection === 'resources'} href="#resources">Resources</a>
 		<button

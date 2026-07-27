@@ -47,7 +47,8 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
 			),
 			[layout.member.email, ...layout.member.otherEmails],
 			hostKeys,
-			volunteerKeys
+			volunteerKeys,
+			[layout.member.preferredName]
 		);
 	}
 

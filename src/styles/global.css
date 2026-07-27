@@ -796,6 +796,17 @@ h2 {
 	gap: 0.5rem;
 }
 
+.upcoming-show-more {
+	margin-top: 0.65rem;
+	border: 0;
+	background: transparent;
+	color: #194639;
+	font: inherit;
+	font-size: 0.75rem;
+	font-weight: 800;
+	cursor: pointer;
+}
+
 .upcoming-shift-list > a,
 .upcoming-project-list > a,
 .upcoming-open-shift-list > a {
@@ -910,18 +921,6 @@ h2 {
 	line-height: 1.5;
 }
 
-.foundation-grid {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 1rem;
-	margin-top: 1rem;
-}
-
-.portal-section {
-	padding-top: 4rem;
-	scroll-margin-top: 2rem;
-}
-
 .section-heading {
 	display: flex;
 	align-items: end;
@@ -949,50 +948,6 @@ h2 {
 
 .section-heading.compact {
 	align-items: start;
-}
-
-.foundation-grid article {
-	display: flex;
-	min-height: 18rem;
-	flex-direction: column;
-	padding: 1.7rem;
-	border: 1px solid #d8d1c5;
-	border-radius: 1.2rem;
-	background: #faf7f0;
-}
-
-.card-number {
-	color: #a04e31;
-	font-family: 'Manrope', sans-serif;
-	font-size: 0.8rem;
-	font-weight: 700;
-}
-
-.foundation-grid h3 {
-	max-width: none;
-	margin-top: auto;
-	margin-bottom: 0;
-	font-size: 1.65rem;
-	letter-spacing: -0.035em;
-}
-
-.foundation-grid p {
-	margin: 0.8rem 0 1.5rem;
-	color: #67706b;
-	line-height: 1.5;
-}
-
-.coming-soon {
-	color: #8a918d;
-	font-size: 0.75rem;
-	font-weight: 700;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-}
-
-.foundation-grid .access-note {
-	border-color: #c7bba8;
-	background: #eee7da;
 }
 
 .shift-panel {
@@ -2634,13 +2589,12 @@ h2 {
 }
 
 .task-create-form {
-	display: grid;
-	gap: 0.75rem;
-	margin: 1.5rem 0;
-	padding: 1rem;
-	border: 1px dashed #9fb5a8;
-	border-radius: 0.8rem;
-	background: #f2f7f3;
+	display: flex;
+	align-items: end;
+	gap: 0.6rem;
+	margin: 0.65rem 0 1rem;
+	padding: 0.65rem 0;
+	border-block: 1px solid #ddd6ca;
 }
 
 .task-create-form label,
@@ -2651,10 +2605,9 @@ h2 {
 	font-weight: 750;
 }
 
-.task-create-form > div:not(.project-task-heading) {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 0.7rem;
+.task-title-field {
+	flex: 1 1 20rem;
+	min-width: 10rem;
 }
 
 .task-create-form input,
@@ -2665,6 +2618,43 @@ h2 {
 	border-radius: 0.55rem;
 	background: #fff;
 	font: inherit;
+}
+
+.task-create-options {
+	position: relative;
+	flex: 0 0 auto;
+}
+
+.task-create-options summary {
+	padding: 0.65rem 0.75rem;
+	border: 1px solid #c9c1b5;
+	border-radius: 0.55rem;
+	background: #fff;
+	color: #194639;
+	font-size: 0.78rem;
+	font-weight: 800;
+	cursor: pointer;
+	list-style: none;
+}
+
+.task-create-options summary::-webkit-details-marker {
+	display: none;
+}
+
+.task-create-options[open] > div {
+	position: absolute;
+	z-index: 4;
+	top: calc(100% + 0.4rem);
+	right: 0;
+	display: grid;
+	width: min(22rem, 80vw);
+	grid-template-columns: 1fr 1fr;
+	gap: 0.7rem;
+	padding: 0.8rem;
+	border: 1px solid #c9c1b5;
+	border-radius: 0.7rem;
+	background: #fffdf8;
+	box-shadow: 0 0.8rem 2rem rgb(35 43 38 / 15%);
 }
 
 .task-create-form > button,
@@ -2678,6 +2668,13 @@ h2 {
 	font: inherit;
 	font-weight: 800;
 	cursor: pointer;
+}
+
+.task-create-form > small {
+	align-self: center;
+	color: #68736d;
+	font-size: 0.7rem;
+	white-space: nowrap;
 }
 
 .task-create-form button:disabled,
@@ -3689,10 +3686,6 @@ h2 {
 		display: none;
 	}
 
-	.foundation-grid {
-		grid-template-columns: 1fr;
-	}
-
 	.welcome-card {
 		align-items: start;
 		flex-direction: column;
@@ -3843,6 +3836,32 @@ h2 {
 
 	.attendee-list {
 		justify-content: start;
+	}
+
+	.task-create-form {
+		align-items: end;
+		flex-wrap: wrap;
+	}
+
+	.task-title-field {
+		flex-basis: 100%;
+	}
+
+	.task-create-options {
+		flex: 1;
+	}
+
+	.task-create-options summary {
+		text-align: center;
+	}
+
+	.task-create-options[open] > div {
+		right: auto;
+		left: 0;
+	}
+
+	.task-create-form > small {
+		display: none;
 	}
 
 	.admin-load-prompt {

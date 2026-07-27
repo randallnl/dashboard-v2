@@ -38,6 +38,31 @@ describe('upcomingAssignments', () => {
 			new Set([key])
 		);
 
+		expect(result[0]?.roles).toEqual(['Host', 'Volunteer']);
+	});
+
+	it('matches a member tagged in the synchronized Monday person column', () => {
+		const tagged = { ...record('event-1'), owner: 'Alex Member' };
+		const result = upcomingAssignments([tagged], ['alex@example.com'], new Set(), new Set(), [
+			'Alex Member'
+		]);
+
+		expect(result[0]?.roles).toEqual(['Host']);
+	});
+
+	it('includes community events matched by organizer email or additional organizer name', () => {
+		const community = {
+			...record('event-1'),
+			source: 'community' as const,
+			record: {
+				organizerEmail: 'other@example.com',
+				additionalOrganizers: 'Alex Member'
+			}
+		};
+		const result = upcomingAssignments([community], ['alex@example.com'], new Set(), new Set(), [
+			'Alex Member'
+		]);
+
 		expect(result[0]?.roles).toEqual(['Host']);
 	});
 });

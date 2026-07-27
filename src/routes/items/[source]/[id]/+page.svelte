@@ -598,6 +598,10 @@
 						<span>End</span><strong>{dateTimeLabel(data.record.endDateValue)}</strong>
 					</li>{/if}
 			</ol>
+			<div class="project-task-heading">
+				<h3>Project tasks</h3>
+				<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
+			</div>
 			{#if data.canEdit && data.record.source === 'project'}
 				<form
 					class="task-create-form"
@@ -606,37 +610,34 @@
 						void createTask();
 					}}
 				>
-					<div class="project-task-heading">
-						<h3>Add a task</h3>
-						<span>Creates a Monday subitem</span>
-					</div>
-					<label
-						><span>Task name</span><input
+					<label class="task-title-field"
+						><span>New task</span><input
 							bind:value={newTaskTitle}
 							required
 							maxlength="255"
+							placeholder="What needs to be done?"
 						/></label
 					>
-					<div>
-						<label
-							><span>Status</span><input
-								bind:value={newTaskStatus}
-								placeholder="Not started"
-							/></label
-						>
-						<label><span>Due date</span><input bind:value={newTaskDueDate} type="date" /></label>
-					</div>
+					<details class="task-create-options">
+						<summary>Details</summary>
+						<div>
+							<label
+								><span>Status</span><input
+									bind:value={newTaskStatus}
+									placeholder="Not started"
+								/></label
+							>
+							<label><span>Due date</span><input bind:value={newTaskDueDate} type="date" /></label>
+						</div>
+					</details>
 					<button type="submit" disabled={creatingTask}>
-						{creatingTask ? 'Creating in Monday…' : 'Create task'}
+						{creatingTask ? 'Adding…' : 'Add task'}
 					</button>
+					<small>Saved to Monday</small>
 				</form>
 			{/if}
 			{#if taskMessage}<p class="task-message" role="status">{taskMessage}</p>{/if}
 			{#if tasks.length}
-				<div class="project-task-heading">
-					<h3>Project tasks</h3>
-					<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
-				</div>
 				<div class="project-task-list">
 					{#each [...tasks].sort( (left, right) => (left.dueDate || '9999').localeCompare(right.dueDate || '9999') ) as task (task.id)}
 						<article class:completed={task.completed}>

@@ -16,7 +16,8 @@
 	} = $props();
 
 	const visibleShifts = $derived(shifts.slice(0, 3));
-	const visibleProjects = $derived(projects.slice(0, 3));
+	let showAllProjects = $state(false);
+	const visibleProjects = $derived(showAllProjects ? projects : projects.slice(0, 3));
 	const visibleOpenShifts = $derived(availableShifts.slice(0, 3));
 	let switchRequests = $state<ShiftSwitchRequest[]>([]);
 	let selectedShift = $state<Shift | null>(null);
@@ -218,6 +219,15 @@
 						</a>
 					{/each}
 				</div>
+				{#if projects.length > 3}
+					<button
+						type="button"
+						class="upcoming-show-more"
+						onclick={() => (showAllProjects = !showAllProjects)}
+					>
+						{showAllProjects ? 'Show fewer' : `Show all ${projects.length}`}
+					</button>
+				{/if}
 			{:else}
 				<p class="upcoming-empty">You aren’t assigned to an upcoming project or event.</p>
 			{/if}
