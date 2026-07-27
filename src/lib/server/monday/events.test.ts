@@ -65,6 +65,43 @@ describe('Monday event mapping', () => {
 		expect(attendeeEmails(event.record.attendees)).toEqual(['one@example.com', 'two@example.com']);
 	});
 
+	it('maps Monday item updates and replies into synchronization metadata', () => {
+		const event = mapProjectEvent(
+			{
+				id: 'event-updates',
+				name: 'Updated project',
+				column_values: [
+					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-08-01"}' },
+					{ id: 'dropdown_mknqezw8', text: 'CoLab', value: null }
+				],
+				updates: [
+					{
+						id: 'update-1',
+						text_body: 'Main update',
+						created_at: '2026-07-27T10:00:00.000Z',
+						creator_id: 'user-1',
+						creator: { name: 'Alex Morgan' },
+						replies: [
+							{
+								id: 'reply-1',
+								text_body: 'A reply',
+								created_at: '2026-07-27T10:30:00.000Z',
+								creator_id: 'user-2',
+								creator: { name: 'Rae Jones' }
+							}
+						]
+					}
+				]
+			},
+			'2026-07-27T11:00:00.000Z'
+		);
+
+		expect(event.record._mondayUpdates).toEqual([
+			expect.objectContaining({ id: 'update-1', textBody: 'Main update' }),
+			expect.objectContaining({ id: 'reply-1', textBody: 'A reply' })
+		]);
+	});
+
 	it('prefers the original public asset URL over Monday’s small thumbnail', () => {
 		const event = mapProjectEvent(
 			{

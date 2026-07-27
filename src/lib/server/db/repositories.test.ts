@@ -115,6 +115,32 @@ describe('CommentRepository', () => {
 			'2026-07-26T21:30:00.000Z'
 		);
 	});
+
+	it('upserts Monday updates with a stable external comment id', async () => {
+		const mock = createDatabaseMock();
+		const repository = new CommentRepository(mock.db);
+
+		await repository.upsertMondayUpdate({
+			updateId: 'update-42',
+			source: 'community',
+			eventId: 'event-1',
+			creatorId: 'user-7',
+			creatorName: 'Alex Morgan',
+			body: 'The room is confirmed.',
+			createdAt: '2026-07-27T14:00:00.000Z'
+		});
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT(id) DO UPDATE'));
+		expect(mock.bind).toHaveBeenCalledWith(
+			'monday:update-42',
+			'community',
+			'event-1',
+			'monday:user-7',
+			'Alex Morgan',
+			'The room is confirmed.',
+			'2026-07-27T14:00:00.000Z'
+		);
+	});
 });
 
 describe('CalendarSubscriptionRepository', () => {

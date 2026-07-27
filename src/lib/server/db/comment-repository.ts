@@ -85,4 +85,37 @@ export class CommentRepository {
 			createdAt: input.createdAt
 		};
 	}
+
+	async upsertMondayUpdate(input: {
+		updateId: string;
+		source: ProjectEventSource;
+		eventId: string;
+		creatorId: string;
+		creatorName: string;
+		body: string;
+		createdAt: string;
+	}): Promise<boolean> {
+		const result = await this.db
+			.prepare(
+				`INSERT INTO project_event_comments (
+					id, source, event_id, member_id, author_label, body, mentions_json, created_at
+				) VALUES (?1, ?2, ?3, ?4, ?5, ?6, '[]', ?7)
+				ON CONFLICT(id) DO UPDATE SET
+					author_label = excluded.author_label,
+					body = excluded.body,
+					created_at = excluded.created_at
+				WHERE project_event_comments.id LIKE 'monday:%'`
+			)
+			.bind(
+				`monday:${input.updateId}`,
+				input.source,
+				input.eventId,
+				`monday:${input.creatorId || 'unknown'}`,
+				input.creatorName,
+				input.body,
+				input.createdAt
+			)
+			.run();
+		return result.meta.changes > 0;
+	}
 }

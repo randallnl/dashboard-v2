@@ -65,7 +65,22 @@ type FileValue = {
 	} | null;
 };
 type Column = { id: string; text: string | null; value: string | null; files?: FileValue[] };
-type Item = { id: string; name: string; column_values: Column[] };
+export type MondayItemUpdate = {
+	id: string;
+	textBody: string;
+	createdAt: string;
+	creatorId: string;
+	creatorName: string;
+};
+type RawUpdate = {
+	id: string;
+	text_body: string | null;
+	created_at: string | null;
+	creator_id: string | null;
+	creator: { name: string | null } | null;
+	replies?: RawUpdate[] | null;
+};
+type Item = { id: string; name: string; column_values: Column[]; updates?: RawUpdate[] };
 type Page = { cursor: string | null; items: Item[] };
 
 const INITIAL = `
@@ -76,6 +91,11 @@ const INITIAL = `
 				items {
 					id
 					name
+					updates(limit: 100) {
+						id text_body created_at creator_id
+						creator { name }
+						replies { id text_body created_at creator_id creator { name } }
+					}
 					column_values(ids: $columnIds) {
 						id text value
 						... on FileValue {
@@ -101,6 +121,11 @@ const NEXT = `
 			items {
 				id
 				name
+				updates(limit: 100) {
+					id text_body created_at creator_id
+					creator { name }
+					replies { id text_body created_at creator_id creator { name } }
+				}
 				column_values(ids: $columnIds) {
 					id text value
 					... on FileValue {
@@ -189,6 +214,19 @@ function mondayUrl(boardId: string, itemId: string): string {
 	return `https://queerlective.monday.com/boards/${boardId}/pulses/${itemId}`;
 }
 
+function mondayUpdates(item: Item): MondayItemUpdate[] {
+	return (item.updates ?? [])
+		.flatMap((update) => [update, ...(update.replies ?? [])])
+		.map((update) => ({
+			id: update.id,
+			textBody: update.text_body?.trim() ?? '',
+			createdAt: update.created_at ?? '',
+			creatorId: update.creator_id ?? '',
+			creatorName: update.creator?.name?.trim() || 'Monday user'
+		}))
+		.filter((update) => update.textBody && update.createdAt);
+}
+
 export function attendeeEmails(value: unknown): string[] {
 	if (typeof value !== 'string') return [];
 	return [
@@ -232,6 +270,7 @@ export function mapProjectEvent(item: Item, syncedAt: string): ProjectEventRecor
 			calendarUrl: safeUrl(columns, PROJECT_COLUMNS.calendar),
 			spaceReservation: text(columns, PROJECT_COLUMNS.spaceReservation),
 			attendees: text(columns, PROJECT_COLUMNS.attendees),
+			_mondayUpdates: mondayUpdates(item),
 			mondayUrl: mondayUrl(PROJECT_BOARD_ID, item.id)
 		},
 		syncedAt
@@ -265,6 +304,7 @@ export function mapCommunityEvent(item: Item, syncedAt: string): ProjectEventRec
 			additionalInfo: text(columns, COMMUNITY_COLUMNS.additionalInfo),
 			itemId: text(columns, COMMUNITY_COLUMNS.itemId) || item.id,
 			creationLog: text(columns, COMMUNITY_COLUMNS.created),
+			_mondayUpdates: mondayUpdates(item),
 			mondayUrl: mondayUrl(COMMUNITY_BOARD_ID, item.id)
 		},
 		syncedAt
