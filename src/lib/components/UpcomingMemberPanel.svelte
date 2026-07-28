@@ -100,14 +100,33 @@
 	}
 
 	function safeImage(record: UpcomingProjectAssignment['record']): string {
-		const value = record.record.posterUrl;
-		if (typeof value !== 'string') return '';
-		try {
-			const url = new URL(value);
-			return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
-		} catch {
-			return '';
+		const values = [
+			record.record.posterUrl,
+			...(Array.isArray(record.record.attachments)
+				? record.record.attachments
+						.filter(
+							(attachment): attachment is { url: string; isImage: boolean } =>
+								typeof attachment === 'object' &&
+								attachment !== null &&
+								'isImage' in attachment &&
+								attachment.isImage === true &&
+								'url' in attachment &&
+								typeof attachment.url === 'string'
+						)
+						.map((attachment) => attachment.url)
+				: [])
+		];
+
+		for (const value of values) {
+			if (typeof value !== 'string' || !value.trim()) continue;
+			try {
+				const url = new URL(value);
+				if (url.protocol === 'https:' || url.protocol === 'http:') return url.href;
+			} catch {
+				// Try the next available project image.
+			}
 		}
+		return '';
 	}
 </script>
 

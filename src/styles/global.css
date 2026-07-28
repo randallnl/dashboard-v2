@@ -1542,6 +1542,24 @@ h2 {
 	font-size: 1.7rem;
 }
 
+.event-dialog-top-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.event-dialog-top-actions .project-dashboard-button {
+	padding: 0.55rem 0.75rem;
+	border-radius: 0.55rem;
+	background: #194639;
+	color: #fff;
+	font-weight: 800;
+}
+
+.calendar-project-pills {
+	margin: -0.25rem 0 1rem;
+}
+
 .event-preview-image {
 	width: 100%;
 	max-height: 20rem;
@@ -1574,8 +1592,11 @@ h2 {
 }
 
 .event-attachment-previews strong {
+	overflow: hidden;
 	padding: 0 0.65rem 0.65rem;
 	font-size: 0.78rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .file-preview-icon {

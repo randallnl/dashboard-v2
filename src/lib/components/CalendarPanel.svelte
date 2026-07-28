@@ -104,6 +104,26 @@
 		return event.attachments.filter((attachment) => attachment.url !== event.imageUrl);
 	}
 
+	function attachmentLabel(name: string, isImage: boolean): string {
+		if (/^https?:\/\//iu.test(name.trim())) return isImage ? 'Open image' : 'Open file';
+		return name || (isImage ? 'Open image' : 'Open file');
+	}
+
+	function projectPillClass(label: string): string {
+		const normalized = label.toLocaleLowerCase('en-US');
+		if (normalized === 'status') return 'pill-status';
+		if (normalized === 'location') return 'pill-location';
+		if (normalized.includes('strategic')) return 'pill-strategic';
+		if (normalized.includes('priority')) return 'pill-priority';
+		return 'pill-goal';
+	}
+
+	function isProjectPillField(label: string): boolean {
+		return ['category', 'goal', 'strategic goal', 'priority'].includes(
+			label.toLocaleLowerCase('en-US')
+		);
+	}
+
 	function eventStatusLabel(event: CalendarEvent): string {
 		if (event.source !== 'shift' || event.status !== 'Covered') return event.status;
 		const coveredBy = event.details.split(' · ').slice(1).join(' · ').trim();
@@ -562,9 +582,32 @@
 			>
 				<div class="card-heading">
 					<span class={`source-pill source-${selected.source}`}>{selected.source}</span>
-					<button type="button" class="text-button" onclick={() => (selected = null)}>Close</button>
+					<div class="event-dialog-top-actions">
+						{#if selected.pageUrl}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a class="project-dashboard-button" href={selected.pageUrl}>
+								{selected.source === 'project' ? 'Project dashboard' : 'Event dashboard'} →
+							</a>
+						{/if}
+						<button type="button" class="text-button" onclick={() => (selected = null)}
+							>Close</button
+						>
+					</div>
 				</div>
 				<h3 id="event-dialog-title">{selected.title}</h3>
+				{#if selected.source === 'project'}
+					<div class="project-pills project-record-pills calendar-project-pills">
+						{#if selected.status}
+							<span class="pill-status">Status · {selected.status}</span>
+						{/if}
+						{#if selected.location}
+							<span class="pill-location">Location · {selected.location}</span>
+						{/if}
+						{#each selected.fields.filter((field) => !field.url && isProjectPillField(field.label)) as field (`pill-${field.label}-${field.value}`)}
+							<span class={projectPillClass(field.label)}>{field.label} · {field.value}</span>
+						{/each}
+					</div>
+				{/if}
 				{#if safeUrl(selected.imageUrl)}
 					<img class="event-preview-image" src={safeUrl(selected.imageUrl)} alt="" />
 				{/if}
@@ -578,7 +621,7 @@
 								{:else}
 									<span class="file-preview-icon" aria-hidden="true">↗</span>
 								{/if}
-								<strong>{attachment.name}</strong>
+								<strong>{attachmentLabel(attachment.name, attachment.isImage)}</strong>
 							</a>
 						{/each}
 					</div>
@@ -592,11 +635,11 @@
 								: ''}
 						</dd>
 					</div>
-					{#if selected.location}<div>
+					{#if selected.location && selected.source !== 'project'}<div>
 							<dt>Location</dt>
 							<dd>{selected.location}</dd>
 						</div>{/if}
-					{#if selected.status}<div>
+					{#if selected.status && selected.source !== 'project'}<div>
 							<dt>Status</dt>
 							<dd>{eventStatusLabel(selected)}</dd>
 						</div>{/if}
@@ -604,14 +647,17 @@
 				{#if selected.details}<p>{selected.details}</p>{/if}
 				{#if selected.fields.length}
 					<dl class="event-extra-fields">
-						{#each selected.fields as field (`${field.label}-${field.value}`)}
+						<!-- eslint-disable svelte/no-navigation-without-resolve -->
+						{#each selected.fields.filter((field) => field.url || !isProjectPillField(field.label)) as field (`${field.label}-${field.value}`)}
 							<div>
 								<dt>{field.label}</dt>
 								<dd>
 									{#if field.url && safeUrl(field.value)}
-										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-										<a href={safeUrl(field.value)} target="_blank" rel="noreferrer"
-											>{field.value} ↗</a
+										<a
+											href={safeUrl(field.value)}
+											target="_blank"
+											rel="noreferrer"
+											title={field.value}>Open {field.label} ↗</a
 										>
 									{:else}
 										{field.value}
@@ -619,6 +665,7 @@
 								</dd>
 							</div>
 						{/each}
+						<!-- eslint-enable svelte/no-navigation-without-resolve -->
 					</dl>
 				{/if}
 				<div class="event-dialog-actions">
@@ -646,10 +693,6 @@
 						<a href={safeUrl(selected.url)} target="_blank" rel="noreferrer"
 							>Registration/details ↗</a
 						>
-					{/if}
-					{#if selected.pageUrl}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={selected.pageUrl}>Open project dashboard →</a>
 					{/if}
 				</div>
 				<div class="add-calendar-actions" aria-label="Add to calendar">
