@@ -40,6 +40,8 @@ export type Shift = {
 	timeLabel: string;
 	memberId: string;
 	person: string;
+	assignedPerson?: string;
+	storedPerson?: string;
 	coveredBy: string;
 	coverageStatus: string;
 	isCovered: boolean;

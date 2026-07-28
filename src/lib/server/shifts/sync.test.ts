@@ -52,6 +52,62 @@ describe('syncShifts', () => {
 		).toBe('Rae J.');
 	});
 
+	it('reconciles a populated Monday person field into status and backup fields', async () => {
+		const assigned = {
+			...shift,
+			boardId: 'board-1',
+			isCovered: true,
+			coverageStatus: 'Open',
+			memberId: '',
+			person: 'Alex Morgan',
+			assignedPerson: 'Alex Morgan',
+			storedPerson: ''
+		};
+		const member = { id: 'member-1', preferredName: 'Alex Morgan' } as Member;
+		const source = {
+			list: vi.fn().mockResolvedValue([assigned]),
+			reconcileAssignment: vi.fn().mockResolvedValue(undefined)
+		};
+		const store = { upsert: vi.fn().mockResolvedValue(undefined) };
+
+		await syncShifts(source, store, [member]);
+
+		expect(source.reconcileAssignment).toHaveBeenCalledWith(
+			assigned,
+			'member-1',
+			'Alex M. | member-1'
+		);
+		expect(store.upsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				memberId: 'member-1',
+				coverageStatus: 'Covered',
+				isCovered: true,
+				coveredBy: 'Alex M.'
+			})
+		);
+	});
+
+	it('does not rewrite Monday when person, status, and backup fields already agree', async () => {
+		const assigned = {
+			...shift,
+			isCovered: true,
+			coverageStatus: 'Covered',
+			memberId: 'member-1',
+			person: 'Alex Morgan',
+			assignedPerson: 'Alex Morgan',
+			storedPerson: 'Alex M. | member-1'
+		};
+		const source = {
+			list: vi.fn().mockResolvedValue([assigned]),
+			reconcileAssignment: vi.fn().mockResolvedValue(undefined)
+		};
+		const store = { upsert: vi.fn().mockResolvedValue(undefined) };
+
+		await syncShifts(source, store, [{ id: 'member-1', preferredName: 'Alex Morgan' } as Member]);
+
+		expect(source.reconcileAssignment).not.toHaveBeenCalled();
+	});
+
 	it('returns a valid timestamp when Monday has no shifts', async () => {
 		const result = await syncShifts({ list: vi.fn().mockResolvedValue([]) }, { upsert: vi.fn() });
 

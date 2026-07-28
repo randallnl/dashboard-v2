@@ -51,12 +51,12 @@ describe('shiftPersonValue', () => {
 describe('isShiftCovered', () => {
 	it('treats Needs Coverage as open even when Monday retains a stale member ID', () => {
 		expect(isShiftCovered('Needs Coverage', 'member-1', '')).toBe(false);
-		expect(isShiftCovered('Open', '', 'Alex Morgan')).toBe(false);
 	});
 
-	it('uses status, person, and member ID as covered signals otherwise', () => {
+	it('uses status, person, and member ID as covered signals', () => {
 		expect(isShiftCovered('Covered', '', '')).toBe(true);
 		expect(isShiftCovered('', '', 'Alex Morgan')).toBe(true);
+		expect(isShiftCovered('Open', '', 'Alex Morgan')).toBe(true);
 		expect(isShiftCovered('', 'member-1', '')).toBe(true);
 	});
 });
@@ -108,6 +108,31 @@ describe('mapMondayShift', () => {
 
 		expect(shift.isCovered).toBe(true);
 		expect(shift.timeLabel).toBe('2pm-4pm');
+	});
+
+	it('treats the Monday person field as authoritative coverage', () => {
+		const shift = mapMondayShift(
+			{
+				id: 'shift-person',
+				name: 'Person-column coverage',
+				board: { id: 'subitem-board' },
+				parent_item: { id: 'month-1', name: 'August 2026' },
+				column_values: [
+					{ id: 'date0', text: 'Aug 2', value: '{"date":"2026-08-02"}' },
+					{ id: 'text_mm35f0vb', text: '', value: null },
+					{ id: 'text_mm4vxh9t', text: '', value: null },
+					{ id: 'person', text: 'Alex Morgan', value: '{"personsAndTeams":[{"id":1}]}' },
+					{ id: 'color_mkw122gj', text: 'Open', value: null }
+				]
+			},
+			'2026-07-28T12:00:00.000Z'
+		);
+
+		expect(shift).toMatchObject({
+			isCovered: true,
+			person: 'Alex Morgan',
+			coveredBy: 'Alex Morgan'
+		});
 	});
 
 	it('treats Needs Coverage shifts as open', () => {

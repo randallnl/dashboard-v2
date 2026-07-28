@@ -1,11 +1,12 @@
 import { ShiftRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { MemberDirectory } from '$lib/server/monday/members';
-import { coveredByLabel, ShiftDirectory } from '$lib/server/monday/shifts';
+import { coveredByLabel, shiftPersonValue, ShiftDirectory } from '$lib/server/monday/shifts';
 import type { Member, Shift } from '$lib/types/domain';
 
 type ShiftSource = {
 	list(): Promise<Shift[]>;
+	reconcileAssignment?(shift: Shift, memberId: string, person: string): Promise<void>;
 };
 
 type ShiftStore = {
@@ -38,11 +39,35 @@ export async function syncShifts(
 ): Promise<ShiftSyncResult> {
 	const shifts = await source.list();
 	const membersById = new Map(members.map((member) => [member.id, member]));
+	const membersByName = new Map(
+		members.map((member) => [normalizeName(member.preferredName), member])
+	);
 	let count = 0;
 	let failed = 0;
 	for (const rawShift of shifts) {
-		const shift = resolveShiftCoverage(rawShift, membersById);
 		try {
+			let reconciled = rawShift;
+			if (rawShift.assignedPerson) {
+				const member = membersByName.get(normalizeName(rawShift.assignedPerson));
+				const memberId = member?.id || rawShift.memberId;
+				const storedPerson = member
+					? shiftPersonValue(member)
+					: coveredByLabel(rawShift.assignedPerson);
+				const needsMondayUpdate =
+					rawShift.coverageStatus.trim().toLocaleLowerCase('en-US') !== 'covered' ||
+					rawShift.storedPerson !== storedPerson ||
+					rawShift.memberId !== memberId;
+				if (needsMondayUpdate && source.reconcileAssignment) {
+					await source.reconcileAssignment(rawShift, memberId, storedPerson);
+				}
+				reconciled = {
+					...rawShift,
+					memberId,
+					coverageStatus: 'Covered',
+					isCovered: true
+				};
+			}
+			const shift = resolveShiftCoverage(reconciled, membersById);
 			await store.upsert(shift);
 			count += 1;
 		} catch (cause) {
@@ -50,7 +75,7 @@ export async function syncShifts(
 			console.error(
 				JSON.stringify({
 					event: 'shift_upsert_failed',
-					shiftId: shift.id,
+					shiftId: rawShift.id,
 					message: cause instanceof Error ? cause.message : 'Unknown error'
 				})
 			);
@@ -64,6 +89,10 @@ export async function syncShifts(
 	};
 }
 
+function normalizeName(value: string): string {
+	return value.trim().toLocaleLowerCase('en-US').replace(/\s+/gu, ' ');
+}
+
 export async function syncShiftsFromMonday(
 	env: Pick<Env, 'DB' | 'MONDAY_API_TOKEN'>
 ): Promise<ShiftSyncResult> {
@@ -73,5 +102,13 @@ export async function syncShiftsFromMonday(
 		new ShiftDirectory(monday).list(),
 		new MemberDirectory(monday).list()
 	]);
-	return syncShifts({ list: async () => shifts }, new ShiftRepository(env.DB), members);
+	const directory = new ShiftDirectory(monday);
+	return syncShifts(
+		{
+			list: async () => shifts,
+			reconcileAssignment: (shift, memberId, person) => directory.cover(shift, memberId, person)
+		},
+		new ShiftRepository(env.DB),
+		members
+	);
 }

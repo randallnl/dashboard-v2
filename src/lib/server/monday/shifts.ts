@@ -7,6 +7,7 @@ export const SHIFT_COLUMNS = {
 	date: 'date0',
 	memberId: 'text_mm35f0vb',
 	person: 'text_mm4vxh9t',
+	assignedPerson: 'person',
 	coverageStatus: 'color_mkw122gj'
 } as const;
 
@@ -125,15 +126,18 @@ export function shiftPersonValue(member: Pick<Member, 'id' | 'preferredName'>): 
 
 export function isShiftCovered(coverageStatus: string, memberId: string, person: string): boolean {
 	const status = coverageStatus.trim().toLocaleLowerCase('en-US');
+	if (person.trim()) return true;
 	if (status === 'open' || status === 'needs coverage') return false;
-	return Boolean(memberId || person || status);
+	return Boolean(memberId || status);
 }
 
 export function mapMondayShift(item: MondayShiftItem, syncedAt: string): Shift {
 	const values = columns(item);
 	const date = dateValue(values.get(SHIFT_COLUMNS.date));
 	const memberId = text(values, SHIFT_COLUMNS.memberId);
-	const person = text(values, SHIFT_COLUMNS.person);
+	const assignedPerson = text(values, SHIFT_COLUMNS.assignedPerson);
+	const storedPerson = text(values, SHIFT_COLUMNS.person);
+	const person = assignedPerson || storedPerson;
 	const coverageStatus = text(values, SHIFT_COLUMNS.coverageStatus) || 'Open';
 	const isCovered = isShiftCovered(coverageStatus, memberId, person);
 
@@ -148,6 +152,8 @@ export function mapMondayShift(item: MondayShiftItem, syncedAt: string): Shift {
 		timeLabel: shiftTime(date),
 		memberId,
 		person,
+		assignedPerson,
+		storedPerson,
 		coveredBy: person,
 		coverageStatus,
 		isCovered,
