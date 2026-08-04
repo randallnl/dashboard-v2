@@ -18,6 +18,11 @@
 			"binding": "MONDAY_API_TOKEN",
 			"store_id": "2b9ec8a0d6d742649ad4d3498815ca54",
 			"secret_name": "Central_Monday_API_TOKEN"
+		},
+		{
+			"binding": "DISCORD_VOTE_WEBHOOK_URL",
+			"store_id": "2b9ec8a0d6d742649ad4d3498815ca54",
+			"secret_name": "Discord_Vote_Webhook_URL"
 		}
 	],
 	"send_email": [
@@ -28,6 +33,7 @@
 	],
 	"vars": {
 		"ENVIRONMENT": "production",
+		"DASHBOARD_URL": "https://dashboard-v2.randall-d53.workers.dev",
 		"LOGIN_FROM_EMAIL": "dashboard@nhciviccommons.com",
 		"LOGIN_FROM_NAME": "Queerlective CoLab"
 	},

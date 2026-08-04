@@ -191,6 +191,9 @@
 						<span>Submit a community-led event</span><span aria-hidden="true">↗</span>
 					</a>
 				{/if}
+				<a href="https://wkf.ms/4sNxnqk" target="_blank" rel="noreferrer">
+					<span>Request materials or equipment</span><span aria-hidden="true">↗</span>
+				</a>
 				<a href="mailto:Randall@queerlective.com">
 					<span>Contact CoLab support</span><span aria-hidden="true">→</span>
 				</a>

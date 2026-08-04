@@ -1,8 +1,12 @@
-import { loadMemberContext, requireWritableMemberView } from '$lib/server/auth/member-context';
-import { ProjectEventRepository, VoteRepository } from '$lib/server/db';
+import {
+	loadMemberContext,
+	requireVoter,
+	requireWritableMemberView
+} from '$lib/server/auth/member-context';
+import { EquipmentRequestRepository, ProjectEventRepository, VoteRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { hasDuplicateVote, OBJECTION_RESPONSE, VoteDirectory } from '$lib/server/monday/votes';
-import { communityConsentVotes } from '$lib/server/votes/eligibility';
+import { communityConsentVotes, equipmentConsentVotes } from '$lib/server/votes/eligibility';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -12,6 +16,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform?.env;
 	const context = await loadMemberContext({ session: locals.session, env });
 	requireWritableMemberView(context);
+	requireVoter(context);
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const voteId = typeof body?.voteId === 'string' ? body.voteId.trim() : '';
 	const response = typeof body?.response === 'string' ? body.response.trim() : '';
@@ -23,14 +28,17 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 	const token = await mondayToken(env!.MONDAY_API_TOKEN);
 	const directory = new VoteDirectory(new MondayClient(token));
-	const [motions, logs, community] = await Promise.all([
+	const [motions, logs, community, equipment] = await Promise.all([
 		directory.listMotions(),
 		directory.listVoteLog(),
-		new ProjectEventRepository(env!.DB).list({ source: 'community' })
+		new ProjectEventRepository(env!.DB).list({ source: 'community' }),
+		new EquipmentRequestRepository(env!.DB).list()
 	]);
-	const vote = [...motions, ...communityConsentVotes(community)].find(
-		(candidate) => candidate.id === voteId
-	);
+	const vote = [
+		...motions,
+		...communityConsentVotes(community),
+		...equipmentConsentVotes(equipment)
+	].find((candidate) => candidate.id === voteId);
 	if (!vote) error(404, 'This motion is no longer eligible for voting.');
 	if (hasDuplicateVote(logs, context.viewer.id, vote)) {
 		error(409, 'You have already voted on this motion.');

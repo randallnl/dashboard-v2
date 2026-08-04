@@ -132,6 +132,8 @@ export type Vote = {
 	details: string;
 	submittedAt: string;
 	deadline: string;
+	linkUrl?: string;
+	linkLabel?: string;
 };
 
 export type Activity = {
@@ -159,6 +161,18 @@ export type GivebutterSignup = {
 	eventTitle: string;
 	ticketType: string;
 	transactionDate: string;
+	syncedAt: string;
+};
+
+export type EquipmentRequest = {
+	id: string;
+	title: string;
+	requestor: string;
+	estimatedCost: string;
+	productUrl: string;
+	explanation: string;
+	additionalInfo: string;
+	submittedAt: string;
 	syncedAt: string;
 };
 

@@ -1,3 +1,5 @@
+import { syncEquipmentRequestsFromMonday } from '$lib/server/equipment/sync';
+import { notifyNewVotes } from '$lib/server/discord/vote-notifier';
 import { syncEventsFromMonday } from '$lib/server/events/sync';
 import { syncGivebutterFromMonday } from '$lib/server/givebutter/sync';
 import { syncMembersFromMonday } from '$lib/server/members/sync';
@@ -5,7 +7,7 @@ import { syncShiftsFromMonday } from '$lib/server/shifts/sync';
 import { MemberRepository, ShiftSwitchRepository } from '$lib/server/db';
 import { sendShiftSwitchEmail } from '$lib/server/shifts/switch-email';
 
-async function sendShiftSwitchReminders(env: Env): Promise<number> {
+async function sendShiftSwitchReminders(env: CronEnv): Promise<number> {
 	const today = new Date().toISOString().slice(0, 10);
 	const throughDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 	const repository = new ShiftSwitchRepository(env.DB);
@@ -46,19 +48,21 @@ async function sendShiftSwitchReminders(env: Env): Promise<number> {
 }
 
 export async function runScheduledShiftSync(
-	env: Env,
+	env: CronEnv,
 	scheduledTime: number,
 	cron: string
 ): Promise<void> {
 	const startedAt = Date.now();
 	try {
-		const [shifts, events, members, givebutter, switchReminders] = await Promise.all([
+		const [shifts, events, members, givebutter, equipment, switchReminders] = await Promise.all([
 			syncShiftsFromMonday(env),
 			syncEventsFromMonday(env),
 			syncMembersFromMonday(env),
 			syncGivebutterFromMonday(env),
+			syncEquipmentRequestsFromMonday(env),
 			sendShiftSwitchReminders(env)
 		]);
+		const discordVotes = await notifyNewVotes(env, scheduledTime);
 		console.log(
 			JSON.stringify({
 				event: 'scheduled_shift_sync_completed',
@@ -74,6 +78,12 @@ export async function runScheduledShiftSync(
 				givebutterCount: givebutter.count,
 				givebutterFailed: givebutter.failed,
 				givebutterRemoved: givebutter.removed,
+				equipmentCount: equipment.count,
+				equipmentFailed: equipment.failed,
+				equipmentRemoved: equipment.removed,
+				discordVotesEligible: discordVotes.eligible,
+				discordVotesPosted: discordVotes.posted,
+				discordVotesFailed: discordVotes.failed,
 				switchReminders,
 				syncedAt: shifts.syncedAt > events.syncedAt ? shifts.syncedAt : events.syncedAt,
 				durationMs: Date.now() - startedAt
@@ -97,4 +107,4 @@ export default {
 	async scheduled(controller, env, ctx): Promise<void> {
 		ctx.waitUntil(runScheduledShiftSync(env, controller.scheduledTime, controller.cron));
 	}
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<CronEnv>;

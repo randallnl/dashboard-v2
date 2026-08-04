@@ -2979,6 +2979,14 @@ h2 {
 	white-space: pre-wrap;
 }
 
+.vote-resource-link {
+	display: inline-flex;
+	margin-top: 0.75rem;
+	color: #194639;
+	font-size: 0.78rem;
+	font-weight: 800;
+}
+
 .vote-form {
 	display: grid;
 	gap: 0.9rem;

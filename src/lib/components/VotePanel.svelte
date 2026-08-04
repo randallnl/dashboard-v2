@@ -122,6 +122,12 @@
 					</div>
 					<h3>{vote.question}</h3>
 					{#if vote.details}<p>{vote.details}</p>{/if}
+					{#if vote.linkUrl}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a class="vote-resource-link" href={vote.linkUrl} target="_blank" rel="noreferrer">
+							{vote.linkLabel || 'View related link'} ↗
+						</a>
+					{/if}
 					{#if vote.hasVoted}
 						<div class="recorded-vote">
 							<span class="recorded-pill">Your vote: {vote.recordedResponse || 'Recorded'}</span>

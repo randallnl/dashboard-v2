@@ -15,6 +15,7 @@ describe('memberCapabilities', () => {
 		expect(capabilities.canViewOpenOrders).toBe(false);
 		expect(capabilities.canSubmitCommunityEvents).toBe(false);
 		expect(capabilities.canViewCalendar).toBe(true);
+		expect(capabilities.canVote).toBe(false);
 	});
 
 	it('grants standard member capabilities without admin access', () => {

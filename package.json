@@ -22,7 +22,7 @@
 		"deploy:cron": "wrangler deploy --config wrangler.cron.jsonc",
 		"deploy:dry-run": "npm run build && wrangler deploy --dry-run",
 		"deploy:cron:dry-run": "wrangler deploy --config wrangler.cron.jsonc --dry-run",
-		"cf-types": "wrangler types --include-runtime false"
+		"cf-types": "wrangler types --include-runtime false && wrangler types cron-worker-configuration.d.ts --config wrangler.cron.jsonc --env-interface CronEnv --include-runtime false"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "latest",

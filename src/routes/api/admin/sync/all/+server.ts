@@ -1,4 +1,5 @@
 import { loadMemberContext, requireAdmin } from '$lib/server/auth/member-context';
+import { syncEquipmentRequestsFromMonday } from '$lib/server/equipment/sync';
 import { syncEventsFromMonday } from '$lib/server/events/sync';
 import { syncGivebutterFromMonday } from '$lib/server/givebutter/sync';
 import { syncMembersFromMonday } from '$lib/server/members/sync';
@@ -15,9 +16,10 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 		syncMembersFromMonday(env!),
 		syncShiftsFromMonday(env!),
 		syncEventsFromMonday(env!),
-		syncGivebutterFromMonday(env!)
+		syncGivebutterFromMonday(env!),
+		syncEquipmentRequestsFromMonday(env!)
 	]);
-	const names = ['members', 'shifts', 'projects', 'givebutter'] as const;
+	const names = ['members', 'shifts', 'projects', 'givebutter', 'equipment'] as const;
 	const results: Record<string, unknown> = {};
 	const failures: string[] = [];
 

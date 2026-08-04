@@ -1,6 +1,8 @@
 export { AuthRepository } from './auth-repository';
 export { CalendarSubscriptionRepository } from './calendar-subscription-repository';
 export { CommentRepository } from './comment-repository';
+export { DiscordVoteNotificationRepository } from './discord-vote-notification-repository';
+export { EquipmentRequestRepository } from './equipment-request-repository';
 export { GivebutterRepository } from './givebutter-repository';
 export { HostRepository } from './host-repository';
 export { MemberRepository, memberNames } from './member-repository';

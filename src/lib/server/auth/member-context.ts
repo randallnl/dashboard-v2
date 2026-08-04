@@ -87,6 +87,12 @@ export function requireProjectManager(
 	}
 }
 
+export function requireVoter(context: Pick<MemberContext, 'viewerCapabilities'>): void {
+	if (!context.viewerCapabilities.canVote) {
+		error(403, 'Voting is available to non-retail CoLab members.');
+	}
+}
+
 export function requireWritableMemberView(context: Pick<MemberContext, 'isViewingAs'>): void {
 	if (context.isViewingAs) {
 		error(403, 'This action is disabled while viewing as another member.');

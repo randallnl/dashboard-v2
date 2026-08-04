@@ -25,6 +25,6 @@ export function memberCapabilities(member: Pick<Member, 'membershipType'>): Memb
 		canViewOpenOrders: !isRetailOnly,
 		canSubmitCommunityEvents: !isRetailOnly,
 		canViewCalendar: true,
-		canVote: true
+		canVote: !isRetailOnly
 	};
 }
