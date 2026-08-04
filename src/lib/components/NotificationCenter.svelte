@@ -32,7 +32,9 @@
 	let readsLoading = $state(true);
 	let readKeys = $state<Set<string>>(new Set());
 	let markingRead = $state('');
+	let markingAllRead = $state(false);
 	let readMessage = $state('');
+	let notificationCenter: HTMLDivElement;
 
 	const notices = $derived.by(() => {
 		const items: Notice[] = [];
@@ -136,6 +138,33 @@
 		}
 	}
 
+	async function markAllRead() {
+		const keys = notices.filter((notice) => !readKeys.has(notice.id)).map((notice) => notice.id);
+		if (readOnly || markingAllRead || keys.length === 0) return;
+		markingAllRead = true;
+		readMessage = '';
+		try {
+			const response = await fetch('/api/notifications/read', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ keys })
+			});
+			if (!response.ok) throw new Error('Could not mark all notifications as read.');
+			readKeys = new Set([...readKeys, ...keys]);
+		} catch (cause) {
+			readMessage =
+				cause instanceof Error ? cause.message : 'Could not mark all notifications as read.';
+		} finally {
+			markingAllRead = false;
+		}
+	}
+
+	function closeWhenOutside(event: PointerEvent) {
+		if (open && event.target instanceof Node && !notificationCenter.contains(event.target)) {
+			open = false;
+		}
+	}
+
 	function followNotice() {
 		open = false;
 	}
@@ -145,9 +174,12 @@
 	});
 </script>
 
-<svelte:window onkeydown={(event) => event.key === 'Escape' && (open = false)} />
+<svelte:window
+	onkeydown={(event) => event.key === 'Escape' && (open = false)}
+	onpointerdown={closeWhenOutside}
+/>
 
-<div class="notification-center">
+<div class="notification-center" bind:this={notificationCenter}>
 	<button
 		class="notification-trigger"
 		type="button"
@@ -167,7 +199,17 @@
 					<p class="eyebrow">Action center</p>
 					<h2>Needs your attention</h2>
 				</div>
-				<button type="button" class="text-button" onclick={() => (open = false)}>Close</button>
+				<div class="notification-heading-actions">
+					<button
+						type="button"
+						class="text-button"
+						onclick={markAllRead}
+						disabled={readOnly || markingAllRead || unreadCount === 0}
+					>
+						{markingAllRead ? 'Saving…' : 'Mark all as read'}
+					</button>
+					<button type="button" class="text-button" onclick={() => (open = false)}>Close</button>
+				</div>
 			</div>
 			{#if readMessage}<p class="notification-message" role="alert">{readMessage}</p>{/if}
 

@@ -16,14 +16,19 @@ export class NotificationRepository {
 	}
 
 	async markRead(memberId: string, notificationKey: string): Promise<void> {
-		await this.db
-			.prepare(
-				`INSERT INTO notification_reads (member_id, notification_key, read_at)
-				 VALUES (?1, ?2, CURRENT_TIMESTAMP)
-				 ON CONFLICT(member_id, notification_key)
-				 DO UPDATE SET read_at = CURRENT_TIMESTAMP`
+		await this.markManyRead(memberId, [notificationKey]);
+	}
+
+	async markManyRead(memberId: string, notificationKeys: string[]): Promise<void> {
+		if (notificationKeys.length === 0) return;
+		const statement = `INSERT INTO notification_reads (member_id, notification_key, read_at)
+			 VALUES (?1, ?2, CURRENT_TIMESTAMP)
+			 ON CONFLICT(member_id, notification_key)
+			 DO UPDATE SET read_at = CURRENT_TIMESTAMP`;
+		await this.db.batch(
+			notificationKeys.map((notificationKey) =>
+				this.db.prepare(statement).bind(memberId, notificationKey)
 			)
-			.bind(memberId, notificationKey)
-			.run();
+		);
 	}
 }

@@ -1,5 +1,4 @@
 import { syncEquipmentRequestsFromMonday } from '$lib/server/equipment/sync';
-import { notifyNewVotes } from '$lib/server/discord/vote-notifier';
 import { syncEventsFromMonday } from '$lib/server/events/sync';
 import { syncGivebutterFromMonday } from '$lib/server/givebutter/sync';
 import { syncMembersFromMonday } from '$lib/server/members/sync';
@@ -62,7 +61,6 @@ export async function runScheduledShiftSync(
 			syncEquipmentRequestsFromMonday(env),
 			sendShiftSwitchReminders(env)
 		]);
-		const discordVotes = await notifyNewVotes(env, scheduledTime);
 		console.log(
 			JSON.stringify({
 				event: 'scheduled_shift_sync_completed',
@@ -81,9 +79,6 @@ export async function runScheduledShiftSync(
 				equipmentCount: equipment.count,
 				equipmentFailed: equipment.failed,
 				equipmentRemoved: equipment.removed,
-				discordVotesEligible: discordVotes.eligible,
-				discordVotesPosted: discordVotes.posted,
-				discordVotesFailed: discordVotes.failed,
 				switchReminders,
 				syncedAt: shifts.syncedAt > events.syncedAt ? shifts.syncedAt : events.syncedAt,
 				durationMs: Date.now() - startedAt

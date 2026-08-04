@@ -18,11 +18,6 @@
 			"binding": "MONDAY_API_TOKEN",
 			"store_id": "2b9ec8a0d6d742649ad4d3498815ca54",
 			"secret_name": "Central_Monday_API_TOKEN"
-		},
-		{
-			"binding": "DISCORD_VOTE_WEBHOOK_URL",
-			"store_id": "2b9ec8a0d6d742649ad4d3498815ca54",
-			"secret_name": "Discord_Vote_Webhook_URL"
 		}
 	],
 	"send_email": [
