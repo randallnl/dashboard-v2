@@ -40,14 +40,12 @@
 	let savingDetails = $state(false);
 	let editMessage = $state('');
 	let editingDetails = $state(false);
-	type WorkspaceTab = 'overview' | 'people' | 'schedule' | 'files' | 'comments' | 'activity';
-	let activeTab = $state<WorkspaceTab>('overview');
 	let pinnedUrls = $state<string[]>([]);
-	const tabs: Array<{ id: WorkspaceTab; label: string }> = [
+	const sections = [
 		{ id: 'overview', label: 'Overview' },
-		{ id: 'people', label: 'People' },
-		{ id: 'schedule', label: 'Schedule' },
 		{ id: 'files', label: 'Files & links' },
+		{ id: 'schedule', label: 'Schedule' },
+		{ id: 'people', label: 'People' },
 		{ id: 'comments', label: 'Comments' },
 		{ id: 'activity', label: 'Activity' }
 	];
@@ -63,11 +61,20 @@
 	const attachments = $derived(
 		Array.isArray(recordFields.attachments) ? (recordFields.attachments as EventAttachment[]) : []
 	);
-	const heroImage = $derived(
-		data.record.source === 'project'
-			? (attachments.find((attachment) => attachment.isImage && safeUrl(attachment.url))?.url ?? '')
-			: ''
-	);
+	const heroImage = $derived.by(() => {
+		const posterUrl = safeUrl(recordFields.posterUrl);
+		if (posterUrl) return posterUrl;
+		const posterAttachment = attachments.find(
+			(attachment) =>
+				attachment.isImage &&
+				safeUrl(attachment.url) &&
+				/(?:poster|flyer|cover)/iu.test(attachment.name)
+		);
+		if (posterAttachment) return safeUrl(posterAttachment.url);
+		return safeUrl(
+			attachments.find((attachment) => attachment.isImage && safeUrl(attachment.url))?.url
+		);
+	});
 	let tasks = $state(
 		untrack(() => (Array.isArray(recordFields.tasks) ? (recordFields.tasks as ProjectTask[]) : []))
 	);
@@ -443,327 +450,308 @@
 	{/if}
 
 	<nav class="workspace-tabs" aria-label="Project workspace">
-		{#each tabs as tab (tab.id)}
-			<button
-				type="button"
-				class:active={activeTab === tab.id}
-				aria-current={activeTab === tab.id ? 'page' : undefined}
-				onclick={() => (activeTab = tab.id)}>{tab.label}</button
-			>
+		{#each sections as section (section.id)}
+			<a href={`#workspace-${section.id}`}>{section.label}</a>
 		{/each}
 	</nav>
 	<DataFreshness syncedAt={data.record.syncedAt} />
 
-	{#if activeTab === 'overview'}
-		<section class="item-dashboard-grid workspace-panel">
-			<article class:editing={editingDetails} class="inline-project-details">
-				<div class="inline-editor-heading">
-					<div>
-						<p class="eyebrow">Project details</p>
-						<h2>Overview</h2>
-					</div>
-					{#if data.canEdit}
-						<button type="button" onclick={() => (editingDetails = !editingDetails)}>
-							{editingDetails ? 'Cancel' : 'Edit'}
-						</button>
-					{/if}
-				</div>
-				{#if editingDetails}
-					<form
-						class="inline-project-form"
-						onsubmit={(event) => {
-							event.preventDefault();
-							void saveDetails();
-						}}
-					>
-						<label
-							><span>Title</span><input bind:value={editTitle} maxlength="255" required /></label
-						>
-						<div>
-							<label
-								><span>Start date</span><input bind:value={editDate} type="date" required /></label
-							>
-							{#if data.record.source === 'project'}
-								<label><span>End date</span><input bind:value={editEndDate} type="date" /></label>
-							{/if}
-						</div>
-						<div>
-							<label><span>Status</span><input bind:value={editStatus} /></label>
-							{#if data.record.source === 'project'}
-								<label><span>Location</span><input bind:value={editLocation} /></label>
-							{/if}
-						</div>
-						<label>
-							<span>Description</span>
-							<textarea bind:value={editDescription} rows="5" maxlength="10000"></textarea>
-						</label>
-						<div class="inline-editor-actions">
-							<button type="submit" disabled={savingDetails}>
-								{savingDetails ? 'Saving to Monday…' : 'Save changes'}
-							</button>
-							<button type="button" onclick={() => (editingDetails = false)}>Cancel</button>
-						</div>
-					</form>
-				{:else}
-					<dl class="event-extra-fields">
-						<div>
-							<dt>Host</dt>
-							<dd>{host?.hostLabel || data.record.owner || 'Not assigned'}</dd>
-						</div>
-						{#each entries as [key, value] (key)}
-							{#if !safeUrl(value)}
-								<div>
-									<dt>{label(key)}</dt>
-									<dd>{String(value)}</dd>
-								</div>
-							{/if}
-						{/each}
-					</dl>
-					{#if tasks.length}
-						<div class="overview-task-preview">
-							<div>
-								<h3>Tasks</h3>
-								<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
-							</div>
-							{#each [...tasks].filter((task) => !task.completed).slice(0, 4) as task (task.id)}
-								<article>
-									<span class="task-check" aria-hidden="true"></span>
-									<div>
-										<strong>{task.title}</strong>
-										<small>
-											{task.dueDate
-												? `Due ${dateTimeLabel(task.dueDate)}`
-												: task.status || 'No due date'}
-										</small>
-										{#if task.comments?.length}
-											<p class="overview-task-comment">
-												<strong>{task.comments.at(-1)?.author}:</strong>
-												{task.comments.at(-1)?.body}
-											</p>
-										{/if}
-									</div>
-								</article>
-							{/each}
-							<button type="button" onclick={() => (activeTab = 'schedule')}>View all tasks</button>
-						</div>
-					{/if}
-				{/if}
-				{#if editMessage}<p role="status">{editMessage}</p>{/if}
-			</article>
-			<article>
-				<h2>At a glance</h2>
-				<dl class="event-extra-fields">
-					<div>
-						<dt>Starts</dt>
-						<dd>{dateTimeLabel(recordDate)}</dd>
-					</div>
-					{#if recordEndDate}
-						<div>
-							<dt>Ends</dt>
-							<dd>{dateTimeLabel(recordEndDate)}</dd>
-						</div>
-					{/if}
-					<div>
-						<dt>People</dt>
-						<dd>{attendees.length} attendees or volunteers</dd>
-					</div>
-					<div>
-						<dt>Files</dt>
-						<dd>{attachments.length} attachments</dd>
-					</div>
-					{#if tasks.length}
-						<div>
-							<dt>Tasks</dt>
-							<dd>{tasks.filter((task) => task.completed).length} of {tasks.length} completed</dd>
-						</div>
-					{/if}
-				</dl>
-			</article>
-		</section>
-		<section class="overview-comments workspace-panel">
-			<ItemComments source={data.record.source} eventId={data.record.id} readOnly={data.readOnly} />
-		</section>
-	{/if}
-
-	{#if activeTab === 'files'}
-		<section class="workspace-panel workspace-card">
-			<div class="card-heading">
+	<section class="item-dashboard-grid workspace-panel" id="workspace-overview">
+		<article class:editing={editingDetails} class="inline-project-details">
+			<div class="inline-editor-heading">
 				<div>
-					<p class="eyebrow">Shared resources</p>
-					<h2>Files and links</h2>
+					<p class="eyebrow">Project details</p>
+					<h2>Overview</h2>
 				</div>
-				<span class="status-pill">{pinnedUrls.length} pinned</span>
+				{#if data.canEdit}
+					<button type="button" onclick={() => (editingDetails = !editingDetails)}>
+						{editingDetails ? 'Cancel' : 'Edit'}
+					</button>
+				{/if}
 			</div>
-			<div class="item-previews">
-				{#each attachments as attachment (`${attachment.name}-${attachment.url}`)}
-					<div class:pinned-resource={pinnedUrls.includes(attachment.url)} class="resource-tile">
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer">
-							{#if attachment.isImage}<img
-									src={safeUrl(attachment.url)}
-									alt={attachment.name}
-								/>{/if}
-							<strong>{attachment.name}</strong>
-							<span>{new URL(safeUrl(attachment.url)).hostname} ↗</span>
-						</a>
-						<button type="button" onclick={() => togglePin(attachment.url)}>
-							{pinnedUrls.includes(attachment.url) ? 'Unpin' : 'Pin'}
-						</button>
-					</div>
-				{/each}
-				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				{#each entries.filter(([, value]) => safeUrl(value)) as [key, value] (key)}
-					<div class:pinned-resource={pinnedUrls.includes(value)} class="resource-tile">
-						<a href={safeUrl(value)} target="_blank" rel="noreferrer">
-							{#if imageUrl(value)}<img src={imageUrl(value)} alt="" />{/if}
-							<strong>{label(key)}</strong>
-							<span>{new URL(safeUrl(value)).hostname} ↗</span>
-						</a>
-						<button type="button" onclick={() => togglePin(value)}>
-							{pinnedUrls.includes(value) ? 'Unpin' : 'Pin'}
-						</button>
-					</div>
-				{/each}
-				<!-- eslint-enable svelte/no-navigation-without-resolve -->
-			</div>
-		</section>
-	{/if}
-
-	{#if activeTab === 'schedule'}
-		<section class="workspace-panel workspace-card">
-			<p class="eyebrow">Schedule</p>
-			<h2>Project timeline</h2>
-			<ol class="project-timeline">
-				<li><span>Start</span><strong>{dateTimeLabel(recordDate)}</strong></li>
-				{#if field('deadline')}<li>
-						<span>Deadline</span><strong>{dateTimeLabel(field('deadline'))}</strong>
-					</li>{/if}
-				{#if recordEndDate}<li>
-						<span>End</span><strong>{dateTimeLabel(recordEndDate)}</strong>
-					</li>{/if}
-			</ol>
-			<div class="project-task-heading">
-				<h3>Project tasks</h3>
-				<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
-			</div>
-			{#if data.canEdit && data.record.source === 'project'}
+			{#if editingDetails}
 				<form
-					class="task-create-form"
+					class="inline-project-form"
 					onsubmit={(event) => {
 						event.preventDefault();
-						void createTask();
+						void saveDetails();
 					}}
 				>
-					<label class="task-title-field"
-						><span>New task</span><input
-							bind:value={newTaskTitle}
-							required
-							maxlength="255"
-							placeholder="What needs to be done?"
-						/></label
-					>
-					<details class="task-create-options">
-						<summary>Details</summary>
-						<div>
-							<label
-								><span>Status</span><input
-									bind:value={newTaskStatus}
-									placeholder="Not started"
-								/></label
-							>
-							<label><span>Due date</span><input bind:value={newTaskDueDate} type="date" /></label>
-						</div>
-					</details>
-					<button type="submit" disabled={creatingTask}>
-						{creatingTask ? 'Adding…' : 'Add task'}
-					</button>
-					<small>Saved to Monday</small>
+					<label><span>Title</span><input bind:value={editTitle} maxlength="255" required /></label>
+					<div>
+						<label
+							><span>Start date</span><input bind:value={editDate} type="date" required /></label
+						>
+						{#if data.record.source === 'project'}
+							<label><span>End date</span><input bind:value={editEndDate} type="date" /></label>
+						{/if}
+					</div>
+					<div>
+						<label><span>Status</span><input bind:value={editStatus} /></label>
+						{#if data.record.source === 'project'}
+							<label><span>Location</span><input bind:value={editLocation} /></label>
+						{/if}
+					</div>
+					<label>
+						<span>Description</span>
+						<textarea bind:value={editDescription} rows="5" maxlength="10000"></textarea>
+					</label>
+					<div class="inline-editor-actions">
+						<button type="submit" disabled={savingDetails}>
+							{savingDetails ? 'Saving to Monday…' : 'Save changes'}
+						</button>
+						<button type="button" onclick={() => (editingDetails = false)}>Cancel</button>
+					</div>
 				</form>
-			{/if}
-			{#if taskMessage}<p class="task-message" role="status">{taskMessage}</p>{/if}
-			{#if tasks.length}
-				<div class="project-task-list">
-					{#each [...tasks].sort( (left, right) => (left.dueDate || '9999').localeCompare(right.dueDate || '9999') ) as task (task.id)}
-						<article class:completed={task.completed}>
-							<span class="task-check" aria-hidden="true">{task.completed ? '✓' : ''}</span>
+			{:else}
+				<dl class="event-extra-fields">
+					<div>
+						<dt>Host</dt>
+						<dd>{host?.hostLabel || data.record.owner || 'Not assigned'}</dd>
+					</div>
+					{#each entries as [key, value] (key)}
+						{#if !safeUrl(value)}
 							<div>
-								<strong>{task.title}</strong>
-								<div class="task-meta">
-									{#if task.status}<span>{task.status}</span>{/if}
-									{#if task.owner}<span>{task.owner}</span>{/if}
-									{#if task.dueDate}<time datetime={task.dueDate}
-											>Due {dateTimeLabel(task.dueDate)}</time
-										>{/if}
-									{#if task.completionDate}<time datetime={task.completionDate}
-											>Completed {dateTimeLabel(task.completionDate)}</time
-										>{/if}
-								</div>
-								{#if task.attachments.length}
-									<div class="task-files">
-										{#each task.attachments as attachment (`${task.id}-${attachment.url}`)}
-											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-											<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer"
-												>{attachment.name} ↗</a
-											>
-										{/each}
-									</div>
-								{/if}
-								<div class="task-comments">
-									{#if task.comments?.length}
-										<ul>
-											{#each task.comments.slice(-4) as comment (comment.id)}
-												<li>
-													<div>
-														<strong>{comment.author}</strong><time datetime={comment.createdAt}
-															>{dateTimeLabel(comment.createdAt)}</time
-														>
-													</div>
-													<p>{comment.body}</p>
-												</li>
-											{/each}
-										</ul>
-									{/if}
-									{#if data.canEdit}
-										<form
-											onsubmit={(event) => {
-												event.preventDefault();
-												void postTaskComment(task);
-											}}
-										>
-											<label>
-												<span>Comment on this task</span>
-												<textarea bind:value={taskCommentBodies[task.id]} rows="2" maxlength="5000"
-												></textarea>
-											</label>
-											<button
-												type="submit"
-												disabled={postingTaskComment === task.id ||
-													!taskCommentBodies[task.id]?.trim()}
-											>
-												{postingTaskComment === task.id ? 'Posting to Monday…' : 'Post comment'}
-											</button>
-										</form>
-									{/if}
-								</div>
+								<dt>{label(key)}</dt>
+								<dd>{String(value)}</dd>
 							</div>
-						</article>
+						{/if}
 					{/each}
+				</dl>
+				{#if tasks.length}
+					<div class="overview-task-preview">
+						<div>
+							<h3>Tasks</h3>
+							<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
+						</div>
+						{#each [...tasks].filter((task) => !task.completed).slice(0, 4) as task (task.id)}
+							<article>
+								<span class="task-check" aria-hidden="true"></span>
+								<div>
+									<strong>{task.title}</strong>
+									<small>
+										{task.dueDate
+											? `Due ${dateTimeLabel(task.dueDate)}`
+											: task.status || 'No due date'}
+									</small>
+									{#if task.comments?.length}
+										<p class="overview-task-comment">
+											<strong>{task.comments.at(-1)?.author}:</strong>
+											{task.comments.at(-1)?.body}
+										</p>
+									{/if}
+								</div>
+							</article>
+						{/each}
+						<a class="workspace-action" href="#workspace-schedule">View all tasks</a>
+					</div>
+				{/if}
+			{/if}
+			{#if editMessage}<p role="status">{editMessage}</p>{/if}
+		</article>
+		<article>
+			<h2>At a glance</h2>
+			<dl class="event-extra-fields">
+				<div>
+					<dt>Starts</dt>
+					<dd>{dateTimeLabel(recordDate)}</dd>
 				</div>
-			{/if}
-			{#if field('calendarUrl')}
-				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				<a
-					class="workspace-action"
-					href={safeUrl(field('calendarUrl'))}
-					target="_blank"
-					rel="noreferrer">Open shared calendar ↗</a
-				>
-				<!-- eslint-enable svelte/no-navigation-without-resolve -->
-			{/if}
-		</section>
-	{/if}
+				{#if recordEndDate}
+					<div>
+						<dt>Ends</dt>
+						<dd>{dateTimeLabel(recordEndDate)}</dd>
+					</div>
+				{/if}
+				<div>
+					<dt>People</dt>
+					<dd>{attendees.length} attendees or volunteers</dd>
+				</div>
+				<div>
+					<dt>Files</dt>
+					<dd>{attachments.length} attachments</dd>
+				</div>
+				{#if tasks.length}
+					<div>
+						<dt>Tasks</dt>
+						<dd>{tasks.filter((task) => task.completed).length} of {tasks.length} completed</dd>
+					</div>
+				{/if}
+			</dl>
+		</article>
+	</section>
 
-	{#if activeTab === 'people' && data.isAdmin && typeof recordFields.campaignId === 'string' && recordFields.campaignId}
+	<section class="workspace-panel workspace-card" id="workspace-files">
+		<div class="card-heading">
+			<div>
+				<p class="eyebrow">Shared resources</p>
+				<h2>Files and links</h2>
+			</div>
+			<span class="status-pill">{pinnedUrls.length} pinned</span>
+		</div>
+		<div class="item-previews">
+			{#each attachments as attachment (`${attachment.name}-${attachment.url}`)}
+				<div class:pinned-resource={pinnedUrls.includes(attachment.url)} class="resource-tile">
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer">
+						{#if attachment.isImage}<img src={safeUrl(attachment.url)} alt={attachment.name} />{/if}
+						<strong>{attachment.name}</strong>
+						<span>{new URL(safeUrl(attachment.url)).hostname} ↗</span>
+					</a>
+					<button type="button" onclick={() => togglePin(attachment.url)}>
+						{pinnedUrls.includes(attachment.url) ? 'Unpin' : 'Pin'}
+					</button>
+				</div>
+			{/each}
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
+			{#each entries.filter(([, value]) => safeUrl(value)) as [key, value] (key)}
+				<div class:pinned-resource={pinnedUrls.includes(value)} class="resource-tile">
+					<a href={safeUrl(value)} target="_blank" rel="noreferrer">
+						{#if imageUrl(value)}<img src={imageUrl(value)} alt="" />{/if}
+						<strong>{label(key)}</strong>
+						<span>{new URL(safeUrl(value)).hostname} ↗</span>
+					</a>
+					<button type="button" onclick={() => togglePin(value)}>
+						{pinnedUrls.includes(value) ? 'Unpin' : 'Pin'}
+					</button>
+				</div>
+			{/each}
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+		</div>
+	</section>
+
+	<section class="workspace-panel workspace-card" id="workspace-schedule">
+		<p class="eyebrow">Schedule</p>
+		<h2>Project timeline</h2>
+		<ol class="project-timeline">
+			<li><span>Start</span><strong>{dateTimeLabel(recordDate)}</strong></li>
+			{#if field('deadline')}<li>
+					<span>Deadline</span><strong>{dateTimeLabel(field('deadline'))}</strong>
+				</li>{/if}
+			{#if recordEndDate}<li>
+					<span>End</span><strong>{dateTimeLabel(recordEndDate)}</strong>
+				</li>{/if}
+		</ol>
+		<div class="project-task-heading">
+			<h3>Project tasks</h3>
+			<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
+		</div>
+		{#if data.canEdit && data.record.source === 'project'}
+			<form
+				class="task-create-form"
+				onsubmit={(event) => {
+					event.preventDefault();
+					void createTask();
+				}}
+			>
+				<label class="task-title-field"
+					><span>New task</span><input
+						bind:value={newTaskTitle}
+						required
+						maxlength="255"
+						placeholder="What needs to be done?"
+					/></label
+				>
+				<details class="task-create-options">
+					<summary>Details</summary>
+					<div>
+						<label
+							><span>Status</span><input
+								bind:value={newTaskStatus}
+								placeholder="Not started"
+							/></label
+						>
+						<label><span>Due date</span><input bind:value={newTaskDueDate} type="date" /></label>
+					</div>
+				</details>
+				<button type="submit" disabled={creatingTask}>
+					{creatingTask ? 'Adding…' : 'Add task'}
+				</button>
+				<small>Saved to Monday</small>
+			</form>
+		{/if}
+		{#if taskMessage}<p class="task-message" role="status">{taskMessage}</p>{/if}
+		{#if tasks.length}
+			<div class="project-task-list">
+				{#each [...tasks].sort( (left, right) => (left.dueDate || '9999').localeCompare(right.dueDate || '9999') ) as task (task.id)}
+					<article class:completed={task.completed}>
+						<span class="task-check" aria-hidden="true">{task.completed ? '✓' : ''}</span>
+						<div>
+							<strong>{task.title}</strong>
+							<div class="task-meta">
+								{#if task.status}<span>{task.status}</span>{/if}
+								{#if task.owner}<span>{task.owner}</span>{/if}
+								{#if task.dueDate}<time datetime={task.dueDate}
+										>Due {dateTimeLabel(task.dueDate)}</time
+									>{/if}
+								{#if task.completionDate}<time datetime={task.completionDate}
+										>Completed {dateTimeLabel(task.completionDate)}</time
+									>{/if}
+							</div>
+							{#if task.attachments.length}
+								<div class="task-files">
+									{#each task.attachments as attachment (`${task.id}-${attachment.url}`)}
+										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+										<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer"
+											>{attachment.name} ↗</a
+										>
+									{/each}
+								</div>
+							{/if}
+							<div class="task-comments">
+								{#if task.comments?.length}
+									<ul>
+										{#each task.comments.slice(-4) as comment (comment.id)}
+											<li>
+												<div>
+													<strong>{comment.author}</strong><time datetime={comment.createdAt}
+														>{dateTimeLabel(comment.createdAt)}</time
+													>
+												</div>
+												<p>{comment.body}</p>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+								{#if data.canEdit}
+									<form
+										onsubmit={(event) => {
+											event.preventDefault();
+											void postTaskComment(task);
+										}}
+									>
+										<label>
+											<span>Comment on this task</span>
+											<textarea bind:value={taskCommentBodies[task.id]} rows="2" maxlength="5000"
+											></textarea>
+										</label>
+										<button
+											type="submit"
+											disabled={postingTaskComment === task.id ||
+												!taskCommentBodies[task.id]?.trim()}
+										>
+											{postingTaskComment === task.id ? 'Posting to Monday…' : 'Post comment'}
+										</button>
+									</form>
+								{/if}
+							</div>
+						</div>
+					</article>
+				{/each}
+			</div>
+		{/if}
+		{#if field('calendarUrl')}
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
+			<a
+				class="workspace-action"
+				href={safeUrl(field('calendarUrl'))}
+				target="_blank"
+				rel="noreferrer">Open shared calendar ↗</a
+			>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+		{/if}
+	</section>
+
+	{#if data.isAdmin && typeof recordFields.campaignId === 'string' && recordFields.campaignId}
 		<section class="signup-roster">
 			<div class="card-heading">
 				<div>
@@ -807,92 +795,90 @@
 		</section>
 	{/if}
 
-	{#if activeTab === 'people'}
-		<div class:people-editor-grid={data.record.source === 'project'}>
-			<section class="host-editor">
+	<div
+		class:people-editor-grid={data.record.source === 'project'}
+		class="workspace-panel"
+		id="workspace-people"
+	>
+		<section class="host-editor">
+			<div class="people-editor-heading">
+				<div>
+					<p class="eyebrow">Host</p>
+					<h2>{host?.hostLabel || data.record.owner || 'Not assigned'}</h2>
+				</div>
+				{#if hostContact}
+					<div class="host-contact-actions">
+						{#if hostContact.email}<a href={`mailto:${hostContact.email}`}>Email</a>{/if}
+						{#if hostContact.phone}<a href={`tel:${hostContact.phone}`}>Call</a>{/if}
+					</div>
+				{/if}
+			</div>
+			{#if data.canEdit}<div>
+					<MemberPredictivePicker
+						id="event-host-member"
+						placeholder="Type @ to change host"
+						includeSelf={true}
+						bind:selection={hostSelection}
+						disabled={savingHost}
+					/>
+					<button type="button" onclick={saveHost} disabled={savingHost}>
+						{savingHost ? 'Saving…' : 'Assign'}
+					</button>
+				</div>{/if}
+			{#if hostMessage}<p role="status">{hostMessage}</p>{/if}
+		</section>
+
+		{#if data.record.source === 'project'}
+			<section class="attendee-editor">
 				<div class="people-editor-heading">
 					<div>
-						<p class="eyebrow">Host</p>
-						<h2>{host?.hostLabel || data.record.owner || 'Not assigned'}</h2>
+						<p class="eyebrow">Attendees and volunteers</p>
+						<h2>{attendees.length} assigned</h2>
 					</div>
-					{#if hostContact}
-						<div class="host-contact-actions">
-							{#if hostContact.email}<a href={`mailto:${hostContact.email}`}>Email</a>{/if}
-							{#if hostContact.phone}<a href={`tel:${hostContact.phone}`}>Call</a>{/if}
+					{#if attendees.length}
+						<div class="attendee-list" aria-label="Current attendees">
+							{#each attendees as attendee (attendee.email)}
+								<span title={attendee.email}>{attendee.name}</span>
+							{/each}
 						</div>
 					{/if}
 				</div>
 				{#if data.canEdit}<div>
-						<MemberPredictivePicker
-							id="event-host-member"
-							placeholder="Type @ to change host"
-							includeSelf={true}
-							bind:selection={hostSelection}
-							disabled={savingHost}
-						/>
-						<button type="button" onclick={saveHost} disabled={savingHost}>
-							{savingHost ? 'Saving…' : 'Assign'}
+						{#key attendeePickerKey}
+							<MemberPredictivePicker
+								id="event-attendee-member"
+								placeholder="Type @ to add someone"
+								includeSelf={true}
+								bind:selection={attendeeSelection}
+								disabled={savingAttendee}
+							/>
+						{/key}
+						<button type="button" onclick={addAttendee} disabled={savingAttendee}>
+							{savingAttendee ? 'Adding…' : 'Add'}
 						</button>
 					</div>{/if}
-				{#if hostMessage}<p role="status">{hostMessage}</p>{/if}
+				{#if attendeeMessage}<p role="status">{attendeeMessage}</p>{/if}
 			</section>
+		{/if}
+	</div>
 
-			{#if data.record.source === 'project'}
-				<section class="attendee-editor">
-					<div class="people-editor-heading">
-						<div>
-							<p class="eyebrow">Attendees and volunteers</p>
-							<h2>{attendees.length} assigned</h2>
-						</div>
-						{#if attendees.length}
-							<div class="attendee-list" aria-label="Current attendees">
-								{#each attendees as attendee (attendee.email)}
-									<span title={attendee.email}>{attendee.name}</span>
-								{/each}
-							</div>
-						{/if}
+	<section class="workspace-panel" id="workspace-comments">
+		<ItemComments source={data.record.source} eventId={data.record.id} readOnly={data.readOnly} />
+	</section>
+
+	<section class="workspace-panel workspace-card" id="workspace-activity">
+		<p class="eyebrow">Recent changes</p>
+		<h2>Activity</h2>
+		<ol class="project-activity">
+			{#each activity as item (item.id)}
+				<li>
+					<div>
+						<strong>{item.label}</strong>
+						<p>{item.detail}</p>
 					</div>
-					{#if data.canEdit}<div>
-							{#key attendeePickerKey}
-								<MemberPredictivePicker
-									id="event-attendee-member"
-									placeholder="Type @ to add someone"
-									includeSelf={true}
-									bind:selection={attendeeSelection}
-									disabled={savingAttendee}
-								/>
-							{/key}
-							<button type="button" onclick={addAttendee} disabled={savingAttendee}>
-								{savingAttendee ? 'Adding…' : 'Add'}
-							</button>
-						</div>{/if}
-					{#if attendeeMessage}<p role="status">{attendeeMessage}</p>{/if}
-				</section>
-			{/if}
-		</div>
-	{/if}
-
-	{#if activeTab === 'comments'}
-		<section class="workspace-panel">
-			<ItemComments source={data.record.source} eventId={data.record.id} readOnly={data.readOnly} />
-		</section>
-	{/if}
-
-	{#if activeTab === 'activity'}
-		<section class="workspace-panel workspace-card">
-			<p class="eyebrow">Recent changes</p>
-			<h2>Activity</h2>
-			<ol class="project-activity">
-				{#each activity as item (item.id)}
-					<li>
-						<div>
-							<strong>{item.label}</strong>
-							<p>{item.detail}</p>
-						</div>
-						<time datetime={item.at}>{dateTimeLabel(item.at)}</time>
-					</li>
-				{/each}
-			</ol>
-		</section>
-	{/if}
+					<time datetime={item.at}>{dateTimeLabel(item.at)}</time>
+				</li>
+			{/each}
+		</ol>
+	</section>
 </main>

@@ -14,9 +14,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const context = await loadMemberContext({ session: locals.session, env: platform?.env });
 	requireWritableMemberView(context);
-	const body = (await request.json().catch(() => null)) as
-		| { key?: unknown; keys?: unknown }
-		| null;
+	const body = (await request.json().catch(() => null)) as { key?: unknown; keys?: unknown } | null;
 	const keys = Array.isArray(body?.keys)
 		? body.keys.filter((key): key is string => typeof key === 'string').map((key) => key.trim())
 		: typeof body?.key === 'string'

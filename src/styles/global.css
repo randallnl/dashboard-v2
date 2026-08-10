@@ -2002,7 +2002,7 @@ h2 {
 	box-shadow: 0 0.4rem 1rem rgb(23 37 30 / 8%);
 }
 
-.workspace-tabs button {
+.workspace-tabs a {
 	flex: 0 0 auto;
 	padding: 0.65rem 0.85rem;
 	border: 0;
@@ -2012,16 +2012,25 @@ h2 {
 	font: inherit;
 	font-size: 0.82rem;
 	font-weight: 750;
-	cursor: pointer;
+	text-decoration: none;
 }
 
-.workspace-tabs button.active {
+.workspace-tabs a:hover,
+.workspace-tabs a:focus-visible {
 	background: #194639;
 	color: #fff;
 }
 
 .workspace-panel {
 	animation: workspace-panel-in 160ms ease-out;
+}
+
+.workspace-panel[id] {
+	scroll-margin-top: 7.5rem;
+}
+
+.item-dashboard > .workspace-panel {
+	margin-top: 1rem;
 }
 
 .workspace-card {
