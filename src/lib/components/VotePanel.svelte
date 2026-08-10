@@ -29,6 +29,7 @@
 	let failed = $state(false);
 	let showAllVotes = $state(false);
 	let notifyingDiscord = $state(false);
+	let notifyingMotion = $state('');
 	const expandedVotedVotes = new SvelteSet<string>();
 	const visibleVotes = $derived(showAllVotes ? votes : votes.slice(0, 4));
 
@@ -55,6 +56,32 @@
 			message = cause instanceof Error ? cause.message : 'Could not send vote notifications.';
 		} finally {
 			notifyingDiscord = false;
+		}
+	}
+
+	async function notifySpecificMotion(vote: EligibleVote) {
+		if (
+			!window.confirm(`Send “${vote.question}” to Discord now? It may be posted more than once.`)
+		) {
+			return;
+		}
+		notifyingMotion = vote.id;
+		message = '';
+		try {
+			const response = await fetch('/api/admin/votes/notify', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ voteId: vote.id })
+			});
+			const result = (await response.json()) as { failed?: number; message?: string };
+			if (!response.ok) throw new Error(result.message || 'Could not send this motion to Discord.');
+			failed = Boolean(result.failed);
+			message = result.message || 'Motion sent to Discord.';
+		} catch (cause) {
+			failed = true;
+			message = cause instanceof Error ? cause.message : 'Could not send this motion to Discord.';
+		} finally {
+			notifyingMotion = '';
 		}
 	}
 
@@ -181,6 +208,16 @@
 							{vote.question}
 						{/if}
 					</h3>
+					{#if isAdmin}
+						<button
+							type="button"
+							class="vote-discord-button"
+							onclick={() => notifySpecificMotion(vote)}
+							disabled={Boolean(notifyingMotion)}
+						>
+							{notifyingMotion === vote.id ? 'Sending…' : 'Send this motion to Discord'}
+						</button>
+					{/if}
 					{#if vote.hasVoted}
 						<div class="recorded-vote recorded-vote-heading">
 							<span class="recorded-pill">Your vote: {vote.recordedResponse || 'Recorded'}</span>

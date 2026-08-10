@@ -38,6 +38,23 @@ export class DiscordVoteNotificationRepository {
 			.run();
 	}
 
+	async recordForcedSend(voteKey: string, postedAt: string): Promise<void> {
+		await this.db
+			.prepare(
+				`INSERT INTO discord_vote_notifications (
+					vote_key, status, posted_at, attempts, reserved_at, last_error
+				) VALUES (?1, 'sent', ?2, 1, '', '')
+				ON CONFLICT(vote_key) DO UPDATE SET
+					status = 'sent',
+					posted_at = excluded.posted_at,
+					attempts = discord_vote_notifications.attempts + 1,
+					reserved_at = '',
+					last_error = ''`
+			)
+			.bind(voteKey, postedAt)
+			.run();
+	}
+
 	async release(voteKey: string, message: string): Promise<void> {
 		await this.db
 			.prepare(

@@ -82,6 +82,35 @@ export async function postVoteToDiscord(
 	if (!response.ok) throw new Error(`Discord webhook returned HTTP ${response.status}`);
 }
 
+async function availableVotes(env: VoteNotifierEnv, now: Date): Promise<Vote[]> {
+	const token = await mondayToken(env.MONDAY_API_TOKEN);
+	const [motions, community, equipment] = await Promise.all([
+		new VoteDirectory(new MondayClient(token)).listMotions(),
+		new ProjectEventRepository(env.DB).list({ source: 'community' }),
+		new EquipmentRequestRepository(env.DB).list()
+	]);
+	return [
+		...motions,
+		...communityConsentVotes(community, now),
+		...equipmentConsentVotes(equipment, now)
+	];
+}
+
+export async function notifySpecificVote(env: VoteNotifierEnv, voteId: string) {
+	const votes = await availableVotes(env, new Date());
+	const vote = votes.find((candidate) => candidate.id === voteId);
+	if (!vote)
+		throw new Error('That motion is no longer available. Refresh the motions and try again.');
+
+	const webhookUrl = await env.COLAB_WEBHOOK.get();
+	await postVoteToDiscord(webhookUrl, vote, env.DASHBOARD_URL);
+	await new DiscordVoteNotificationRepository(env.DB).recordForcedSend(
+		vote.id,
+		new Date().toISOString()
+	);
+	return vote;
+}
+
 export async function notifyNewVotes(env: VoteNotifierEnv, scheduledTime: number) {
 	const now = new Date(scheduledTime);
 	const webhookUrlPromise = env.COLAB_WEBHOOK.get();

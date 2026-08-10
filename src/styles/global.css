@@ -3075,6 +3075,27 @@ h2 {
 	color: #a04e31;
 }
 
+.vote-discord-button {
+	margin-bottom: 0.5rem;
+	padding: 0.45rem 0.65rem;
+	border: 1px solid #78649a;
+	border-radius: 0.5rem;
+	background: #f3eef9;
+	color: #513a78;
+	cursor: pointer;
+	font-size: 0.72rem;
+	font-weight: 800;
+}
+
+.vote-discord-button:hover {
+	background: #e8def3;
+}
+
+.vote-discord-button:disabled {
+	cursor: wait;
+	opacity: 0.65;
+}
+
 .vote-list article > p {
 	color: #626b66;
 	line-height: 1.55;

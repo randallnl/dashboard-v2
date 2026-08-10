@@ -46,4 +46,15 @@ describe('DiscordVoteNotificationRepository', () => {
 		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining("status = 'sent'"));
 		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining("status = 'pending'"));
 	});
+
+	it('records forced sends even when a motion was already sent', async () => {
+		const mock = databaseWithChanges(1);
+		const repository = new DiscordVoteNotificationRepository(mock.db);
+
+		await repository.recordForcedSend('motion-1', '2026-08-04T17:02:00Z');
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT(vote_key)'));
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('attempts + 1'));
+		expect(mock.bind).toHaveBeenCalledWith('motion-1', '2026-08-04T17:02:00Z');
+	});
 });
