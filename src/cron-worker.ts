@@ -1,10 +1,20 @@
 import { syncEquipmentRequestsFromMonday } from '$lib/server/equipment/sync';
+import { notifyNewVotes } from '$lib/server/discord/vote-notifier';
 import { syncEventsFromMonday } from '$lib/server/events/sync';
 import { syncGivebutterFromMonday } from '$lib/server/givebutter/sync';
 import { syncMembersFromMonday } from '$lib/server/members/sync';
 import { syncShiftsFromMonday } from '$lib/server/shifts/sync';
 import { MemberRepository, ShiftSwitchRepository } from '$lib/server/db';
 import { sendShiftSwitchEmail } from '$lib/server/shifts/switch-email';
+
+type ScheduledSyncResults = [
+	Awaited<ReturnType<typeof syncShiftsFromMonday>>,
+	Awaited<ReturnType<typeof syncEventsFromMonday>>,
+	Awaited<ReturnType<typeof syncMembersFromMonday>>,
+	Awaited<ReturnType<typeof syncGivebutterFromMonday>>,
+	Awaited<ReturnType<typeof syncEquipmentRequestsFromMonday>>,
+	Awaited<ReturnType<typeof sendShiftSwitchReminders>>
+];
 
 async function sendShiftSwitchReminders(env: CronEnv): Promise<number> {
 	const today = new Date().toISOString().slice(0, 10);
@@ -53,14 +63,35 @@ export async function runScheduledShiftSync(
 ): Promise<void> {
 	const startedAt = Date.now();
 	try {
-		const [shifts, events, members, givebutter, equipment, switchReminders] = await Promise.all([
-			syncShiftsFromMonday(env),
-			syncEventsFromMonday(env),
-			syncMembersFromMonday(env),
-			syncGivebutterFromMonday(env),
-			syncEquipmentRequestsFromMonday(env),
-			sendShiftSwitchReminders(env)
-		]);
+		let syncFailure: unknown;
+		let syncResults: ScheduledSyncResults | undefined;
+		try {
+			syncResults = await Promise.all([
+				syncShiftsFromMonday(env),
+				syncEventsFromMonday(env),
+				syncMembersFromMonday(env),
+				syncGivebutterFromMonday(env),
+				syncEquipmentRequestsFromMonday(env),
+				sendShiftSwitchReminders(env)
+			]);
+		} catch (cause) {
+			syncFailure = cause;
+		}
+
+		let discordVotes = { eligible: 0, posted: 0, failed: 0 };
+		try {
+			discordVotes = await notifyNewVotes(env, scheduledTime);
+		} catch (cause) {
+			console.error(
+				JSON.stringify({
+					event: 'discord_vote_notification_failed',
+					message: cause instanceof Error ? cause.message : 'Unknown notification error'
+				})
+			);
+		}
+
+		if (!syncResults) throw syncFailure;
+		const [shifts, events, members, givebutter, equipment, switchReminders] = syncResults;
 		console.log(
 			JSON.stringify({
 				event: 'scheduled_shift_sync_completed',
@@ -79,6 +110,9 @@ export async function runScheduledShiftSync(
 				equipmentCount: equipment.count,
 				equipmentFailed: equipment.failed,
 				equipmentRemoved: equipment.removed,
+				discordVotesEligible: discordVotes.eligible,
+				discordVotesPosted: discordVotes.posted,
+				discordVotesFailed: discordVotes.failed,
 				switchReminders,
 				syncedAt: shifts.syncedAt > events.syncedAt ? shifts.syncedAt : events.syncedAt,
 				durationMs: Date.now() - startedAt
