@@ -2950,6 +2950,32 @@ h2 {
 	scroll-margin-top: 2rem;
 }
 
+.vote-admin-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.8rem;
+	margin-top: 1rem;
+}
+
+.vote-admin-actions button {
+	padding: 0.65rem 0.85rem;
+	border: 0;
+	border-radius: 0.55rem;
+	background: #194639;
+	color: #fff;
+	cursor: pointer;
+	font-weight: 800;
+}
+
+.vote-admin-actions button:disabled {
+	cursor: wait;
+	opacity: 0.65;
+}
+
+.vote-admin-actions small {
+	color: #626b66;
+}
+
 .vote-list {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));

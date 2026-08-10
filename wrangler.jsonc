@@ -26,6 +26,11 @@
 			"binding": "LOCKBOX_CODE",
 			"store_id": "2b9ec8a0d6d742649ad4d3498815ca54",
 			"secret_name": "COLAB_LOCKBOX_CODE"
+		},
+		{
+			"binding": "COLAB_WEBHOOK",
+			"store_id": "2b9ec8a0d6d742649ad4d3498815ca54",
+			"secret_name": "COLAB_DISCORD_URL"
 		}
 	],
 	"send_email": [
@@ -36,6 +41,7 @@
 	],
 	"vars": {
 		"ENVIRONMENT": "production",
+		"DASHBOARD_URL": "https://dashboard.queerlective.com",
 		"LOGIN_FROM_EMAIL": "dashboard@nhciviccommons.com",
 		"LOGIN_FROM_NAME": "Queerlective CoLab"
 	},

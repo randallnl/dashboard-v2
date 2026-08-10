@@ -33,7 +33,7 @@
 	],
 	"vars": {
 		"ENVIRONMENT": "production",
-		"DASHBOARD_URL": "https://dashboard-v2.randall-d53.workers.dev",
+		"DASHBOARD_URL": "https://dashboard.queerlective.com",
 		"LOGIN_FROM_EMAIL": "dashboard@nhciviccommons.com",
 		"LOGIN_FROM_NAME": "Queerlective CoLab"
 	},

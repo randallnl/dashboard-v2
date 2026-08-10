@@ -233,7 +233,7 @@
 		{/if}
 
 		{#if capabilities.canVote}
-			<VotePanel readOnly={isViewingAs} />
+			<VotePanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
 		{/if}
 
 		<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />

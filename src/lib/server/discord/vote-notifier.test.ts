@@ -17,12 +17,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('Discord vote notifications', () => {
 	it('builds a mention-safe embed with dashboard and related-item links', () => {
-		const payload = discordPayload(vote, 'https://dashboard.example.com/');
+		const payload = discordPayload(vote, 'https://dashboard.queerlective.com/');
 
 		expect(payload.allowed_mentions).toEqual({ parse: [] });
 		expect(payload.embeds[0]).toMatchObject({
 			title: vote.question,
-			url: 'https://dashboard.example.com/#votes'
+			url: 'https://dashboard.queerlective.com/#votes'
 		});
 		expect(payload.embeds[0].description).toContain(
 			'[View requested item](https://example.com/button-maker)'

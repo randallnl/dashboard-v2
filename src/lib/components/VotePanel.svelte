@@ -18,7 +18,7 @@
 		comment: string;
 	};
 	const objection = "Don't Approve(With Comment)";
-	let { readOnly = false }: { readOnly?: boolean } = $props();
+	let { isAdmin = false, readOnly = false }: { isAdmin?: boolean; readOnly?: boolean } = $props();
 
 	let votes = $state<EligibleVote[]>([]);
 	let responses = $state<Record<string, string>>({});
@@ -28,12 +28,34 @@
 	let message = $state('');
 	let failed = $state(false);
 	let showAllVotes = $state(false);
+	let notifyingDiscord = $state(false);
 	const expandedVotedVotes = new SvelteSet<string>();
 	const visibleVotes = $derived(showAllVotes ? votes : votes.slice(0, 4));
 
 	function toggleVotedDetails(voteId: string) {
 		if (expandedVotedVotes.has(voteId)) expandedVotedVotes.delete(voteId);
 		else expandedVotedVotes.add(voteId);
+	}
+
+	async function notifyDiscord() {
+		notifyingDiscord = true;
+		message = '';
+		try {
+			const response = await fetch('/api/admin/votes/notify', { method: 'POST' });
+			const result = (await response.json()) as {
+				posted?: number;
+				failed?: number;
+				message?: string;
+			};
+			if (!response.ok) throw new Error(result.message || 'Could not send vote notifications.');
+			failed = Boolean(result.failed);
+			message = result.message || 'Discord notifications checked.';
+		} catch (cause) {
+			failed = true;
+			message = cause instanceof Error ? cause.message : 'Could not send vote notifications.';
+		} finally {
+			notifyingDiscord = false;
+		}
 	}
 
 	async function load() {
@@ -111,6 +133,14 @@
 		</div>
 		<p>Each member may respond once. Objections require a comment.</p>
 	</div>
+	{#if isAdmin}
+		<div class="vote-admin-actions">
+			<button type="button" onclick={notifyDiscord} disabled={notifyingDiscord}>
+				{notifyingDiscord ? 'Sending…' : 'Send new motions to Discord'}
+			</button>
+			<small>Previously announced motions will not be posted again.</small>
+		</div>
+	{/if}
 
 	{#if message}
 		<p class="vote-message" class:error={failed} role={failed ? 'alert' : 'status'}>{message}</p>
