@@ -7,7 +7,8 @@ export function upcomingAssignments(
 	hostKeys: Set<string>,
 	volunteerKeys: Set<string>,
 	memberNames: Iterable<string> = [],
-	limit = Number.POSITIVE_INFINITY
+	limit = Number.POSITIVE_INFINITY,
+	participantKeys: Set<string> = new Set()
 ): UpcomingProjectAssignment[] {
 	const normalizedEmails = new Set(Array.from(memberEmails, normalizeEmail).filter(Boolean));
 	const normalizedNames = new Set(Array.from(memberNames, normalizeName).filter(Boolean));
@@ -27,6 +28,9 @@ export function upcomingAssignments(
 				roles.push('Host');
 			}
 			if (matchesIdentity(attendees, normalizedEmails, normalizedNames)) {
+				roles.push('Attendee');
+			}
+			if (participantKeys.has(key) && !volunteerKeys.has(key) && !roles.includes('Attendee')) {
 				roles.push('Attendee');
 			}
 			if (volunteerKeys.has(key)) roles.push('Volunteer');

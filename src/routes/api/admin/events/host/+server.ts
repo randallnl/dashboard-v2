@@ -51,8 +51,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 				record: { ...record.record, attendees: emails.join(', ') },
 				syncedAt: updatedAt
 			}),
-			new VolunteerRepository(env.DB).signup('project', record.id, member.id)
+			new VolunteerRepository(env.DB).setVolunteer('project', record.id, member.id, false)
 		]);
+	} else if (record.source === 'community') {
+		await new VolunteerRepository(env.DB).setVolunteer('community', record.id, member.id, false);
 	}
 
 	const host = await new HostRepository(env.DB).upsert(
@@ -71,14 +73,18 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 				phone: member.phone,
 				name: member.preferredName
 			},
-			attendee:
-				record.source === 'project' && member.email
-					? { email: member.email, name: member.preferredName, memberId: member.id }
-					: null,
+			attendee: member.email
+				? {
+						email: member.email,
+						name: member.preferredName,
+						memberId: member.id,
+						role: 'attendee'
+					}
+				: null,
 			message:
 				record.source === 'project'
 					? `${host.hostLabel} assigned as host, added to attendees, and confirmed by Monday.`
-					: `${host.hostLabel} assigned as host. Monday confirmed the update.`
+					: `${host.hostLabel} assigned as host and added to the event calendar.`
 		},
 		{ headers: { 'cache-control': 'private, no-store' } }
 	);

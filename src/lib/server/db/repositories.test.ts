@@ -173,7 +173,7 @@ describe('VolunteerRepository', () => {
 		await new VolunteerRepository(mock.db).setVolunteer('project', 'project-1', 'member-1', true);
 
 		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT'));
-		expect(mock.bind).toHaveBeenCalledWith('project', 'project-1', 'member-1');
+		expect(mock.bind).toHaveBeenCalledWith('project', 'project-1', 'member-1', 'Signed up');
 		expect(mock.run).toHaveBeenCalledOnce();
 	});
 
@@ -182,8 +182,8 @@ describe('VolunteerRepository', () => {
 
 		await new VolunteerRepository(mock.db).setVolunteer('project', 'project-1', 'member-1', false);
 
-		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining("SET status = 'Attendee'"));
-		expect(mock.bind).toHaveBeenCalledWith('project', 'project-1', 'member-1');
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('excluded.status'));
+		expect(mock.bind).toHaveBeenCalledWith('project', 'project-1', 'member-1', 'Attendee');
 	});
 });
 

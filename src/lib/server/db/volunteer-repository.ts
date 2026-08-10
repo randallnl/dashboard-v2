@@ -29,26 +29,46 @@ export class VolunteerRepository {
 		memberId: string,
 		isVolunteer: boolean
 	): Promise<void> {
-		if (isVolunteer) {
-			await this.db
-				.prepare(
-					`INSERT INTO event_volunteer_signups (source, event_id, member_id, status)
-					 VALUES (?1, ?2, ?3, 'Signed up')
-					 ON CONFLICT(source, event_id, member_id) DO UPDATE SET status = 'Signed up'`
-				)
-				.bind(source, eventId, memberId)
-				.run();
-			return;
-		}
-
 		await this.db
 			.prepare(
-				`UPDATE event_volunteer_signups
-				 SET status = 'Attendee'
-				 WHERE source = ?1 AND event_id = ?2 AND member_id = ?3`
+				`INSERT INTO event_volunteer_signups (source, event_id, member_id, status)
+				 VALUES (?1, ?2, ?3, ?4)
+				 ON CONFLICT(source, event_id, member_id) DO UPDATE SET status = excluded.status`
 			)
-			.bind(source, eventId, memberId)
+			.bind(source, eventId, memberId, isVolunteer ? 'Signed up' : 'Attendee')
 			.run();
+	}
+
+	async listParticipantsForEvent(
+		source: ProjectEventSource,
+		eventId: string
+	): Promise<Map<string, 'attendee' | 'volunteer'>> {
+		const result = await this.db
+			.prepare(
+				`SELECT member_id, status
+				 FROM event_volunteer_signups
+				 WHERE source = ?1 AND event_id = ?2 AND status IN ('Signed up', 'Attendee')`
+			)
+			.bind(source, eventId)
+			.all<{ member_id: string; status: string }>();
+		return new Map(
+			result.results.map((row) => [
+				row.member_id,
+				row.status === 'Signed up' ? ('volunteer' as const) : ('attendee' as const)
+			])
+		);
+	}
+
+	async listParticipantKeysForMember(memberId: string): Promise<Set<string>> {
+		const result = await this.db
+			.prepare(
+				`SELECT source, event_id
+				 FROM event_volunteer_signups
+				 WHERE member_id = ?1 AND status IN ('Signed up', 'Attendee')`
+			)
+			.bind(memberId)
+			.all<{ source: ProjectEventSource; event_id: string }>();
+		return new Set(result.results.map((row) => `${row.source}:${row.event_id}`));
 	}
 
 	async listMemberIdsForEvent(source: ProjectEventSource, eventId: string): Promise<Set<string>> {

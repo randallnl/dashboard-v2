@@ -40,13 +40,11 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 	const db = platform!.env.DB;
 	const host = await new HostRepository(db).find(record.source, record.id);
 	const memberRepository = new MemberRepository(db);
-	const [hostMember, members, comments, volunteerMemberIds] = await Promise.all([
+	const [hostMember, members, comments, participants] = await Promise.all([
 		host?.memberId ? memberRepository.findById(host.memberId) : Promise.resolve(null),
-		record.source === 'project' ? memberRepository.search('', 100) : Promise.resolve([]),
+		memberRepository.search('', 100),
 		new CommentRepository(db).list(record.source, record.id),
-		record.source === 'project'
-			? new VolunteerRepository(db).listMemberIdsForEvent(record.source, record.id)
-			: Promise.resolve(new Set<string>())
+		new VolunteerRepository(db).listParticipantsForEvent(record.source, record.id)
 	]);
 	const memberByEmail = new Map(
 		members.flatMap((member) =>
@@ -55,18 +53,35 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 				.map((email) => [email.trim().toLocaleLowerCase('en-US'), member] as const)
 		)
 	);
-	const attendees = attendeeEmails(record.record.attendees).map((email) => {
-		const member = memberByEmail.get(email.toLocaleLowerCase('en-US'));
-		return {
-			email,
-			name: member?.preferredName || email,
-			memberId: member?.id || '',
-			role:
-				member?.id && volunteerMemberIds.has(member.id)
-					? ('volunteer' as const)
-					: ('attendee' as const)
-		};
-	});
+	const attendeeByMemberId = new Map(
+		attendeeEmails(record.record.attendees).map((email) => {
+			const member = memberByEmail.get(email.toLocaleLowerCase('en-US'));
+			return [
+				member?.id || `email:${email}`,
+				{
+					email,
+					name: member?.preferredName || email,
+					memberId: member?.id || '',
+					role:
+						member?.id && participants.get(member.id) === 'volunteer'
+							? ('volunteer' as const)
+							: ('attendee' as const)
+				}
+			] as const;
+		})
+	);
+	for (const [memberId, role] of participants) {
+		if (attendeeByMemberId.has(memberId)) continue;
+		const member = members.find((candidate) => candidate.id === memberId);
+		if (!member?.email) continue;
+		attendeeByMemberId.set(memberId, {
+			email: member.email,
+			name: member.preferredName,
+			memberId: member.id,
+			role
+		});
+	}
+	const attendees = [...attendeeByMemberId.values()];
 	const memberEmails = new Set(
 		[layout.member.email, ...layout.member.otherEmails]
 			.filter(Boolean)

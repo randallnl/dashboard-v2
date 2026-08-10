@@ -1,7 +1,8 @@
 import { loadMemberContext, requireWritableMemberView } from '$lib/server/auth/member-context';
-import { ProjectEventRepository } from '$lib/server/db';
+import { ProjectEventRepository, VolunteerRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { attendeeEmails, EventDirectory } from '$lib/server/monday/events';
+import type { ProjectEventSource } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -13,25 +14,42 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		error(403, 'Calendar access is not included with this membership.');
 	}
 
-	const body = (await request.json().catch(() => null)) as { eventId?: unknown } | null;
+	const body = (await request.json().catch(() => null)) as {
+		eventId?: unknown;
+		source?: unknown;
+	} | null;
 	const eventId = typeof body?.eventId === 'string' ? body.eventId.trim() : '';
-	if (!eventId) error(400, 'A project is required.');
+	const source = body?.source;
+	if ((source !== 'project' && source !== 'community') || !eventId) {
+		error(400, 'A project or event is required.');
+	}
 
 	const projects = new ProjectEventRepository(env.DB);
-	const record = await projects.findById('project', eventId);
-	if (!record || record.adminOnly) error(404, 'This project is not available.');
+	const record = await projects.findById(source as ProjectEventSource, eventId);
+	if (!record || record.adminOnly) error(404, 'This project or event is not available.');
+	if (context.capabilities.isRetailOnly && record.source === 'community') {
+		error(403, 'This event is not included with this membership.');
+	}
 	if (!context.viewer.email) error(400, 'Your member record needs an email before you can join.');
 
 	const email = context.viewer.email.toLocaleLowerCase('en-US');
 	const emails = [...new Set([...attendeeEmails(record.record.attendees), email])];
-	await new EventDirectory(
-		new MondayClient(await mondayToken(env.MONDAY_API_TOKEN))
-	).updateProjectAttendees(record.id, emails);
+	if (record.source === 'project') {
+		await new EventDirectory(
+			new MondayClient(await mondayToken(env.MONDAY_API_TOKEN))
+		).updateProjectAttendees(record.id, emails);
+	}
 	await projects.upsert({
 		...record,
 		record: { ...record.record, attendees: emails.join(', ') },
 		syncedAt: new Date().toISOString()
 	});
+	await new VolunteerRepository(env.DB).setVolunteer(
+		record.source,
+		record.id,
+		context.viewer.id,
+		false
+	);
 
 	return json(
 		{
@@ -42,7 +60,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 				memberId: context.viewer.id,
 				role: 'attendee'
 			},
-			message: 'You were added to the project, and Monday confirmed the calendar update.'
+			message:
+				record.source === 'project'
+					? 'You were added to the project, and Monday confirmed the calendar update.'
+					: 'You were added to the event and it is now part of your calendar.'
 		},
 		{ headers: { 'cache-control': 'private, no-store' } }
 	);

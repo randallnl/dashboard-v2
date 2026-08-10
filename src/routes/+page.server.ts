@@ -36,14 +36,15 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
 			: [];
 	let upcomingProjects: UpcomingProjectAssignment[] = [];
 	if (layout.capabilities.canViewCalendar && db) {
-		const [records, hostKeys, volunteerKeys] = await Promise.all([
+		const [records, hostKeys, volunteerKeys, participantKeys] = await Promise.all([
 			new ProjectEventRepository(db).list({
 				fromDate: today,
 				includeAdminOnly:
 					layout.viewerCapabilities.isAdmin || layout.viewerCapabilities.canManageProjects
 			}),
 			new HostRepository(db).listKeysForMember(layout.member.id),
-			new VolunteerRepository(db).listKeysForMember(layout.member.id)
+			new VolunteerRepository(db).listKeysForMember(layout.member.id),
+			new VolunteerRepository(db).listParticipantKeysForMember(layout.member.id)
 		]);
 		upcomingProjects = upcomingAssignments(
 			records.filter(
@@ -52,7 +53,9 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
 			[layout.member.email, ...layout.member.otherEmails],
 			hostKeys,
 			volunteerKeys,
-			[layout.member.preferredName]
+			[layout.member.preferredName],
+			Number.POSITIVE_INFINITY,
+			participantKeys
 		);
 	}
 

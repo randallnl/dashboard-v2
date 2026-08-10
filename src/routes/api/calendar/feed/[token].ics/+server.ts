@@ -39,11 +39,11 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 	const end = new Date(`${from}T12:00:00Z`);
 	end.setUTCFullYear(end.getUTCFullYear() + 1);
 	const through = end.toISOString().slice(0, 10);
-	const [shifts, records, hostKeys, volunteerKeys] = await Promise.all([
+	const [shifts, records, hostKeys, participantKeys] = await Promise.all([
 		new ShiftRepository(db).listBetween(from, through),
 		new ProjectEventRepository(db).listForCalendar(from, through, true),
 		new HostRepository(db).listKeysForMember(memberId),
-		new VolunteerRepository(db).listKeysForMember(memberId)
+		new VolunteerRepository(db).listParticipantKeysForMember(memberId)
 	]);
 	const emails = new Set(
 		[member.email, ...member.otherEmails].map((email) => email.toLocaleLowerCase('en-US'))
@@ -51,7 +51,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 	const assignedRecords = records.filter(
 		(record) =>
 			hostKeys.has(`${record.source}:${record.id}`) ||
-			volunteerKeys.has(`${record.source}:${record.id}`) ||
+			participantKeys.has(`${record.source}:${record.id}`) ||
 			attendeeEmails(record.record.attendees).some((email) => emails.has(email))
 	);
 	const eventLines = [

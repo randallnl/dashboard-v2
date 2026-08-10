@@ -156,8 +156,10 @@
 		);
 	}
 
-	function confirmMonday(action: string): boolean {
-		return window.confirm(`${action} This will update the connected Monday record. Continue?`);
+	function confirmMonday(action: string, updatesMonday = true): boolean {
+		return window.confirm(
+			`${action} ${updatesMonday ? 'This will update the connected Monday record.' : 'This will update the dashboard calendar.'} Continue?`
+		);
 	}
 
 	function label(key: string): string {
@@ -208,7 +210,13 @@
 			return;
 		}
 		const roleLabel = attendeeRole === 'volunteer' ? 'a volunteer' : 'an attendee';
-		if (!confirmMonday(`Add ${attendeeSelection.label} as ${roleLabel}?`)) return;
+		if (
+			!confirmMonday(
+				`Add ${attendeeSelection.label} as ${roleLabel}?`,
+				data.record.source === 'project'
+			)
+		)
+			return;
 		const member = attendeeSelection;
 		savingAttendee = true;
 		attendeeMessage = '';
@@ -217,6 +225,7 @@
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
+					source: data.record.source,
 					eventId: data.record.id,
 					memberId: member.id,
 					role: attendeeRole
@@ -252,21 +261,28 @@
 	}
 
 	async function joinProject() {
-		if (!confirmMonday('Add yourself to this project and its calendar event?')) return;
+		const itemLabel = data.record.source === 'project' ? 'project' : 'event';
+		if (
+			!confirmMonday(
+				`Add yourself to this ${itemLabel} and its calendar?`,
+				data.record.source === 'project'
+			)
+		)
+			return;
 		joiningProject = true;
 		attendeeMessage = '';
 		try {
 			const response = await fetch('/api/events/join', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ eventId: data.record.id })
+				body: JSON.stringify({ source: data.record.source, eventId: data.record.id })
 			});
 			const result = (await response.json()) as {
 				attendees?: string[];
 				attendee?: Attendee;
 				message?: string;
 			};
-			if (!response.ok) throw new Error(result.message || 'Could not add you to the project.');
+			if (!response.ok) throw new Error(result.message || `Could not add you to the ${itemLabel}.`);
 			if (
 				result.attendee &&
 				!attendees.some((attendee) => attendee.email === result.attendee?.email)
@@ -277,10 +293,10 @@
 				recordFields = { ...recordFields, attendees: result.attendees.join(', ') };
 			}
 			hasJoined = true;
-			attendeeMessage = result.message || 'You were added to the project.';
+			attendeeMessage = result.message || `You were added to the ${itemLabel}.`;
 		} catch (cause) {
 			attendeeMessage =
-				cause instanceof Error ? cause.message : 'Could not add you to the project.';
+				cause instanceof Error ? cause.message : `Could not add you to the ${itemLabel}.`;
 		} finally {
 			joiningProject = false;
 		}
@@ -876,7 +892,7 @@
 			{#if hostMessage}<p role="status">{hostMessage}</p>{/if}
 		</section>
 
-		{#if data.record.source === 'project'}
+		{#if data.record.source === 'project' || data.record.source === 'community'}
 			<section class="attendee-editor">
 				<div class="people-editor-heading">
 					<div>
@@ -897,15 +913,21 @@
 				{#if !data.readOnly && !hasJoined}
 					<div class="project-self-join">
 						<div>
-							<strong>Want this project on your schedule?</strong>
-							<p>Add yourself to the people list and connected calendar event.</p>
+							<strong
+								>Want this {data.record.source === 'project' ? 'project' : 'event'} on your schedule?</strong
+							>
+							<p>Add yourself to the people list and calendar.</p>
 						</div>
 						<button type="button" onclick={joinProject} disabled={joiningProject}>
-							{joiningProject ? 'Adding…' : 'Join this project'}
+							{joiningProject
+								? 'Adding…'
+								: `Join this ${data.record.source === 'project' ? 'project' : 'event'}`}
 						</button>
 					</div>
 				{:else if hasJoined}
-					<p class="project-joined-status">✓ You’re part of this project</p>
+					<p class="project-joined-status">
+						✓ You’re part of this {data.record.source === 'project' ? 'project' : 'event'}
+					</p>
 				{/if}
 				{#if data.isAdmin}<div class="admin-person-editor">
 						{#key attendeePickerKey}

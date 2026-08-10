@@ -64,7 +64,7 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 	const bounds = monthBounds(requestedMonth);
 	if (!bounds) error(400, 'Month must use YYYY-MM.');
 
-	const [shifts, records, volunteerKeys, hostKeys] = await Promise.all([
+	const [shifts, records, volunteerKeys, participantKeys, hostKeys] = await Promise.all([
 		new ShiftRepository(env!.DB).listBetween(bounds.from, bounds.through),
 		new ProjectEventRepository(env!.DB).listForCalendar(
 			bounds.from,
@@ -72,6 +72,7 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 			context.capabilities.isAdmin || context.capabilities.canManageProjects
 		),
 		new VolunteerRepository(env!.DB).listKeysForMember(context.member.id),
+		new VolunteerRepository(env!.DB).listParticipantKeysForMember(context.member.id),
 		new HostRepository(env!.DB).listKeysForMember(context.member.id)
 	]);
 	const memberEmails = new Set(
@@ -105,7 +106,7 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 			.flatMap((record) => {
 				const isMine =
 					hostKeys.has(`${record.source}:${record.id}`) ||
-					volunteerKeys.has(`${record.source}:${record.id}`) ||
+					participantKeys.has(`${record.source}:${record.id}`) ||
 					attendeeEmails(record.record.attendees).some((email) => memberEmails.has(email));
 				const event: CalendarEvent = {
 					id: record.id,
