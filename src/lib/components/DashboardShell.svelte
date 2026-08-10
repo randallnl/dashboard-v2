@@ -23,6 +23,7 @@
 		capabilities,
 		viewerCapabilities,
 		isViewingAs,
+		lockboxCode,
 		initialAvailableShifts,
 		upcomingMemberShifts,
 		upcomingProjects
@@ -32,6 +33,7 @@
 		capabilities: MemberCapabilities;
 		viewerCapabilities: MemberCapabilities;
 		isViewingAs: boolean;
+		lockboxCode: string;
 		initialAvailableShifts: Shift[];
 		upcomingMemberShifts: Shift[];
 		upcomingProjects: UpcomingProjectAssignment[];
@@ -182,6 +184,12 @@
 			<p class="eyebrow">Quick links</p>
 			<h2>Resources</h2>
 			<div class="resource-links">
+				{#if lockboxCode}
+					<div class="resource-detail">
+						<span>Studio lock-box code</span>
+						<code>{lockboxCode}</code>
+					</div>
+				{/if}
 				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 				<a href="https://portal.queerlective.com/login" target="_blank" rel="noreferrer">
 					<span>Manage CoLab member retail</span><span aria-hidden="true">↗</span>

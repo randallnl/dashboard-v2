@@ -21,6 +21,7 @@
 		capabilities={data.capabilities}
 		viewerCapabilities={data.viewerCapabilities}
 		isViewingAs={data.isViewingAs}
+		lockboxCode={data.lockboxCode}
 		initialAvailableShifts={data.initialAvailableShifts}
 		upcomingMemberShifts={data.upcomingMemberShifts}
 		upcomingProjects={data.upcomingProjects}

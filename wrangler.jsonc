@@ -21,6 +21,11 @@
 			"binding": "MONDAY_API_TOKEN",
 			"store_id": "2b9ec8a0d6d742649ad4d3498815ca54",
 			"secret_name": "Central_Monday_API_TOKEN"
+		},
+		{
+			"binding": "LOCKBOX_CODE",
+			"store_id": "2b9ec8a0d6d742649ad4d3498815ca54",
+			"secret_name": "COLAB_LOCKBOX_CODE"
 		}
 	],
 	"send_email": [

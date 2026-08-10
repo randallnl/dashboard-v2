@@ -1,7 +1,11 @@
 import { loadMemberContext, requireVoter } from '$lib/server/auth/member-context';
-import { EquipmentRequestRepository, ProjectEventRepository } from '$lib/server/db';
+import {
+	EquipmentRequestRepository,
+	MemberRepository,
+	ProjectEventRepository
+} from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
-import { voteLogForMember, VoteDirectory } from '$lib/server/monday/votes';
+import { voteLogForMember, voteLogsForMotion, VoteDirectory } from '$lib/server/monday/votes';
 import { communityConsentVotes, equipmentConsentVotes } from '$lib/server/votes/eligibility';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -18,6 +22,8 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 		new ProjectEventRepository(env!.DB).list({ source: 'community' }),
 		new EquipmentRequestRepository(env!.DB).list()
 	]);
+	const members = await new MemberRepository(env!.DB).search('', 100);
+	const memberNames = new Map(members.map((member) => [member.id, member.preferredName]));
 	const votes = [
 		...motions,
 		...communityConsentVotes(community),
@@ -28,7 +34,15 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 			...vote,
 			hasVoted: Boolean(recorded),
 			recordedResponse: recorded?.response ?? '',
-			recordedComment: recorded?.comment ?? ''
+			recordedComment: recorded?.comment ?? '',
+			submissions: voteLogsForMotion(logs, vote).map((entry) => ({
+				id: entry.id,
+				memberId: entry.memberId,
+				memberName:
+					memberNames.get(entry.memberId) || entry.voterLabel.split('|')[0]?.trim() || 'Member',
+				response: entry.response,
+				comment: entry.comment
+			}))
 		};
 	});
 	return json({ votes }, { headers: { 'cache-control': 'private, no-store' } });

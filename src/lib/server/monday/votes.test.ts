@@ -4,7 +4,8 @@ import {
 	hasDuplicateVote,
 	mapMotion,
 	mapVoteLog,
-	voteLogForMember
+	voteLogForMember,
+	voteLogsForMotion
 } from './votes';
 
 describe('vote motion mapping', () => {
@@ -49,6 +50,7 @@ describe('duplicate vote checks', () => {
 				[
 					{
 						id: '1',
+						voterLabel: 'Alex M.',
 						memberId: 'member-1',
 						voteId: 'vote-1',
 						question: '',
@@ -65,6 +67,7 @@ describe('duplicate vote checks', () => {
 				[
 					{
 						id: '2',
+						voterLabel: 'Alex M.',
 						memberId: 'member-1',
 						voteId: '',
 						question: '  FUND   the print studio ',
@@ -94,5 +97,6 @@ describe('duplicate vote checks', () => {
 			response: "Don't Approve(With Comment)",
 			comment: 'Please revise the budget.'
 		});
+		expect(voteLogsForMotion([entry], vote)).toEqual([entry]);
 	});
 });

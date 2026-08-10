@@ -8,6 +8,11 @@ export function memberCapabilities(member: Pick<Member, 'membershipType'>): Memb
 	const membershipType = normalizedMembershipType(member);
 	const isAdmin = membershipType === 'admin';
 	const isRetailOnly = membershipType === 'retail only member';
+	const canViewLockboxCode =
+		isAdmin ||
+		membershipType.includes('key holder') ||
+		membershipType.includes('keyholder') ||
+		membershipType.includes('colab member');
 	const canManageProjects =
 		isAdmin ||
 		(!isRetailOnly &&
@@ -24,6 +29,7 @@ export function memberCapabilities(member: Pick<Member, 'membershipType'>): Memb
 		canViewShifts: !isRetailOnly,
 		canViewOpenOrders: !isRetailOnly,
 		canSubmitCommunityEvents: !isRetailOnly,
+		canViewLockboxCode,
 		canViewCalendar: true,
 		canVote: !isRetailOnly
 	};

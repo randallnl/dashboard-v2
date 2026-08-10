@@ -2,11 +2,20 @@
 	import ContentState from '$lib/components/ContentState.svelte';
 	import type { Vote } from '$lib/types/domain';
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	type EligibleVote = Vote & {
 		hasVoted: boolean;
 		recordedResponse: string;
 		recordedComment: string;
+		submissions: VoteSubmission[];
+	};
+	type VoteSubmission = {
+		id: string;
+		memberId: string;
+		memberName: string;
+		response: string;
+		comment: string;
 	};
 	const objection = "Don't Approve(With Comment)";
 	let { readOnly = false }: { readOnly?: boolean } = $props();
@@ -19,7 +28,13 @@
 	let message = $state('');
 	let failed = $state(false);
 	let showAllVotes = $state(false);
+	const expandedVotedVotes = new SvelteSet<string>();
 	const visibleVotes = $derived(showAllVotes ? votes : votes.slice(0, 4));
+
+	function toggleVotedDetails(voteId: string) {
+		if (expandedVotedVotes.has(voteId)) expandedVotedVotes.delete(voteId);
+		else expandedVotedVotes.add(voteId);
+	}
 
 	async function load() {
 		loading = true;
@@ -56,7 +71,11 @@
 					comment: comments[vote.id] ?? ''
 				})
 			});
-			const result = (await response.json()) as { response?: string; message?: string };
+			const result = (await response.json()) as {
+				response?: string;
+				message?: string;
+				submission?: VoteSubmission;
+			};
 			if (!response.ok) throw new Error(result.message || 'Could not record your vote.');
 			votes = votes.map((candidate) =>
 				candidate.id === vote.id
@@ -64,7 +83,10 @@
 							...candidate,
 							hasVoted: true,
 							recordedResponse: result.response || responseValue,
-							recordedComment: comments[vote.id] ?? ''
+							recordedComment: comments[vote.id] ?? '',
+							submissions: result.submission
+								? [...candidate.submissions, result.submission]
+								: candidate.submissions
 						}
 					: candidate
 			);
@@ -114,26 +136,47 @@
 	{:else}
 		<div class="vote-list">
 			{#each visibleVotes as vote (vote.id)}
-				<article class:voted={vote.hasVoted}>
+				{@const detailsExpanded = !vote.hasVoted || expandedVotedVotes.has(vote.id)}
+				<article class:voted={vote.hasVoted} class:vote-collapsed={!detailsExpanded}>
 					<div class="vote-meta">
 						<span>{vote.type}</span>
 						{#if vote.deadline}<time datetime={vote.deadline}>Consent deadline {vote.deadline}</time
 							>{/if}
 					</div>
-					<h3>{vote.question}</h3>
-					{#if vote.details}<p>{vote.details}</p>{/if}
-					{#if vote.linkUrl}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a class="vote-resource-link" href={vote.linkUrl} target="_blank" rel="noreferrer">
-							{vote.linkLabel || 'View related link'} ↗
-						</a>
-					{/if}
+					<h3>
+						{#if vote.titleUrl}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a class="vote-title-link" href={vote.titleUrl}>{vote.question}</a>
+						{:else}
+							{vote.question}
+						{/if}
+					</h3>
 					{#if vote.hasVoted}
-						<div class="recorded-vote">
+						<div class="recorded-vote recorded-vote-heading">
 							<span class="recorded-pill">Your vote: {vote.recordedResponse || 'Recorded'}</span>
-							{#if vote.recordedComment}<p>{vote.recordedComment}</p>{/if}
+							<button
+								type="button"
+								class="vote-details-toggle"
+								onclick={() => toggleVotedDetails(vote.id)}
+								aria-expanded={detailsExpanded}
+							>
+								{detailsExpanded ? 'Hide vote details' : 'Show vote details'}
+							</button>
 						</div>
-					{:else}
+					{/if}
+					{#if detailsExpanded}
+						{#if vote.details}<p>{vote.details}</p>{/if}
+						{#if vote.linkUrl}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a class="vote-resource-link" href={vote.linkUrl} target="_blank" rel="noreferrer">
+								{vote.linkLabel || 'View related link'} ↗
+							</a>
+						{/if}
+						{#if vote.hasVoted && vote.recordedComment}
+							<p class="recorded-comment">Your comment: {vote.recordedComment}</p>
+						{/if}
+					{/if}
+					{#if !vote.hasVoted}
 						<div class="vote-form">
 							<label>
 								<span>Your response</span>
@@ -157,6 +200,26 @@
 							>
 								{submitting === vote.id ? 'Recording…' : readOnly ? 'View only' : 'Vote now'}
 							</button>
+						</div>
+					{/if}
+					{#if detailsExpanded}
+						<div class="vote-summary">
+							<h4>Submitted votes <span>{vote.submissions.length}</span></h4>
+							{#if vote.submissions.length}
+								<ul>
+									{#each vote.submissions as submission (submission.id)}
+										<li>
+											<div>
+												<strong>{submission.memberName}</strong>
+												<span>{submission.response || 'Recorded'}</span>
+											</div>
+											{#if submission.comment}<p>{submission.comment}</p>{/if}
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<p>No votes submitted yet.</p>
+							{/if}
 						</div>
 					{/if}
 				</article>

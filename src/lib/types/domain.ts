@@ -25,6 +25,7 @@ export type MemberCapabilities = {
 	canViewShifts: boolean;
 	canViewOpenOrders: boolean;
 	canSubmitCommunityEvents: boolean;
+	canViewLockboxCode: boolean;
 	canViewCalendar: boolean;
 	canVote: boolean;
 };
@@ -134,6 +135,7 @@ export type Vote = {
 	deadline: string;
 	linkUrl?: string;
 	linkLabel?: string;
+	titleUrl?: string;
 };
 
 export type Activity = {

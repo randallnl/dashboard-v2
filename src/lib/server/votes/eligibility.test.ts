@@ -36,7 +36,22 @@ describe('communityConsentVotes', () => {
 			new Date('2026-07-26T12:00:00Z')
 		);
 
-		expect(votes).toMatchObject([{ submittedAt: '2026-07-26', type: 'Consent Vote' }]);
+		expect(votes).toMatchObject([
+			{
+				submittedAt: '2026-07-26',
+				type: 'Consent Vote',
+				titleUrl: '/items/community/event-1'
+			}
+		]);
+	});
+
+	it('links the motion title using the associated community item ID', () => {
+		const [vote] = communityConsentVotes(
+			[submission({ record: { itemId: 'associated-item-2', creationLog: '2026-07-25' } })],
+			new Date('2026-07-26T12:00:00Z')
+		);
+
+		expect(vote.titleUrl).toBe('/items/community/associated-item-2');
 	});
 
 	it('excludes submissions once resolved or after the consent deadline', () => {

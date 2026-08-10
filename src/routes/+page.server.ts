@@ -26,6 +26,10 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
 
 	const today = new Date().toISOString().slice(0, 10);
 	const db = platform?.env.DB;
+	const lockboxCode =
+		layout.capabilities.canViewLockboxCode && platform?.env.LOCKBOX_CODE
+			? await platform.env.LOCKBOX_CODE.get()
+			: '';
 	const shifts =
 		layout.capabilities.canViewShifts && db
 			? await new ShiftRepository(db).listFromDate(today)
@@ -59,6 +63,7 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
 		capabilities: layout.capabilities,
 		viewerCapabilities: layout.viewerCapabilities,
 		isViewingAs: layout.isViewingAs,
+		lockboxCode,
 		initialAvailableShifts: shifts.filter((shift) => !shift.isCovered),
 		upcomingMemberShifts: shifts.filter((shift) => shift.memberId === layout.member.id).slice(0, 6),
 		upcomingProjects

@@ -51,7 +51,18 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	try {
 		const mondayItemId = await directory.recordVote(context.viewer, vote, response, comment);
 		await repository.complete(context.viewer.id, vote.id, response, mondayItemId);
-		return json({ ok: true, voteId: vote.id, response });
+		return json({
+			ok: true,
+			voteId: vote.id,
+			response,
+			submission: {
+				id: mondayItemId,
+				memberId: context.viewer.id,
+				memberName: context.viewer.preferredName,
+				response,
+				comment
+			}
+		});
 	} catch (cause) {
 		await repository.release(context.viewer.id, vote.id);
 		console.error(

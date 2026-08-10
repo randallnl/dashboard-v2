@@ -33,6 +33,20 @@ describe('memberCapabilities', () => {
 		}
 	);
 
+	it.each(['Admin', 'Key Holder', 'Keyholder', 'CoLab Member'])(
+		'grants lock-box access to %s',
+		(membershipType) => {
+			expect(memberCapabilities({ membershipType }).canViewLockboxCode).toBe(true);
+		}
+	);
+
+	it.each(['Retail Only Member', 'Volunteer'])(
+		'does not grant lock-box access to %s',
+		(membershipType) => {
+			expect(memberCapabilities({ membershipType }).canViewLockboxCode).toBe(false);
+		}
+	);
+
 	it('does not grant project management to retail-only members', () => {
 		expect(memberCapabilities({ membershipType: 'Retail Only Member' }).canManageProjects).toBe(
 			false

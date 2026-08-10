@@ -2968,6 +2968,10 @@ h2 {
 	background: #e7eee8;
 }
 
+.vote-list article.vote-collapsed {
+	align-self: start;
+}
+
 .vote-meta {
 	display: flex;
 	flex-wrap: wrap;
@@ -2982,6 +2986,17 @@ h2 {
 .vote-list h3 {
 	margin: 1.25rem 0 0.7rem;
 	font-size: 1.35rem;
+}
+
+.vote-title-link {
+	color: inherit;
+	text-decoration-color: #a04e31;
+	text-decoration-thickness: 0.1em;
+	text-underline-offset: 0.18em;
+}
+
+.vote-title-link:hover {
+	color: #a04e31;
 }
 
 .vote-list article > p {
@@ -3031,6 +3046,95 @@ h2 {
 	color: #fff;
 	font-size: 0.72rem;
 	font-weight: 700;
+}
+
+.recorded-vote-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.vote-details-toggle {
+	margin-top: 1rem;
+	padding: 0.45rem 0.65rem;
+	border: 1px solid #b9c9bc;
+	border-radius: 0.5rem;
+	background: transparent;
+	color: #194639;
+	cursor: pointer;
+	font-size: 0.72rem;
+	font-weight: 800;
+}
+
+.vote-details-toggle:hover {
+	border-color: #194639;
+	background: #f4f8f4;
+}
+
+.recorded-comment {
+	margin-top: 1rem;
+}
+
+.vote-summary {
+	margin-top: 1.25rem;
+	padding-top: 1rem;
+	border-top: 1px solid #ddd3c3;
+}
+
+.vote-summary h4 {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin: 0 0 0.6rem;
+	font-size: 0.8rem;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.vote-summary h4 span {
+	display: grid;
+	min-width: 1.5rem;
+	height: 1.5rem;
+	place-items: center;
+	border-radius: 999px;
+	background: #e2e9e3;
+	font-size: 0.72rem;
+}
+
+.vote-summary ul {
+	display: grid;
+	gap: 0.55rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.vote-summary li {
+	padding: 0.65rem 0.75rem;
+	border-radius: 0.55rem;
+	background: #f1ede5;
+}
+
+.vote-summary li div {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.vote-summary li span {
+	color: #875138;
+	font-size: 0.72rem;
+	font-weight: 800;
+}
+
+.vote-summary li p,
+.vote-summary > p {
+	margin: 0.4rem 0 0;
+	color: #626b66;
+	font-size: 0.78rem;
+	line-height: 1.45;
 }
 
 .vote-message {
@@ -3236,6 +3340,27 @@ h2 {
 	color: #194639;
 	font-weight: 700;
 	text-decoration: none;
+}
+
+.resource-detail {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1rem 0;
+	border-top: 1px solid #cbd7ce;
+	color: #194639;
+	font-weight: 700;
+}
+
+.resource-detail code {
+	padding: 0.35rem 0.6rem;
+	border: 1px solid #b8c9bc;
+	border-radius: 0.45rem;
+	background: #f7faf7;
+	color: #17251e;
+	font-size: 1rem;
+	letter-spacing: 0.14em;
 }
 
 .resource-links a:hover {

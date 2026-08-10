@@ -86,6 +86,7 @@ export function mapMotion(item: Item): Vote | null {
 
 export type VoteLogEntry = {
 	id: string;
+	voterLabel: string;
 	memberId: string;
 	voteId: string;
 	question: string;
@@ -97,6 +98,7 @@ export function mapVoteLog(item: Item): VoteLogEntry {
 	const columns = map(item);
 	return {
 		id: item.id,
+		voterLabel: item.name.trim(),
 		memberId: text(columns, LOG_COLUMNS.memberId),
 		voteId: text(columns, LOG_COLUMNS.voteId),
 		question: text(columns, LOG_COLUMNS.question),
@@ -105,18 +107,20 @@ export function mapVoteLog(item: Item): VoteLogEntry {
 	};
 }
 
+export function voteLogsForMotion(logs: VoteLogEntry[], vote: Vote): VoteLogEntry[] {
+	return logs.filter((entry) =>
+		entry.voteId
+			? entry.voteId === vote.id
+			: normalizedQuestion(entry.question) === normalizedQuestion(vote.question)
+	);
+}
+
 export function voteLogForMember(
 	logs: VoteLogEntry[],
 	memberId: string,
 	vote: Vote
 ): VoteLogEntry | undefined {
-	return logs.find(
-		(entry) =>
-			entry.memberId === memberId &&
-			(entry.voteId
-				? entry.voteId === vote.id
-				: normalizedQuestion(entry.question) === normalizedQuestion(vote.question))
-	);
+	return voteLogsForMotion(logs, vote).find((entry) => entry.memberId === memberId);
 }
 
 export function hasDuplicateVote(logs: VoteLogEntry[], memberId: string, vote: Vote): boolean {

@@ -18,6 +18,7 @@ export function communityConsentVotes(
 		if (Number.isNaN(created.getTime()) || created > now) return [];
 		const submittedAt = created.toISOString().slice(0, 10);
 		const deadline = consentDeadline(submittedAt);
+		const itemId = recordString(record.record, 'itemId') || record.id;
 		const deadlineEnd = new Date(`${deadline}T23:59:59.999Z`);
 		if (deadlineEnd < now) return [];
 		return [
@@ -27,7 +28,8 @@ export function communityConsentVotes(
 				question: record.title,
 				details: recordString(record.record, 'description'),
 				submittedAt,
-				deadline
+				deadline,
+				titleUrl: `/items/community/${encodeURIComponent(itemId)}`
 			}
 		];
 	});
