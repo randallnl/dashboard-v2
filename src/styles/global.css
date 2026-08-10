@@ -2853,6 +2853,47 @@ h2 {
 	gap: 0.7rem;
 }
 
+.project-self-join,
+.admin-person-editor {
+	padding: 0.85rem;
+	border-radius: 0.8rem;
+	background: #f0eadf;
+}
+
+.project-self-join {
+	align-items: center !important;
+	justify-content: space-between;
+}
+
+.project-self-join p,
+.project-joined-status {
+	margin: 0.2rem 0 0;
+}
+
+.project-joined-status {
+	color: #28653f;
+	font-weight: 700;
+}
+
+.admin-person-editor label {
+	display: grid;
+	gap: 0.25rem;
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+
+.admin-person-editor select {
+	min-height: 2.7rem;
+}
+
+.attendee-list span small {
+	margin-left: 0.3rem;
+	color: #28653f;
+	font-size: 0.65rem;
+	font-weight: 800;
+	text-transform: uppercase;
+}
+
 .member-predictive-picker {
 	position: relative;
 	flex: 1 1 18rem;

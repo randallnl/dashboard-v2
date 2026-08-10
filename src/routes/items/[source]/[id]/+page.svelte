@@ -20,7 +20,10 @@
 	let hostMessage = $state('');
 	let attendeeSelection = $state<MemberOption | null>(null);
 	let attendees = $state(untrack(() => data.attendees));
+	let hasJoined = $state(untrack(() => data.hasJoined));
+	let attendeeRole = $state<'attendee' | 'volunteer'>('attendee');
 	let savingAttendee = $state(false);
+	let joiningProject = $state(false);
 	let attendeeMessage = $state('');
 	let attendeePickerKey = $state(0);
 	let recordTitle = $state(untrack(() => data.record.title));
@@ -204,7 +207,8 @@
 			attendeeMessage = 'Type and choose a member from the suggestions.';
 			return;
 		}
-		if (!confirmMonday(`Add ${attendeeSelection.label} as an attendee?`)) return;
+		const roleLabel = attendeeRole === 'volunteer' ? 'a volunteer' : 'an attendee';
+		if (!confirmMonday(`Add ${attendeeSelection.label} as ${roleLabel}?`)) return;
 		const member = attendeeSelection;
 		savingAttendee = true;
 		attendeeMessage = '';
@@ -212,7 +216,11 @@
 			const response = await fetch('/api/admin/events/attendees', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ eventId: data.record.id, memberId: member.id })
+				body: JSON.stringify({
+					eventId: data.record.id,
+					memberId: member.id,
+					role: attendeeRole
+				})
 			});
 			const result = (await response.json()) as {
 				attendees?: string[];
@@ -220,11 +228,16 @@
 				message?: string;
 			};
 			if (!response.ok) throw new Error(result.message || 'Could not add attendee.');
-			if (
-				result.attendee &&
-				!attendees.some((attendee) => attendee.email === result.attendee?.email)
-			) {
-				attendees = [...attendees, result.attendee];
+			if (result.attendee) {
+				const existingIndex = attendees.findIndex(
+					(attendee) => attendee.email === result.attendee?.email
+				);
+				attendees =
+					existingIndex === -1
+						? [...attendees, result.attendee]
+						: attendees.map((attendee, index) =>
+								index === existingIndex ? result.attendee! : attendee
+							);
 			}
 			if (result.attendees)
 				recordFields = { ...recordFields, attendees: result.attendees.join(', ') };
@@ -235,6 +248,41 @@
 			attendeeMessage = cause instanceof Error ? cause.message : 'Could not add attendee.';
 		} finally {
 			savingAttendee = false;
+		}
+	}
+
+	async function joinProject() {
+		if (!confirmMonday('Add yourself to this project and its calendar event?')) return;
+		joiningProject = true;
+		attendeeMessage = '';
+		try {
+			const response = await fetch('/api/events/join', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ eventId: data.record.id })
+			});
+			const result = (await response.json()) as {
+				attendees?: string[];
+				attendee?: Attendee;
+				message?: string;
+			};
+			if (!response.ok) throw new Error(result.message || 'Could not add you to the project.');
+			if (
+				result.attendee &&
+				!attendees.some((attendee) => attendee.email === result.attendee?.email)
+			) {
+				attendees = [...attendees, result.attendee];
+			}
+			if (result.attendees) {
+				recordFields = { ...recordFields, attendees: result.attendees.join(', ') };
+			}
+			hasJoined = true;
+			attendeeMessage = result.message || 'You were added to the project.';
+		} catch (cause) {
+			attendeeMessage =
+				cause instanceof Error ? cause.message : 'Could not add you to the project.';
+		} finally {
+			joiningProject = false;
 		}
 	}
 
@@ -838,12 +886,28 @@
 					{#if attendees.length}
 						<div class="attendee-list" aria-label="Current attendees">
 							{#each attendees as attendee (attendee.email)}
-								<span title={attendee.email}>{attendee.name}</span>
+								<span title={attendee.email}>
+									{attendee.name}
+									{#if attendee.role === 'volunteer'}<small>Volunteer</small>{/if}
+								</span>
 							{/each}
 						</div>
 					{/if}
 				</div>
-				{#if data.canEdit}<div>
+				{#if !data.readOnly && !hasJoined}
+					<div class="project-self-join">
+						<div>
+							<strong>Want this project on your schedule?</strong>
+							<p>Add yourself to the people list and connected calendar event.</p>
+						</div>
+						<button type="button" onclick={joinProject} disabled={joiningProject}>
+							{joiningProject ? 'Adding…' : 'Join this project'}
+						</button>
+					</div>
+				{:else if hasJoined}
+					<p class="project-joined-status">✓ You’re part of this project</p>
+				{/if}
+				{#if data.isAdmin}<div class="admin-person-editor">
 						{#key attendeePickerKey}
 							<MemberPredictivePicker
 								id="event-attendee-member"
@@ -853,8 +917,15 @@
 								disabled={savingAttendee}
 							/>
 						{/key}
+						<label>
+							<span>Role</span>
+							<select bind:value={attendeeRole} disabled={savingAttendee}>
+								<option value="attendee">Attendee</option>
+								<option value="volunteer">Volunteer</option>
+							</select>
+						</label>
 						<button type="button" onclick={addAttendee} disabled={savingAttendee}>
-							{savingAttendee ? 'Adding…' : 'Add'}
+							{savingAttendee ? 'Adding…' : 'Add person'}
 						</button>
 					</div>{/if}
 				{#if attendeeMessage}<p role="status">{attendeeMessage}</p>{/if}

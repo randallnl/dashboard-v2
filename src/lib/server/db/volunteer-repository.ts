@@ -23,6 +23,46 @@ export class VolunteerRepository {
 		return result.meta.changes === 1;
 	}
 
+	async setVolunteer(
+		source: ProjectEventSource,
+		eventId: string,
+		memberId: string,
+		isVolunteer: boolean
+	): Promise<void> {
+		if (isVolunteer) {
+			await this.db
+				.prepare(
+					`INSERT INTO event_volunteer_signups (source, event_id, member_id, status)
+					 VALUES (?1, ?2, ?3, 'Signed up')
+					 ON CONFLICT(source, event_id, member_id) DO UPDATE SET status = 'Signed up'`
+				)
+				.bind(source, eventId, memberId)
+				.run();
+			return;
+		}
+
+		await this.db
+			.prepare(
+				`UPDATE event_volunteer_signups
+				 SET status = 'Attendee'
+				 WHERE source = ?1 AND event_id = ?2 AND member_id = ?3`
+			)
+			.bind(source, eventId, memberId)
+			.run();
+	}
+
+	async listMemberIdsForEvent(source: ProjectEventSource, eventId: string): Promise<Set<string>> {
+		const result = await this.db
+			.prepare(
+				`SELECT member_id
+				 FROM event_volunteer_signups
+				 WHERE source = ?1 AND event_id = ?2 AND status = 'Signed up'`
+			)
+			.bind(source, eventId)
+			.all<{ member_id: string }>();
+		return new Set(result.results.map((row) => row.member_id));
+	}
+
 	async listKeysForMember(memberId: string): Promise<Set<string>> {
 		const result = await this.db
 			.prepare(

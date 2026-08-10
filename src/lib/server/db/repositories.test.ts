@@ -8,6 +8,7 @@ import { memberNames, MemberRepository } from './member-repository';
 import { ProjectEventRepository } from './project-repository';
 import { ShiftRepository } from './shift-repository';
 import type { Database } from './types';
+import { VolunteerRepository } from './volunteer-repository';
 
 function createDatabaseMock(options: { changes?: number; first?: unknown } = {}) {
 	const bind = vi.fn();
@@ -162,6 +163,27 @@ describe('CalendarSubscriptionRepository', () => {
 			new CalendarSubscriptionRepository(mock.db).findMemberId('private-token')
 		).resolves.toBe('member-1');
 		expect(mock.bind).toHaveBeenCalledWith('private-token');
+	});
+});
+
+describe('VolunteerRepository', () => {
+	it('records an explicit volunteer role', async () => {
+		const mock = createDatabaseMock();
+
+		await new VolunteerRepository(mock.db).setVolunteer('project', 'project-1', 'member-1', true);
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT'));
+		expect(mock.bind).toHaveBeenCalledWith('project', 'project-1', 'member-1');
+		expect(mock.run).toHaveBeenCalledOnce();
+	});
+
+	it('clears volunteer status while retaining attendee membership', async () => {
+		const mock = createDatabaseMock();
+
+		await new VolunteerRepository(mock.db).setVolunteer('project', 'project-1', 'member-1', false);
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining("SET status = 'Attendee'"));
+		expect(mock.bind).toHaveBeenCalledWith('project', 'project-1', 'member-1');
 	});
 });
 

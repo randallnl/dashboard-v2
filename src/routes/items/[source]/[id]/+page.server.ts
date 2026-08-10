@@ -3,7 +3,8 @@ import {
 	GivebutterRepository,
 	HostRepository,
 	MemberRepository,
-	ProjectEventRepository
+	ProjectEventRepository,
+	VolunteerRepository
 } from '$lib/server/db';
 import { attendeeEmails } from '$lib/server/monday/events';
 import type { ProjectEventSource } from '$lib/types/domain';
@@ -39,10 +40,13 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 	const db = platform!.env.DB;
 	const host = await new HostRepository(db).find(record.source, record.id);
 	const memberRepository = new MemberRepository(db);
-	const [hostMember, members, comments] = await Promise.all([
+	const [hostMember, members, comments, volunteerMemberIds] = await Promise.all([
 		host?.memberId ? memberRepository.findById(host.memberId) : Promise.resolve(null),
 		record.source === 'project' ? memberRepository.search('', 100) : Promise.resolve([]),
-		new CommentRepository(db).list(record.source, record.id)
+		new CommentRepository(db).list(record.source, record.id),
+		record.source === 'project'
+			? new VolunteerRepository(db).listMemberIdsForEvent(record.source, record.id)
+			: Promise.resolve(new Set<string>())
 	]);
 	const memberByEmail = new Map(
 		members.flatMap((member) =>
@@ -56,9 +60,21 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		return {
 			email,
 			name: member?.preferredName || email,
-			memberId: member?.id || ''
+			memberId: member?.id || '',
+			role:
+				member?.id && volunteerMemberIds.has(member.id)
+					? ('volunteer' as const)
+					: ('attendee' as const)
 		};
 	});
+	const memberEmails = new Set(
+		[layout.member.email, ...layout.member.otherEmails]
+			.filter(Boolean)
+			.map((email) => email.trim().toLocaleLowerCase('en-US'))
+	);
+	const hasJoined = attendees.some((attendee) =>
+		memberEmails.has(attendee.email.toLocaleLowerCase('en-US'))
+	);
 	const campaignId =
 		typeof record.record.campaignId === 'string' ? record.record.campaignId.trim() : '';
 	const signups =
@@ -78,6 +94,7 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 			? { email: hostMember.email, phone: hostMember.phone, name: hostMember.preferredName }
 			: null,
 		attendees,
+		hasJoined,
 		recentComments: comments.slice(-5).reverse(),
 		signups,
 		member: layout.member,

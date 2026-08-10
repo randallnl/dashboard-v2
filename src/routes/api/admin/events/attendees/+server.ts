@@ -1,4 +1,8 @@
-import { loadMemberContext, requireProjectManager } from '$lib/server/auth/member-context';
+import {
+	loadMemberContext,
+	requireAdmin,
+	requireWritableMemberView
+} from '$lib/server/auth/member-context';
 import { MemberRepository, ProjectEventRepository, VolunteerRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { attendeeEmails, EventDirectory } from '$lib/server/monday/events';
@@ -8,10 +12,12 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform!.env;
 	const context = await loadMemberContext({ session: locals.session, env });
-	requireProjectManager(context);
+	requireWritableMemberView(context);
+	requireAdmin(context);
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const eventId = typeof body?.eventId === 'string' ? body.eventId.trim() : '';
 	const memberId = typeof body?.memberId === 'string' ? body.memberId.trim() : '';
+	const role = body?.role === 'volunteer' ? 'volunteer' : 'attendee';
 	if (!eventId || !memberId) error(400, 'A project and member are required.');
 
 	const projects = new ProjectEventRepository(env.DB);
@@ -35,7 +41,12 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			record: { ...record.record, attendees: emails.join(', ') },
 			syncedAt: new Date().toISOString()
 		}),
-		new VolunteerRepository(env.DB).signup('project', record.id, member.id)
+		new VolunteerRepository(env.DB).setVolunteer(
+			'project',
+			record.id,
+			member.id,
+			role === 'volunteer'
+		)
 	]);
 
 	return json(
@@ -44,9 +55,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			attendee: {
 				email: member.email,
 				name: member.preferredName,
-				memberId: member.id
+				memberId: member.id,
+				role
 			},
-			message: `${member.preferredName} was added and Monday confirmed the update.`
+			message: `${member.preferredName} was added as ${role === 'volunteer' ? 'a volunteer' : 'an attendee'}, and Monday confirmed the calendar update.`
 		},
 		{ headers: { 'cache-control': 'private, no-store' } }
 	);
