@@ -214,6 +214,16 @@ const UPDATE_ITEM = `
 	}
 `;
 
+const CREATE_PROJECT = `
+	mutation CreateOnboardingProject($boardId: ID!, $itemName: String!, $columnValues: JSON!) {
+		create_item(
+			board_id: $boardId
+			item_name: $itemName
+			column_values: $columnValues
+		) { id name }
+	}
+`;
+
 const CREATE_SUBITEM = `
 	mutation CreateProjectTask($parentItemId: ID!, $itemName: String!, $columnValues: JSON!) {
 		create_subitem(
@@ -515,6 +525,34 @@ export class EventDirectory {
 				[PROJECT_COLUMNS.attendees]: { labels }
 			})
 		});
+	}
+
+	async createOnboardingProject(input: {
+		memberName: string;
+		email: string;
+		startDate: string;
+		endDate: string;
+		description: string;
+	}): Promise<{ id: string; title: string }> {
+		const columnValues: Record<string, unknown> = {
+			[PROJECT_COLUMNS.start]: { date: input.startDate },
+			[PROJECT_COLUMNS.end]: { date: input.endDate },
+			[PROJECT_COLUMNS.location]: { labels: ['CoLab'] },
+			[PROJECT_COLUMNS.description]: input.description
+		};
+		if (input.email) {
+			columnValues[PROJECT_COLUMNS.attendees] = {
+				labels: [input.email.trim().toLocaleLowerCase('en-US')]
+			};
+		}
+		const result = await this.monday.request<{
+			create_item: { id: string; name: string };
+		}>(CREATE_PROJECT, {
+			boardId: PROJECT_BOARD_ID,
+			itemName: `Onboarding: ${input.memberName}`,
+			columnValues: JSON.stringify(columnValues)
+		});
+		return { id: result.create_item.id, title: result.create_item.name };
 	}
 
 	async createProjectTask(

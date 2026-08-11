@@ -291,4 +291,29 @@ describe('Monday event mapping', () => {
 			expect.objectContaining({ itemId: 'task-1' })
 		);
 	});
+
+	it('creates a member onboarding project with calendar and attendee details', async () => {
+		const request = vi.fn().mockResolvedValue({
+			create_item: { id: 'project-1', name: 'Onboarding: Alex Morgan' }
+		});
+		const directory = new EventDirectory({ request } as unknown as MondayClient);
+
+		await expect(
+			directory.createOnboardingProject({
+				memberName: 'Alex Morgan',
+				email: 'Alex@Example.com',
+				startDate: '2026-08-11',
+				endDate: '2026-08-18',
+				description: 'New member onboarding.'
+			})
+		).resolves.toEqual({ id: 'project-1', title: 'Onboarding: Alex Morgan' });
+		expect(request).toHaveBeenCalledWith(
+			expect.stringContaining('create_item'),
+			expect.objectContaining({
+				boardId: '8390893779',
+				itemName: 'Onboarding: Alex Morgan',
+				columnValues: expect.stringContaining('alex@example.com')
+			})
+		);
+	});
 });

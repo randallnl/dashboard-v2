@@ -138,6 +138,11 @@ export class MemberRepository {
 		return result.results.map(mapMember);
 	}
 
+	async listIds(): Promise<Set<string>> {
+		const result = await this.db.prepare('SELECT id FROM member_directory').all<{ id: string }>();
+		return new Set(result.results.map((row) => row.id));
+	}
+
 	async removeMissing(activeIds: string[]): Promise<number> {
 		if (!activeIds.length) return 0;
 		const placeholders = activeIds.map((_, index) => `?${index + 1}`).join(', ');
