@@ -1,4 +1,9 @@
-import { loadMemberContext, requireProjectManager } from '$lib/server/auth/member-context';
+import {
+	loadMemberContext,
+	requireAdmin,
+	requireProjectManager,
+	requireWritableMemberView
+} from '$lib/server/auth/member-context';
 import { ProjectEventRepository } from '$lib/server/db';
 import { MondayClient, mondayToken } from '$lib/server/monday/client';
 import { EventDirectory } from '$lib/server/monday/events';
@@ -47,4 +52,52 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		mondayConfirmed: true,
 		message: 'Task created and confirmed by Monday.'
 	});
+};
+
+export const PATCH: RequestHandler = async ({ request, locals, platform }) => {
+	const env = platform!.env;
+	const context = await loadMemberContext({ session: locals.session, env });
+	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+	const source =
+		body?.source === 'community' ? 'community' : body?.source === 'project' ? 'project' : '';
+	const projectId = typeof body?.projectId === 'string' ? body.projectId.trim() : '';
+	const taskId = typeof body?.taskId === 'string' ? body.taskId.trim() : '';
+	if (!source || !projectId || !taskId) error(400, 'Project and task are required.');
+	if (source === 'community') {
+		requireWritableMemberView(context);
+		requireAdmin(context);
+	} else {
+		requireProjectManager(context);
+	}
+
+	const projects = new ProjectEventRepository(env.DB);
+	const project = await projects.findById(source, projectId);
+	if (!project) error(404, 'Project or event not found.');
+	const tasks = Array.isArray(project.record.tasks) ? (project.record.tasks as ProjectTask[]) : [];
+	const taskIndex = tasks.findIndex((task) => task.id === taskId);
+	if (taskIndex < 0) error(404, 'Task not found on this project or event.');
+	if (tasks[taskIndex].completed) {
+		return json({
+			task: tasks[taskIndex],
+			mondayConfirmed: true,
+			message: 'Task is already complete.'
+		});
+	}
+
+	const completionDate = new Date().toISOString().slice(0, 10);
+	const directory = new EventDirectory(new MondayClient(await mondayToken(env.MONDAY_API_TOKEN)));
+	await directory.completeProjectTask(taskId, completionDate);
+	const task: ProjectTask = {
+		...tasks[taskIndex],
+		status: 'Done',
+		completionDate,
+		completed: true
+	};
+	const updatedTasks = tasks.map((candidate, index) => (index === taskIndex ? task : candidate));
+	await projects.upsert({
+		...project,
+		record: { ...project.record, tasks: updatedTasks },
+		syncedAt: new Date().toISOString()
+	});
+	return json({ task, mondayConfirmed: true, message: 'Task completed and confirmed by Monday.' });
 };

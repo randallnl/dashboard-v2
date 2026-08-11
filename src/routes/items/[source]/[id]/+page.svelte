@@ -88,6 +88,7 @@
 	let taskMessage = $state('');
 	let taskCommentBodies = $state<Record<string, string>>({});
 	let postingTaskComment = $state('');
+	let completingTask = $state('');
 	const milestone = $derived.by(() => {
 		const today = new Date().toISOString().slice(0, 10);
 		const nextTask = tasks
@@ -182,6 +183,50 @@
 		} catch {
 			return '';
 		}
+	}
+
+	type DescriptionPart = { text: string; url?: string };
+
+	function descriptionParts(value: string): DescriptionPart[] {
+		const parts: DescriptionPart[] = [];
+		const links = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)/giu;
+		let cursor = 0;
+
+		for (const match of value.matchAll(links)) {
+			const index = match.index ?? 0;
+			if (index > cursor) parts.push({ text: value.slice(cursor, index) });
+
+			const markdownLabel = match[1];
+			let url = match[2] || match[3] || '';
+			let punctuation = '';
+			if (!markdownLabel) {
+				const trailing = url.match(/[.,;:!?]+$/u)?.[0] ?? '';
+				url = url.slice(0, url.length - trailing.length);
+				punctuation = trailing;
+			}
+			const href = safeUrl(url);
+			parts.push(
+				href ? { text: markdownLabel || friendlyLinkLabel(href), url: href } : { text: url }
+			);
+			if (punctuation) parts.push({ text: punctuation });
+			cursor = index + match[0].length;
+		}
+
+		if (cursor < value.length) parts.push({ text: value.slice(cursor) });
+		return parts.length ? parts : [{ text: value }];
+	}
+
+	function friendlyLinkLabel(value: string): string {
+		const url = new URL(value);
+		const host = url.hostname.replace(/^www\./u, '');
+		const finalPath = url.pathname.split('/').filter(Boolean).at(-1);
+		let pathLabel = finalPath && finalPath.length <= 32 ? finalPath : '';
+		try {
+			pathLabel = decodeURIComponent(pathLabel);
+		} catch {
+			// Keep the encoded path when a source URL contains malformed escapes.
+		}
+		return pathLabel ? `${host} · ${pathLabel.replace(/[-_]+/gu, ' ')}` : host;
 	}
 
 	function imageUrl(value: unknown): string {
@@ -456,6 +501,33 @@
 			postingTaskComment = '';
 		}
 	}
+
+	async function completeTask(task: ProjectTask) {
+		if (task.completed || completingTask) return;
+		if (!confirmMonday(`Mark “${task.title}” complete?`)) return;
+		completingTask = task.id;
+		taskMessage = '';
+		try {
+			const response = await fetch('/api/projects/tasks', {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					source: data.record.source,
+					projectId: data.record.id,
+					taskId: task.id
+				})
+			});
+			const result = (await response.json()) as { task?: ProjectTask; message?: string };
+			if (!response.ok || !result.task)
+				throw new Error(result.message || 'Could not complete task.');
+			tasks = tasks.map((candidate) => (candidate.id === task.id ? result.task! : candidate));
+			taskMessage = result.message || 'Task completed and confirmed by Monday.';
+		} catch (cause) {
+			taskMessage = cause instanceof Error ? cause.message : 'Could not complete task.';
+		} finally {
+			completingTask = '';
+		}
+	}
 </script>
 
 <svelte:head><title>{recordTitle} · CoLab</title></svelte:head>
@@ -577,7 +649,20 @@
 						{#if !safeUrl(value)}
 							<div>
 								<dt>{label(key)}</dt>
-								<dd>{String(value)}</dd>
+								<dd class:rich-description={key === 'description'}>
+									{#if key === 'description'}
+										{#each descriptionParts(value) as part, index (index)}
+											{#if part.url}
+												<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+												<a href={part.url} target="_blank" rel="noreferrer"
+													>{part.text}<span aria-hidden="true"> ↗</span></a
+												>
+											{:else}{part.text}{/if}
+										{/each}
+									{:else}
+										{String(value)}
+									{/if}
+								</dd>
 							</div>
 						{/if}
 					{/each}
@@ -603,6 +688,16 @@
 											<strong>{task.comments.at(-1)?.author}:</strong>
 											{task.comments.at(-1)?.body}
 										</p>
+									{/if}
+									{#if data.canEdit}
+										<button
+											class="task-complete-action"
+											type="button"
+											disabled={Boolean(completingTask)}
+											onclick={() => completeTask(task)}
+										>
+											{completingTask === task.id ? 'Completing…' : 'Mark complete'}
+										</button>
 									{/if}
 								</div>
 							</article>
@@ -762,6 +857,16 @@
 								</div>
 							{/if}
 							<div class="task-comments">
+								{#if data.canEdit && !task.completed}
+									<button
+										class="task-complete-action"
+										type="button"
+										disabled={Boolean(completingTask)}
+										onclick={() => completeTask(task)}
+									>
+										{completingTask === task.id ? 'Completing in Monday…' : 'Mark complete'}
+									</button>
+								{/if}
 								{#if task.comments?.length}
 									<ul>
 										{#each task.comments.slice(-4) as comment (comment.id)}

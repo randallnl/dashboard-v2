@@ -292,6 +292,29 @@ describe('Monday event mapping', () => {
 		);
 	});
 
+	it('marks a task complete on its Monday subitem board', async () => {
+		const request = vi
+			.fn()
+			.mockResolvedValueOnce({ items: [{ id: 'task-1', board: { id: 'subitems-board' } }] })
+			.mockResolvedValueOnce({ change_multiple_column_values: { id: 'task-1' } });
+		const directory = new EventDirectory({ request } as unknown as MondayClient);
+
+		await directory.completeProjectTask('task-1', '2026-08-11');
+
+		expect(request).toHaveBeenNthCalledWith(1, expect.stringContaining('query TaskBoard'), {
+			itemIds: ['task-1']
+		});
+		expect(request).toHaveBeenNthCalledWith(
+			2,
+			expect.stringContaining('change_multiple_column_values'),
+			expect.objectContaining({
+				boardId: 'subitems-board',
+				itemId: 'task-1',
+				columnValues: JSON.stringify({ status: { label: 'Done' }, date0: { date: '2026-08-11' } })
+			})
+		);
+	});
+
 	it('creates a member onboarding project with calendar and attendee details', async () => {
 		const request = vi.fn().mockResolvedValue({
 			create_item: { id: 'project-1', name: 'Onboarding: Alex Morgan' }

@@ -244,6 +244,12 @@ const CREATE_UPDATE = `
 	}
 `;
 
+const TASK_BOARD = `
+	query TaskBoard($itemIds: [ID!]!) {
+		items(ids: $itemIds) { id board { id } }
+	}
+`;
+
 function values(item: Item): Map<string, Column> {
 	return new Map(item.column_values.map((column) => [column.id, column]));
 }
@@ -571,6 +577,22 @@ export class EventDirectory {
 			columnValues: JSON.stringify(columnValues)
 		});
 		return { id: result.create_subitem.id, title: result.create_subitem.name };
+	}
+
+	async completeProjectTask(taskId: string, completionDate: string): Promise<void> {
+		const boardResult = await this.monday.request<{
+			items: Array<{ id: string; board: { id: string } }>;
+		}>(TASK_BOARD, { itemIds: [taskId] });
+		const boardId = boardResult.items[0]?.board.id;
+		if (!boardId) throw new Error('Monday could not locate the task board.');
+		await this.monday.request(UPDATE_ITEM, {
+			boardId,
+			itemId: taskId,
+			columnValues: JSON.stringify({
+				[TASK_COLUMNS.status]: { label: 'Done' },
+				[TASK_COLUMNS.completionDate]: { date: completionDate }
+			})
+		});
 	}
 
 	async createTaskComment(
