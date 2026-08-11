@@ -308,7 +308,7 @@ describe('Monday event mapping', () => {
 			})
 		).resolves.toEqual({ id: 'project-1', title: 'Onboarding: Alex Morgan' });
 		expect(request).toHaveBeenCalledWith(
-			expect.stringContaining('create_item'),
+			expect.stringContaining('create_labels_if_missing: true'),
 			expect.objectContaining({
 				boardId: '8390893779',
 				itemName: 'Onboarding: Alex Morgan',

@@ -15,8 +15,13 @@ export type OnboardingTask = {
 
 export const ONBOARDING_TASKS: OnboardingTask[] = [
 	{
+		key: 'welcome-email',
+		title: 'Send welcome email with membership overview and new member form link',
+		dueAfterDays: 0
+	},
+	{
 		key: 'verify-intake',
-		title: 'Confirm the new member form and preferred dashboard email',
+		title: 'Confirm the new member form is complete and verify the dashboard email',
 		dueAfterDays: 0
 	},
 	{
@@ -26,12 +31,17 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
 	},
 	{
 		key: 'access-message',
-		title: 'Send dashboard login and access-confirmation message',
+		title: 'Send post-intake email with dashboard login and first-visit details',
 		dueAfterDays: 1
 	},
 	{
+		key: 'dashboard-login-check',
+		title: 'Confirm the member successfully opened the dashboard',
+		dueAfterDays: 2
+	},
+	{
 		key: 'first-visit',
-		title: 'Review first-visit, lockbox, kiosk, key-return, and space-reset instructions',
+		title: 'Review hours, staffing, lockbox, kiosk, key-return, and space-reset instructions',
 		dueAfterDays: 2
 	},
 	{
@@ -68,8 +78,9 @@ function projectDescription(member: Member): string {
 	return [
 		`New CoLab member onboarding for ${member.preferredName}${member.email ? ` (${member.email})` : ''}.`,
 		'',
-		'Use this project to confirm dashboard and space access, first-visit readiness, retail interest, and the first-week follow-up.',
+		'Use this project to send the approved welcome and post-intake emails, confirm dashboard and space access, prepare the member for their first visit, handle retail setup, and complete the first-week follow-up.',
 		'',
+		'Workflow and email templates: https://docs.google.com/document/d/1BlW4sLRd8v2BC9h98-fLn8pCNoVEfASjsQxjLcnMxNw/edit',
 		'New member form: https://wkf.ms/4wzu218',
 		'Member dashboard: https://dashboard.queerlective.com/',
 		'Retail vendor portal: https://portal.queerlective.com/userAuth/v2/queerlective/vendor/vendor',

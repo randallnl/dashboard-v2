@@ -20,6 +20,51 @@ const member: Member = {
 };
 
 describe('member onboarding automation', () => {
+	it('defines the complete member communication and setup checklist', () => {
+		expect(ONBOARDING_TASKS).toEqual([
+			{
+				key: 'welcome-email',
+				title: 'Send welcome email with membership overview and new member form link',
+				dueAfterDays: 0
+			},
+			{
+				key: 'verify-intake',
+				title: 'Confirm the new member form is complete and verify the dashboard email',
+				dueAfterDays: 0
+			},
+			{
+				key: 'dashboard-access',
+				title: 'Confirm member dashboard access has been created',
+				dueAfterDays: 0
+			},
+			{
+				key: 'access-message',
+				title: 'Send post-intake email with dashboard login and first-visit details',
+				dueAfterDays: 1
+			},
+			{
+				key: 'dashboard-login-check',
+				title: 'Confirm the member successfully opened the dashboard',
+				dueAfterDays: 2
+			},
+			{
+				key: 'first-visit',
+				title: 'Review hours, staffing, lockbox, kiosk, key-return, and space-reset instructions',
+				dueAfterDays: 2
+			},
+			{
+				key: 'retail-setup',
+				title: 'Confirm retail interest and send vendor portal setup when applicable',
+				dueAfterDays: 3
+			},
+			{
+				key: 'first-week-follow-up',
+				title: 'Complete first-week follow-up and resolve access questions',
+				dueAfterDays: 7
+			}
+		]);
+	});
+
 	it('creates one project and checkpoints every workflow task', async () => {
 		const directory = {
 			createOnboardingProject: vi
