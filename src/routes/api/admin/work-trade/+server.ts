@@ -64,5 +64,11 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		changed = await repository.markShopifyUpdated(memberId, month, now);
 	else error(400, 'Unknown work-trade action.');
 	if (!changed) error(409, 'That work-trade record has already moved to another step.');
-	return json({ discounts: await repository.list(month), message: 'Work-trade status updated.' });
+	return json({
+		discounts: await repository.list(month),
+		message:
+			action === 'decline'
+				? 'Work-trade month closed without a discount or member opt-in.'
+				: 'Work-trade status updated.'
+	});
 };

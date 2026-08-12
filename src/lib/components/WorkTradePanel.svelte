@@ -58,7 +58,7 @@
 			pending_review: 'Awaiting admin review',
 			approved: 'Approved—opt in available',
 			opted_in: 'Opted in—Shopify update needed',
-			declined: 'Not approved',
+			declined: 'Closed—no discount',
 			shopify_updated: 'Applied in Shopify'
 		})[status];
 
@@ -173,6 +173,16 @@
 		}
 	}
 
+	function closeWithoutDiscount(item: Discount) {
+		if (
+			window.confirm(
+				`Close ${item.memberName || item.memberId}’s ${monthLabel(month)} work-trade month without a discount? They will not receive an opt-in action.`
+			)
+		) {
+			void adminAction('decline', item.memberId);
+		}
+	}
+
 	onMount(load);
 </script>
 
@@ -273,8 +283,8 @@
 									><button
 										type="button"
 										class="secondary-button"
-										onclick={() => adminAction('decline', item.memberId)}
-										disabled={Boolean(working)}>Decline</button
+										onclick={() => closeWithoutDiscount(item)}
+										disabled={Boolean(working)}>Close without discount</button
 									>{:else if item.status === 'opted_in'}<a
 										href="https://admin.shopify.com/store/queerlective"
 										target="_blank"
