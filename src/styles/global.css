@@ -2604,6 +2604,52 @@ h2 {
 	border-radius: 0.5rem;
 	background: white;
 }
+
+.work-trade-panel button,
+.work-trade-panel .work-trade-secondary-action {
+	display: inline-flex;
+	min-height: 2.5rem;
+	align-items: center;
+	justify-content: center;
+	padding: 0.6rem 0.9rem;
+	border: 1px solid #194639;
+	border-radius: 0.6rem;
+	font-weight: 750;
+	line-height: 1.2;
+	text-align: center;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.work-trade-panel .work-trade-primary-action,
+.work-trade-panel .work-trade-save-action {
+	background: #194639;
+	color: #fffdf8;
+}
+
+.work-trade-panel .secondary-button,
+.work-trade-panel .work-trade-secondary-action {
+	border-color: #9eaaa3;
+	background: #fffdf8;
+	color: #194639;
+}
+
+.work-trade-panel .work-trade-save-action {
+	min-height: 2.2rem;
+	padding: 0.4rem 0.7rem;
+	border-radius: 0.45rem;
+	font-size: 0.78rem;
+}
+
+.work-trade-panel button:hover:not(:disabled),
+.work-trade-panel .work-trade-secondary-action:hover {
+	filter: brightness(0.94);
+}
+
+.work-trade-panel button:disabled {
+	cursor: wait;
+	opacity: 0.6;
+}
 .work-trade-summary {
 	display: grid;
 	gap: 1rem;
@@ -2728,6 +2774,14 @@ h2 {
 		grid-template-columns: 1fr;
 	}
 	.work-trade-actions {
+		justify-content: flex-start;
+	}
+	.work-trade-actions > button,
+	.work-trade-actions > a {
+		flex: 1 1 10rem;
+	}
+	.activity-discount-editor {
+		flex-wrap: wrap;
 		justify-content: flex-start;
 	}
 }

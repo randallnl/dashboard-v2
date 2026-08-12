@@ -240,6 +240,7 @@
 					</ul>
 				</details>{/if}
 			{#if discount.status === 'approved' && !readOnly}<button
+					class="work-trade-primary-action"
 					type="button"
 					onclick={optIn}
 					disabled={Boolean(working)}>Opt in to {money(discount.approvedDiscount)} discount</button
@@ -259,7 +260,11 @@
 					<p class="eyebrow">Admin review</p>
 					<h3>Discount queue</h3>
 				</div>
-				<button type="button" onclick={() => adminAction('generate')} disabled={Boolean(working)}
+				<button
+					class="work-trade-primary-action"
+					type="button"
+					onclick={() => adminAction('generate')}
+					disabled={Boolean(working)}
 					>{working.startsWith('generate') ? 'Reading Monday…' : 'Generate summaries'}</button
 				>
 			</div>
@@ -277,6 +282,7 @@
 							</div>
 							<div class="work-trade-actions">
 								{#if item.status === 'pending_review'}<button
+										class="work-trade-primary-action"
 										type="button"
 										onclick={() => adminAction('approve', item.memberId)}
 										disabled={Boolean(working)}>Approve</button
@@ -286,10 +292,12 @@
 										onclick={() => closeWithoutDiscount(item)}
 										disabled={Boolean(working)}>Close without discount</button
 									>{:else if item.status === 'opted_in'}<a
+										class="work-trade-secondary-action"
 										href="https://admin.shopify.com/store/queerlective"
 										target="_blank"
 										rel="noreferrer">Open Shopify ↗</a
 									><button
+										class="work-trade-primary-action"
 										type="button"
 										onclick={() => adminAction('shopify_updated', item.memberId)}
 										disabled={Boolean(working)}>Mark Shopify updated</button
@@ -319,6 +327,7 @@
 												</label>
 												{#if item.status === 'pending_review'}
 													<button
+														class="work-trade-save-action"
 														type="button"
 														onclick={() => saveActivityDiscount(item, activity)}
 														disabled={Boolean(working)}>Save</button
