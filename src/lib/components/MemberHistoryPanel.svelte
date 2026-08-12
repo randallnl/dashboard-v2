@@ -133,12 +133,17 @@
 			</article>
 
 			<article class="history-card">
-				<h3>Membership payments</h3>
+				<h3>Membership payments and credits</h3>
 				{#if payments.length}
 					<ul class="history-list">
 						{#each visiblePayments as payment (payment.id)}
 							<li>
-								<div><strong>{money(payment.amount)}</strong><span>{payment.details}</span></div>
+								<div>
+									<strong class:membership-credit={payment.amount < 0}
+										>{money(payment.amount)}</strong
+									>
+									<span>{payment.details}</span>
+								</div>
 								<time datetime={payment.orderDate}>{dateLabel(payment.orderDate)}</time>
 							</li>
 						{/each}
@@ -158,7 +163,7 @@
 					<ContentState
 						kind="empty"
 						title="No subscription payments found"
-						message="Only CoLab membership subscription transactions appear here."
+						message="CoLab membership charges and opted-in work-trade credits appear here."
 					/>
 				{/if}
 			</article>

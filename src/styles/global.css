@@ -2716,6 +2716,10 @@ h2 {
 	color: #65716b;
 }
 
+.membership-credit {
+	color: #397657;
+}
+
 @media (max-width: 700px) {
 	.work-trade-totals {
 		grid-template-columns: 1fr;

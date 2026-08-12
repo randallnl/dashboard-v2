@@ -148,6 +148,19 @@ export class WorkTradeRepository {
 		return result.results.map(mapRow);
 	}
 
+	async listOptedInForMember(memberId: string, limit = 50): Promise<WorkTradeDiscount[]> {
+		const result = await this.db
+			.prepare(
+				`SELECT w.*, m.preferred_name FROM work_trade_discounts w
+			LEFT JOIN member_directory m ON m.id = w.member_id
+			WHERE w.member_id = ?1 AND w.status IN ('opted_in', 'shopify_updated')
+			ORDER BY w.member_opted_in_at DESC LIMIT ?2`
+			)
+			.bind(memberId, limit)
+			.all<WorkTradeRow>();
+		return result.results.map(mapRow);
+	}
+
 	async approve(
 		memberId: string,
 		month: string,
