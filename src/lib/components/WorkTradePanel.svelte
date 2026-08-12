@@ -9,6 +9,8 @@
 		description: string;
 		reason: string;
 		needsReview: boolean;
+		discountAmount: number;
+		discountOverridden: boolean;
 	};
 	type Discount = {
 		memberId: string;
@@ -33,6 +35,18 @@
 	let working = $state('');
 	let message = $state('');
 	let errorMessage = $state('');
+	let activityAmounts = $state<Record<string, number>>({});
+	const activityLedger = $derived(
+		queue.flatMap((item) =>
+			item.activities.map((activity) => ({
+				...activity,
+				memberId: item.memberId,
+				memberName: item.memberName || item.memberId,
+				membershipType: item.membershipType,
+				status: item.status
+			}))
+		)
+	);
 	const money = (value: number) =>
 		new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 	const monthLabel = (value: string) =>
@@ -65,6 +79,14 @@
 			discount = memberResult.discount;
 			if (adminRequest)
 				queue = (await parse<{ discounts: Discount[] }>(await adminRequest)).discounts;
+			activityAmounts = Object.fromEntries(
+				queue.flatMap((item) =>
+					item.activities.map((activity) => [
+						`${item.memberId}:${activity.id}`,
+						activity.discountAmount
+					])
+				)
+			);
 		} catch (cause) {
 			errorMessage = cause instanceof Error ? cause.message : 'Could not load work-trade details.';
 		} finally {
@@ -124,6 +146,33 @@
 		}
 	}
 
+	async function saveActivityDiscount(item: Discount, activity: WorkActivity) {
+		const key = `${item.memberId}:${activity.id}`;
+		working = `activity:${key}`;
+		message = '';
+		try {
+			await parse(
+				await fetch('/api/admin/work-trade', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						action: 'set_activity_discount',
+						memberId: item.memberId,
+						activityId: activity.id,
+						amount: activityAmounts[key],
+						month
+					})
+				})
+			);
+			message = 'Activity discount updated. The monthly total was recalculated.';
+			await load(false);
+		} catch (cause) {
+			message = cause instanceof Error ? cause.message : 'Could not update activity discount.';
+		} finally {
+			working = '';
+		}
+	}
+
 	onMount(load);
 </script>
 
@@ -173,7 +222,10 @@
 										>{activity.reason}{activity.needsReview ? ' · Needs review' : ''}</span
 									>
 								</div>
-								<time datetime={activity.submitDate}>{activity.submitDate}</time>
+								<div class="work-activity-credit">
+									<strong>{money(activity.discountAmount)}</strong>
+									<time datetime={activity.submitDate}>{activity.submitDate}</time>
+								</div>
 							</li>{/each}
 					</ul>
 				</details>{/if}
@@ -243,7 +295,27 @@
 												<span>{activity.reason}{activity.needsReview ? ' · Needs review' : ''}</span
 												>
 											</div>
-											<time datetime={activity.submitDate}>{activity.submitDate}</time>
+											<div class="activity-discount-editor">
+												<label>
+													<span>Discount</span>
+													<input
+														type="number"
+														min="0"
+														max={item.membershipPrice - 10}
+														step="0.01"
+														bind:value={activityAmounts[`${item.memberId}:${activity.id}`]}
+														disabled={item.status !== 'pending_review'}
+													/>
+												</label>
+												{#if item.status === 'pending_review'}
+													<button
+														type="button"
+														onclick={() => saveActivityDiscount(item, activity)}
+														disabled={Boolean(working)}>Save</button
+													>
+												{/if}
+												<time datetime={activity.submitDate}>{activity.submitDate}</time>
+											</div>
 										</li>
 									{/each}
 								</ul>
@@ -253,6 +325,44 @@
 			{:else}<p>
 					No summaries for this month. Generate them after the month’s work is logged in Monday.
 				</p>{/if}
+			<div class="work-activity-ledger">
+				<div class="card-heading">
+					<div>
+						<p class="eyebrow">All available activity</p>
+						<h3>Activity discount ledger</h3>
+					</div>
+					<span>{activityLedger.length} records</span>
+				</div>
+				{#if activityLedger.length}
+					<div class="work-activity-table-wrap">
+						<table>
+							<thead
+								><tr
+									><th>Member</th><th>Activity</th><th>Date</th><th>Applied discount</th><th
+										>Status</th
+									></tr
+								></thead
+							>
+							<tbody>
+								{#each activityLedger as activity (`${activity.memberId}:${activity.id}`)}
+									<tr>
+										<td>{activity.memberName}<small>{activity.membershipType}</small></td>
+										<td><strong>{activity.type}</strong><small>{activity.reason}</small></td>
+										<td>{activity.submitDate}</td>
+										<td
+											><strong>{money(activity.discountAmount)}</strong
+											>{#if activity.discountOverridden}<small>Admin override</small>{/if}</td
+										>
+										<td><span class="status-pill">{statusLabel(activity.status)}</span></td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{:else}<p>
+						Generate summaries to review all logged activities and their applied discounts.
+					</p>{/if}
+			</div>
 		</div>
 	{/if}
 </section>

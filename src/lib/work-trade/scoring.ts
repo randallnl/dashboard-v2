@@ -2,6 +2,8 @@ import type { Activity, Member } from '$lib/types/domain';
 
 export type ScoredWorkActivity = Activity & {
 	discountPercent: number;
+	discountAmount: number;
+	discountOverridden: boolean;
 	reason: string;
 	needsReview: boolean;
 };
@@ -16,7 +18,9 @@ export function membershipPrice(membershipType: string): number | null {
 	return null;
 }
 
-export function scoreWorkActivity(activity: Activity): ScoredWorkActivity {
+export function scoreWorkActivity(
+	activity: Activity
+): Omit<ScoredWorkActivity, 'discountAmount' | 'discountOverridden'> {
 	const type = activity.type.toLocaleLowerCase('en-US');
 	const detail = `${activity.type} ${activity.description}`.toLocaleLowerCase('en-US');
 	const score = (discountPercent: number, reason: string, needsReview = false) => ({
@@ -59,21 +63,25 @@ export function summarizeWorkTrade(member: Member, month: string, activities: Ac
 	const scored = activities
 		.filter((activity) => activity.submitDate.startsWith(month))
 		.map(scoreWorkActivity);
-	const percent = Math.min(
-		75,
-		scored.reduce((sum, activity) => sum + activity.discountPercent, 0)
-	);
-	const eligibleDiscount = Math.round(Math.min(price * (percent / 100), price - 10) * 100) / 100;
+	let remainingDiscount = price - 10;
+	const priced = scored.map((activity) => {
+		const calculated = Math.round(price * (activity.discountPercent / 100) * 100) / 100;
+		const discountAmount = Math.min(calculated, remainingDiscount);
+		remainingDiscount = Math.round((remainingDiscount - discountAmount) * 100) / 100;
+		return { ...activity, discountAmount, discountOverridden: false };
+	});
+	const eligibleDiscount =
+		Math.round(priced.reduce((sum, activity) => sum + activity.discountAmount, 0) * 100) / 100;
 	return {
 		memberId: member.id,
 		month,
 		membershipType: member.membershipType,
 		membershipPrice: price,
-		activities: scored,
-		activityCount: scored.length,
+		activities: priced,
+		activityCount: priced.length,
 		eligibleDiscount,
-		workSummary: scored.length
-			? scored
+		workSummary: priced.length
+			? priced
 					.map((activity) => `${activity.submitDate}: ${activity.type} — ${activity.reason}`)
 					.join('\n')
 			: 'No eligible work activity was logged for this month.'

@@ -41,6 +41,20 @@ type WorkTradeRow = {
 };
 
 function mapRow(row: WorkTradeRow): WorkTradeDiscount {
+	const parsed = JSON.parse(row.activities_json) as Array<
+		Partial<ScoredWorkActivity> &
+			Pick<
+				ScoredWorkActivity,
+				| 'id'
+				| 'type'
+				| 'submitDate'
+				| 'description'
+				| 'memberId'
+				| 'reason'
+				| 'needsReview'
+				| 'discountPercent'
+			>
+	>;
 	return {
 		memberId: row.member_id,
 		memberName: row.preferred_name || '',
@@ -48,7 +62,11 @@ function mapRow(row: WorkTradeRow): WorkTradeDiscount {
 		membershipType: row.membership_type,
 		membershipPrice: row.membership_price,
 		activityCount: row.activity_count,
-		activities: JSON.parse(row.activities_json) as ScoredWorkActivity[],
+		activities: parsed.map((activity) => ({
+			...activity,
+			discountAmount: Number(activity.discountAmount) || 0,
+			discountOverridden: Boolean(activity.discountOverridden)
+		})) as ScoredWorkActivity[],
 		workSummary: row.work_summary,
 		eligibleDiscount: row.eligible_discount,
 		approvedDiscount: row.approved_discount,
@@ -144,6 +162,57 @@ export class WorkTradeRepository {
 			WHERE member_id = ?1 AND month = ?2 AND status = 'pending_review'`
 			)
 			.bind(memberId, month, reviewerId, now)
+			.run();
+		return result.meta.changes === 1;
+	}
+
+	async overrideActivityDiscount(
+		memberId: string,
+		month: string,
+		activityId: string,
+		amount: number,
+		now: string
+	): Promise<boolean> {
+		const discount = await this.find(memberId, month);
+		if (!discount || discount.status !== 'pending_review') return false;
+		const activityIndex = discount.activities.findIndex((activity) => activity.id === activityId);
+		if (activityIndex < 0) return false;
+		const maximum = discount.membershipPrice - 10;
+		const safeAmount = Math.min(Math.max(Math.round(amount * 100) / 100, 0), maximum);
+		const requestedActivities = discount.activities.map((activity, index) =>
+			index === activityIndex
+				? { ...activity, discountAmount: safeAmount, discountOverridden: true }
+				: activity
+		);
+		let remaining = maximum;
+		const allocationOrder = [
+			requestedActivities[activityIndex],
+			...requestedActivities.filter(
+				(activity, index) => index !== activityIndex && activity.discountOverridden
+			),
+			...requestedActivities.filter(
+				(activity, index) => index !== activityIndex && !activity.discountOverridden
+			)
+		];
+		const allocated = new Map<string, number>();
+		for (const activity of allocationOrder) {
+			const amountForActivity = Math.min(activity.discountAmount, remaining);
+			allocated.set(activity.id, amountForActivity);
+			remaining = Math.round((remaining - amountForActivity) * 100) / 100;
+		}
+		const activities = requestedActivities.map((activity) => ({
+			...activity,
+			discountAmount: allocated.get(activity.id) ?? 0
+		}));
+		const eligibleDiscount = Math.round((maximum - remaining) * 100) / 100;
+		const result = await this.db
+			.prepare(
+				`UPDATE work_trade_discounts SET
+			activities_json = ?4, eligible_discount = ?5, updated_at = ?6
+			WHERE member_id = ?1 AND month = ?2 AND status = 'pending_review'
+			AND EXISTS (SELECT 1 FROM json_each(activities_json) WHERE json_extract(value, '$.id') = ?3)`
+			)
+			.bind(memberId, month, activityId, JSON.stringify(activities), eligibleDiscount, now)
 			.run();
 		return result.meta.changes === 1;
 	}

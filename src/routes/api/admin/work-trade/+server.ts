@@ -24,6 +24,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const action = typeof body?.action === 'string' ? body.action : '';
 	const month = typeof body?.month === 'string' ? body.month : '';
 	const memberId = typeof body?.memberId === 'string' ? body.memberId : '';
+	const activityId = typeof body?.activityId === 'string' ? body.activityId : '';
 	if (!MONTH.test(month)) error(400, 'A valid month is required.');
 	const repository = new WorkTradeRepository(env.DB);
 	const now = new Date().toISOString();
@@ -50,7 +51,12 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	}
 	if (!memberId) error(400, 'A member is required.');
 	let changed = false;
-	if (action === 'approve')
+	if (action === 'set_activity_discount') {
+		const amount = typeof body?.amount === 'number' ? body.amount : Number(body?.amount);
+		if (!activityId || !Number.isFinite(amount) || amount < 0)
+			error(400, 'Enter a valid activity discount.');
+		changed = await repository.overrideActivityDiscount(memberId, month, activityId, amount, now);
+	} else if (action === 'approve')
 		changed = await repository.approve(memberId, month, context.viewer.id, now);
 	else if (action === 'decline')
 		changed = await repository.decline(memberId, month, context.viewer.id, now);

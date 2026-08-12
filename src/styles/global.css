@@ -2666,6 +2666,56 @@ h2 {
 	grid-column: 1 / -1;
 }
 
+.work-activity-credit,
+.activity-discount-editor {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.6rem;
+}
+
+.activity-discount-editor label {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.activity-discount-editor input {
+	width: 6rem;
+	padding: 0.4rem;
+	border: 1px solid #b9b8ad;
+	border-radius: 0.4rem;
+}
+
+.work-activity-ledger {
+	margin-top: 1.5rem;
+	padding-top: 1.5rem;
+	border-top: 1px solid #d8d1c5;
+}
+
+.work-activity-table-wrap {
+	overflow-x: auto;
+}
+
+.work-activity-table-wrap table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.work-activity-table-wrap th,
+.work-activity-table-wrap td {
+	padding: 0.7rem;
+	border-bottom: 1px solid #ddd6ca;
+	text-align: left;
+	vertical-align: top;
+}
+
+.work-activity-table-wrap td small {
+	display: block;
+	margin-top: 0.2rem;
+	color: #65716b;
+}
+
 @media (max-width: 700px) {
 	.work-trade-totals {
 		grid-template-columns: 1fr;

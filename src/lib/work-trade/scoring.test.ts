@@ -38,12 +38,21 @@ describe('work-trade discount scoring', () => {
 
 	it('preserves the ten-dollar minimum for both plans', () => {
 		const activities = [activity('Plan community event')];
-		expect(
-			summarizeWorkTrade(member('CoLab Member'), '2026-07', activities)?.eligibleDiscount
-		).toBe(10);
-		expect(
-			summarizeWorkTrade(member('Full Membership'), '2026-07', activities)?.eligibleDiscount
-		).toBe(20);
+		const colab = summarizeWorkTrade(member('CoLab Member'), '2026-07', activities);
+		const full = summarizeWorkTrade(member('Full Membership'), '2026-07', activities);
+		expect(colab?.eligibleDiscount).toBe(10);
+		expect(colab?.activities[0]).toMatchObject({ discountAmount: 10, discountOverridden: false });
+		expect(full?.eligibleDiscount).toBe(20);
+		expect(full?.activities[0]).toMatchObject({ discountAmount: 20, discountOverridden: false });
+	});
+
+	it('shows the applied dollar amount on each activity', () => {
+		const summary = summarizeWorkTrade(member('CoLab Member'), '2026-07', [
+			activity('Make an event graphic'),
+			{ ...activity('Promote on social media'), id: 'social' }
+		]);
+		expect(summary?.activities.map(({ discountAmount }) => discountAmount)).toEqual([2, 1]);
+		expect(summary?.eligibleDiscount).toBe(3);
 	});
 
 	it('flags unmapped work for admin review', () => {
