@@ -69,7 +69,7 @@ export function summarizeActivity(activities: Activity[]): Array<{ type: string;
 export class ActivityDirectory {
 	constructor(private readonly monday: MondayClient) {}
 
-	async listForMember(memberId: string, limit = 50): Promise<Activity[]> {
+	async list(limit = 2000): Promise<Activity[]> {
 		const initial = await this.monday.request<{ boards: Array<{ items_page: Page }> }>(INITIAL, {
 			boardId: ACTIVITY_BOARD_ID,
 			columnIds: Object.values(COLUMNS)
@@ -88,8 +88,11 @@ export class ActivityDirectory {
 		}
 		return items
 			.map(mapActivity)
-			.filter((activity) => activity.memberId === memberId)
 			.sort((left, right) => right.submitDate.localeCompare(left.submitDate))
 			.slice(0, limit);
+	}
+
+	async listForMember(memberId: string, limit = 50): Promise<Activity[]> {
+		return (await this.list()).filter((activity) => activity.memberId === memberId).slice(0, limit);
 	}
 }

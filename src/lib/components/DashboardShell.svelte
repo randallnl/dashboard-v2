@@ -8,6 +8,7 @@
 	import UpcomingMemberPanel from '$lib/components/UpcomingMemberPanel.svelte';
 	import ViewAsControl from '$lib/components/ViewAsControl.svelte';
 	import VotePanel from '$lib/components/VotePanel.svelte';
+	import WorkTradePanel from '$lib/components/WorkTradePanel.svelte';
 	import type {
 		Member,
 		MemberCapabilities,
@@ -235,6 +236,8 @@
 		{#if capabilities.canVote}
 			<VotePanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
 		{/if}
+
+		<WorkTradePanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
 
 		<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />
 

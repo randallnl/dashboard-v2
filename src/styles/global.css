@@ -2583,6 +2583,101 @@ h2 {
 	background: #dcebe4;
 }
 
+.work-trade-panel {
+	padding: clamp(1.4rem, 3vw, 2rem);
+	border: 1px solid #d8d1c5;
+	border-radius: 1rem;
+	background: #faf7f0;
+}
+
+.work-trade-panel > p {
+	max-width: 54rem;
+}
+.work-trade-panel .section-heading label {
+	display: grid;
+	gap: 0.25rem;
+	font-weight: 800;
+}
+.work-trade-panel input[type='month'] {
+	padding: 0.55rem;
+	border: 1px solid #b9b8ad;
+	border-radius: 0.5rem;
+	background: white;
+}
+.work-trade-summary {
+	display: grid;
+	gap: 1rem;
+	margin-top: 1rem;
+	padding: 1.1rem;
+	border-radius: 0.8rem;
+	background: white;
+}
+.work-trade-totals {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+.work-trade-totals > div {
+	display: grid;
+	gap: 0.2rem;
+	padding: 0.8rem;
+	border-radius: 0.65rem;
+	background: #edf4f0;
+}
+.work-trade-totals span,
+.work-trade-queue article span {
+	color: #65716b;
+	font-size: 0.82rem;
+}
+.work-trade-totals strong {
+	font-size: 1.35rem;
+}
+.work-trade-admin {
+	margin-top: 1.5rem;
+	padding-top: 1.5rem;
+	border-top: 1px solid #d8d1c5;
+}
+.work-trade-queue {
+	display: grid;
+	gap: 0.65rem;
+}
+.work-trade-queue > article {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto minmax(12rem, auto);
+	align-items: center;
+	gap: 1rem;
+	padding: 0.9rem;
+	border: 1px solid #ddd6ca;
+	border-radius: 0.7rem;
+	background: white;
+}
+.work-trade-queue > article > div {
+	display: grid;
+	gap: 0.2rem;
+}
+.work-trade-actions {
+	display: flex !important;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 0.45rem !important;
+}
+
+.work-trade-review-detail {
+	grid-column: 1 / -1;
+}
+
+@media (max-width: 700px) {
+	.work-trade-totals {
+		grid-template-columns: 1fr;
+	}
+	.work-trade-queue > article {
+		grid-template-columns: 1fr;
+	}
+	.work-trade-actions {
+		justify-content: flex-start;
+	}
+}
+
 .task-meta,
 .task-files {
 	display: flex;
