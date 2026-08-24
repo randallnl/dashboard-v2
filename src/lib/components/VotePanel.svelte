@@ -200,6 +200,12 @@
 						{#if vote.deadline}<time datetime={vote.deadline}>Consent deadline {vote.deadline}</time
 							>{/if}
 					</div>
+					{#if vote.submittedBy}
+						<p class="vote-submitter">
+							<span aria-hidden="true">Community-led event</span>
+							<strong>Submitted by {vote.submittedBy}</strong>
+						</p>
+					{/if}
 					<h3>
 						{#if vote.titleUrl}
 							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->

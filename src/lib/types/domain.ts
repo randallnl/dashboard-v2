@@ -133,6 +133,7 @@ export type Vote = {
 	details: string;
 	submittedAt: string;
 	deadline: string;
+	submittedBy?: string;
 	linkUrl?: string;
 	linkLabel?: string;
 	titleUrl?: string;

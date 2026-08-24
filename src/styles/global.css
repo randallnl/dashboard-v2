@@ -3302,6 +3302,29 @@ h2 {
 	text-transform: uppercase;
 }
 
+.vote-submitter {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.45rem 0.75rem;
+	margin: 0.85rem 0 0;
+	color: #194639;
+}
+
+.vote-submitter span {
+	padding: 0.3rem 0.55rem;
+	border-radius: 999px;
+	background: #dceae1;
+	font-size: 0.68rem;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.vote-submitter strong {
+	font-size: 0.9rem;
+}
+
 .vote-list h3 {
 	margin: 1.25rem 0 0.7rem;
 	font-size: 1.35rem;

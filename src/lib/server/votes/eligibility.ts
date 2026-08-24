@@ -29,6 +29,7 @@ export function communityConsentVotes(
 				details: recordString(record.record, 'description'),
 				submittedAt,
 				deadline,
+				submittedBy: record.owner.trim(),
 				titleUrl: `/items/community/${encodeURIComponent(itemId)}`
 			}
 		];

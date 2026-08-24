@@ -54,6 +54,15 @@ describe('communityConsentVotes', () => {
 		expect(vote.titleUrl).toBe('/items/community/associated-item-2');
 	});
 
+	it('identifies the community member who submitted the event', () => {
+		const [vote] = communityConsentVotes(
+			[submission({ owner: 'Alex Member' })],
+			new Date('2026-07-26T12:00:00Z')
+		);
+
+		expect(vote.submittedBy).toBe('Alex Member');
+	});
+
 	it('excludes submissions once resolved or after the consent deadline', () => {
 		expect(
 			communityConsentVotes(
