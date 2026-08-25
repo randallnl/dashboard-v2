@@ -579,6 +579,10 @@ export class EventDirectory {
 		return { id: result.create_subitem.id, title: result.create_subitem.name };
 	}
 
+	async uploadProjectPhoto(projectId: string, file: File) {
+		return this.monday.uploadFileToColumn(projectId, PROJECT_COLUMNS.posters, file);
+	}
+
 	async completeProjectTask(taskId: string, completionDate: string): Promise<void> {
 		const boardResult = await this.monday.request<{
 			items: Array<{ id: string; board: { id: string } }>;

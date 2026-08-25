@@ -5,7 +5,7 @@
 	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
 	import ProjectDashboardHeader from '$lib/components/ProjectDashboardHeader.svelte';
 	import type { EventAttachment, ProjectTask } from '$lib/types/domain';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -44,6 +44,12 @@
 	let editMessage = $state('');
 	let editingDetails = $state(false);
 	let pinnedUrls = $state<string[]>([]);
+	let selectedPhotos = $state<File[]>([]);
+	let photoPreviews = $state<Array<{ name: string; url: string }>>([]);
+	let photoInput = $state<HTMLInputElement>();
+	let uploadingPhotos = $state(false);
+	let photoMessage = $state('');
+	let photoUploadFailed = $state(false);
 	const sections = [
 		{ id: 'overview', label: 'Overview' },
 		{ id: 'files', label: 'Files & links' },
@@ -146,6 +152,61 @@
 			}
 		}
 	});
+
+	onDestroy(() => photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url)));
+
+	function selectPhotos(event: Event) {
+		photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+		const files = Array.from((event.currentTarget as HTMLInputElement).files ?? []).slice(0, 6);
+		selectedPhotos = files;
+		photoPreviews = files.map((file) => ({ name: file.name, url: URL.createObjectURL(file) }));
+		photoMessage = files.length
+			? `${files.length} ${files.length === 1 ? 'photo' : 'photos'} ready to upload.`
+			: '';
+		photoUploadFailed = false;
+	}
+
+	function clearSelectedPhotos() {
+		photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+		selectedPhotos = [];
+		photoPreviews = [];
+		if (photoInput) photoInput.value = '';
+	}
+
+	async function uploadPhotos() {
+		if (!selectedPhotos.length || uploadingPhotos) return;
+		if (!confirmMonday(`Upload ${selectedPhotos.length === 1 ? 'this photo' : 'these photos'}?`))
+			return;
+		uploadingPhotos = true;
+		photoMessage = 'Uploading photos to Monday…';
+		photoUploadFailed = false;
+		try {
+			const body = new FormData();
+			body.append('projectId', data.record.id);
+			selectedPhotos.forEach((photo) => body.append('photos', photo, photo.name));
+			const response = await fetch('/api/projects/photos', { method: 'POST', body });
+			const result = (await response.json()) as {
+				attachments?: EventAttachment[];
+				posterUrl?: string;
+				message?: string;
+			};
+			if (!response.ok || !result.attachments) {
+				throw new Error(result.message || 'Could not upload the photos.');
+			}
+			recordFields = {
+				...recordFields,
+				attachments: result.attachments,
+				posterUrl: result.posterUrl || recordFields.posterUrl
+			};
+			clearSelectedPhotos();
+			photoMessage = result.message || 'Photos uploaded and confirmed by Monday.';
+		} catch (cause) {
+			photoUploadFailed = true;
+			photoMessage = cause instanceof Error ? cause.message : 'Could not upload the photos.';
+		} finally {
+			uploadingPhotos = false;
+		}
+	}
 
 	function togglePin(url: string) {
 		pinnedUrls = pinnedUrls.includes(url)
@@ -747,6 +808,59 @@
 			</div>
 			<span class="status-pill">{pinnedUrls.length} pinned</span>
 		</div>
+		{#if data.canEdit && data.record.source === 'project'}
+			<form
+				class="project-photo-upload"
+				onsubmit={(event) => {
+					event.preventDefault();
+					uploadPhotos();
+				}}
+			>
+				<div>
+					<label for="project-photo-input">Add project photos</label>
+					<small>JPG, PNG, or GIF · up to 10 MB each · 6 photos at a time</small>
+				</div>
+				<input
+					bind:this={photoInput}
+					id="project-photo-input"
+					type="file"
+					name="photos"
+					accept="image/jpeg,image/png,image/gif,.jpg,.jpeg,.png,.gif"
+					multiple
+					disabled={uploadingPhotos}
+					onchange={selectPhotos}
+				/>
+				{#if photoPreviews.length}
+					<div class="project-photo-previews" aria-label="Selected photo previews">
+						{#each photoPreviews as preview (preview.url)}
+							<figure>
+								<img src={preview.url} alt="" />
+								<figcaption>{preview.name}</figcaption>
+							</figure>
+						{/each}
+					</div>
+					<div class="project-photo-actions">
+						<button type="submit" disabled={uploadingPhotos}>
+							{uploadingPhotos
+								? 'Uploading…'
+								: `Upload ${selectedPhotos.length === 1 ? 'photo' : 'photos'}`}
+						</button>
+						<button
+							type="button"
+							class="secondary-action"
+							onclick={clearSelectedPhotos}
+							disabled={uploadingPhotos}>Cancel</button
+						>
+					</div>
+				{/if}
+				{#if photoMessage}<p
+						class:error={photoUploadFailed}
+						role={photoUploadFailed ? 'alert' : 'status'}
+					>
+						{photoMessage}
+					</p>{/if}
+			</form>
+		{/if}
 		<div class="item-previews">
 			{#each attachments as attachment (`${attachment.name}-${attachment.url}`)}
 				<div class:pinned-resource={pinnedUrls.includes(attachment.url)} class="resource-tile">

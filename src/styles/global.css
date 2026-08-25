@@ -2268,6 +2268,98 @@ h2 {
 	gap: 0.8rem;
 }
 
+.project-photo-upload {
+	display: grid;
+	gap: 0.9rem;
+	margin: 1rem 0 1.4rem;
+	padding: 1rem;
+	border: 1px dashed #9eb9ac;
+	border-radius: 0.8rem;
+	background: #f5faf7;
+}
+
+.project-photo-upload > div:first-child {
+	display: grid;
+	gap: 0.2rem;
+}
+
+.project-photo-upload label {
+	color: #194639;
+	font-weight: 800;
+}
+
+.project-photo-upload small,
+.project-photo-upload p {
+	margin: 0;
+	color: #626b66;
+}
+
+.project-photo-upload p.error {
+	color: #9b2c2c;
+}
+
+.project-photo-upload input[type='file'] {
+	max-width: 100%;
+	padding: 0.65rem;
+	border: 1px solid #c8d8cf;
+	border-radius: 0.6rem;
+	background: #fff;
+}
+
+.project-photo-previews {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+	gap: 0.65rem;
+}
+
+.project-photo-previews figure {
+	min-width: 0;
+	margin: 0;
+}
+
+.project-photo-previews img {
+	display: block;
+	width: 100%;
+	aspect-ratio: 4 / 3;
+	border-radius: 0.55rem;
+	object-fit: cover;
+}
+
+.project-photo-previews figcaption {
+	overflow: hidden;
+	margin-top: 0.3rem;
+	font-size: 0.72rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.project-photo-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+}
+
+.project-photo-actions button {
+	padding: 0.65rem 0.9rem;
+	border: 0;
+	border-radius: 0.55rem;
+	background: #194639;
+	color: #fff;
+	cursor: pointer;
+	font-weight: 800;
+}
+
+.project-photo-actions button.secondary-action {
+	border: 1px solid #9eb9ac;
+	background: transparent;
+	color: #194639;
+}
+
+.project-photo-actions button:disabled {
+	cursor: wait;
+	opacity: 0.65;
+}
+
 .item-previews a {
 	display: grid;
 	gap: 0.4rem;

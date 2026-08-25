@@ -292,6 +292,23 @@ describe('Monday event mapping', () => {
 		);
 	});
 
+	it('uploads project photos to the project poster column', async () => {
+		const asset = {
+			id: 'asset-1',
+			name: 'festival-poster.jpg',
+			url: 'https://monday.example/asset-1',
+			publicUrl: 'https://cdn.example/asset-1',
+			thumbnailUrl: 'https://cdn.example/asset-1-thumb',
+			fileExtension: 'jpg'
+		};
+		const uploadFileToColumn = vi.fn().mockResolvedValue(asset);
+		const directory = new EventDirectory({ uploadFileToColumn } as unknown as MondayClient);
+		const photo = new File(['photo'], 'festival-poster.jpg', { type: 'image/jpeg' });
+
+		await expect(directory.uploadProjectPhoto('project-1', photo)).resolves.toEqual(asset);
+		expect(uploadFileToColumn).toHaveBeenCalledWith('project-1', 'file_mknscbex', photo);
+	});
+
 	it('marks a task complete on its Monday subitem board', async () => {
 		const request = vi
 			.fn()
