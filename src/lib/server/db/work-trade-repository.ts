@@ -22,6 +22,20 @@ export type WorkTradeDiscount = {
 	updatedAt: string;
 };
 
+export type WorkTradeGeneration = {
+	month: string;
+	generatedAt: string;
+	generatedBy: string;
+	summariesGenerated: number;
+};
+
+type WorkTradeGenerationRow = {
+	month: string;
+	generated_at: string;
+	generated_by: string;
+	summaries_generated: number;
+};
+
 type WorkTradeRow = {
 	member_id: string;
 	preferred_name?: string;
@@ -122,6 +136,44 @@ export class WorkTradeRepository {
 				now
 			)
 			.run();
+	}
+
+	async recordGeneration(
+		month: string,
+		generatedBy: string,
+		summariesGenerated: number,
+		generatedAt: string
+	): Promise<void> {
+		await this.db
+			.prepare(
+				`INSERT INTO work_trade_generation_runs (
+					month, generated_at, generated_by, summaries_generated
+				) VALUES (?1, ?2, ?3, ?4)
+				ON CONFLICT(month) DO UPDATE SET
+					generated_at = excluded.generated_at,
+					generated_by = excluded.generated_by,
+					summaries_generated = excluded.summaries_generated`
+			)
+			.bind(month, generatedAt, generatedBy, summariesGenerated)
+			.run();
+	}
+
+	async findGeneration(month: string): Promise<WorkTradeGeneration | null> {
+		const row = await this.db
+			.prepare(
+				`SELECT month, generated_at, generated_by, summaries_generated
+				 FROM work_trade_generation_runs WHERE month = ?1 LIMIT 1`
+			)
+			.bind(month)
+			.first<WorkTradeGenerationRow>();
+		return row
+			? {
+					month: row.month,
+					generatedAt: row.generated_at,
+					generatedBy: row.generated_by,
+					summariesGenerated: row.summaries_generated
+				}
+			: null;
 	}
 
 	async find(memberId: string, month: string): Promise<WorkTradeDiscount | null> {

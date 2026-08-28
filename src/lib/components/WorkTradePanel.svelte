@@ -24,12 +24,19 @@
 		approvedDiscount: number;
 		status: 'pending_review' | 'approved' | 'opted_in' | 'declined' | 'shopify_updated';
 	};
+	type Generation = {
+		month: string;
+		generatedAt: string;
+		generatedBy: string;
+		summariesGenerated: number;
+	};
 	let { isAdmin, readOnly }: { isAdmin: boolean; readOnly: boolean } = $props();
 	const now = new Date();
 	let month = $state(
 		new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7)
 	);
 	let discount = $state<Discount | null>(null);
+	let generation = $state<Generation | null>(null);
 	let queue = $state<Discount[]>([]);
 	let loading = $state(true);
 	let working = $state('');
@@ -61,6 +68,15 @@
 			declined: 'Closed—no discount',
 			shopify_updated: 'Applied in Shopify'
 		})[status];
+	const generatedLabel = (value: string) =>
+		new Intl.DateTimeFormat('en-US', {
+			month: 'long',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+			timeZoneName: 'short'
+		}).format(new Date(value));
 
 	async function parse<T>(response: Response): Promise<T> {
 		const result = (await response.json()) as T & { message?: string };
@@ -75,10 +91,20 @@
 		try {
 			const memberRequest = fetch(`/api/work-trade?month=${month}`);
 			const adminRequest = isAdmin ? fetch(`/api/admin/work-trade?month=${month}`) : null;
-			const memberResult = await parse<{ discount: Discount | null }>(await memberRequest);
+			const memberResult = await parse<{
+				discount: Discount | null;
+				generation: Generation | null;
+			}>(await memberRequest);
 			discount = memberResult.discount;
-			if (adminRequest)
-				queue = (await parse<{ discounts: Discount[] }>(await adminRequest)).discounts;
+			generation = memberResult.generation;
+			if (adminRequest) {
+				const adminResult = await parse<{
+					discounts: Discount[];
+					generation: Generation | null;
+				}>(await adminRequest);
+				queue = adminResult.discounts;
+				generation = adminResult.generation;
+			}
 			activityAmounts = Object.fromEntries(
 				queue.flatMap((item) =>
 					item.activities.map((activity) => [
@@ -129,7 +155,11 @@
 		working = key;
 		message = '';
 		try {
-			const result = await parse<{ discounts: Discount[]; message: string }>(
+			const result = await parse<{
+				discounts: Discount[];
+				generation?: Generation;
+				message: string;
+			}>(
 				await fetch('/api/admin/work-trade', {
 					method: 'POST',
 					headers: { 'content-type': 'application/json' },
@@ -137,6 +167,7 @@
 				})
 			);
 			queue = result.discounts;
+			if (result.generation) generation = result.generation;
 			message = result.message;
 			await load(false);
 		} catch (cause) {
@@ -200,6 +231,12 @@
 		Logged work can reduce your monthly fee, but everyone pays at least $10. Discounts require admin
 		approval and your opt-in before Shopify is updated.
 	</p>
+	{#if generation}
+		<p class="work-trade-generated-at">
+			Latest {monthLabel(month)} summary generated
+			<time datetime={generation.generatedAt}>{generatedLabel(generation.generatedAt)}</time>.
+		</p>
+	{/if}
 	{#if loading}<ContentState
 			kind="loading"
 			title="Loading work summary"
@@ -246,6 +283,11 @@
 					disabled={Boolean(working)}>Opt in to {money(discount.approvedDiscount)} discount</button
 				>{/if}
 		</article>
+	{:else if generation}<ContentState
+			kind="empty"
+			title="No eligible work-trade discount"
+			message={`The ${monthLabel(month)} summary was generated on ${generatedLabel(generation.generatedAt)}, but no eligible work was found for your account.`}
+		/>
 	{:else}<ContentState
 			kind="empty"
 			title="No work-trade summary yet"
@@ -342,7 +384,9 @@
 						</article>{/each}
 				</div>
 			{:else}<p>
-					No summaries for this month. Generate them after the month’s work is logged in Monday.
+					{generation
+						? `The latest run on ${generatedLabel(generation.generatedAt)} found no eligible work-trade summaries.`
+						: 'No summaries for this month. Generate them after the month’s work is logged in Monday.'}
 				</p>{/if}
 			<div class="work-activity-ledger">
 				<div class="card-heading">

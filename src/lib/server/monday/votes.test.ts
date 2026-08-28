@@ -9,10 +9,11 @@ import {
 } from './votes';
 
 describe('vote motion mapping', () => {
-	it('maps eligible vote types and calculates a timezone-safe 48-day deadline', () => {
+	it('maps eligible vote types and calculates an exact 48-hour deadline', () => {
 		const vote = mapMotion({
 			id: 'vote-1',
 			name: 'Fund the print studio',
+			created_at: '2026-07-26T15:30:00Z',
 			column_values: [
 				{ id: 'single_selectis1ajb9', text: 'Consent Vote', value: null },
 				{ id: 'date_mm2mqnq2', text: '2026-07-26', value: null },
@@ -20,7 +21,12 @@ describe('vote motion mapping', () => {
 			]
 		});
 		expect(vote).toMatchObject({ id: 'vote-1', type: 'Consent Vote' });
-		expect(vote?.deadline).toBe(consentDeadline('2026-07-26'));
+		expect(vote?.submittedAt).toBe('2026-07-26T15:30:00Z');
+		expect(vote?.deadline).toBe('2026-07-28T15:30:00.000Z');
+	});
+
+	it('adds 48 hours rather than 48 calendar days', () => {
+		expect(consentDeadline('2026-08-28T14:15:00-04:00')).toBe('2026-08-30T18:15:00.000Z');
 	});
 
 	it('ignores non-vote activity records', () => {

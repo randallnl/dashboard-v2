@@ -9,6 +9,7 @@ import { ProjectEventRepository } from './project-repository';
 import { ShiftRepository } from './shift-repository';
 import type { Database } from './types';
 import { VolunteerRepository } from './volunteer-repository';
+import { WorkTradeRepository } from './work-trade-repository';
 
 function createDatabaseMock(options: { changes?: number; first?: unknown } = {}) {
 	const bind = vi.fn();
@@ -426,5 +427,35 @@ describe('ProjectEventRepository', () => {
 		expect(mock.prepare).toHaveBeenCalledWith(
 			expect.stringContaining("json_extract(record_json, '$.priority')")
 		);
+	});
+});
+
+describe('WorkTradeRepository generation runs', () => {
+	it('records the latest generation timestamp even when no summaries were created', async () => {
+		const mock = createDatabaseMock();
+		const repository = new WorkTradeRepository(mock.db);
+
+		await repository.recordGeneration('2026-07', 'admin-1', 0, '2026-08-28T14:30:00.000Z');
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT(month)'));
+		expect(mock.bind).toHaveBeenCalledWith('2026-07', '2026-08-28T14:30:00.000Z', 'admin-1', 0);
+	});
+
+	it('returns generation metadata for the member-facing empty state', async () => {
+		const mock = createDatabaseMock({
+			first: {
+				month: '2026-07',
+				generated_at: '2026-08-28T14:30:00.000Z',
+				generated_by: 'admin-1',
+				summaries_generated: 3
+			}
+		});
+
+		await expect(new WorkTradeRepository(mock.db).findGeneration('2026-07')).resolves.toEqual({
+			month: '2026-07',
+			generatedAt: '2026-08-28T14:30:00.000Z',
+			generatedBy: 'admin-1',
+			summariesGenerated: 3
+		});
 	});
 });

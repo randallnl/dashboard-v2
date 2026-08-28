@@ -6,6 +6,7 @@ import { syncMembersFromMonday } from '$lib/server/members/sync';
 import { syncShiftsFromMonday } from '$lib/server/shifts/sync';
 import { MemberRepository, ShiftSwitchRepository } from '$lib/server/db';
 import { sendShiftSwitchEmail } from '$lib/server/shifts/switch-email';
+import { resolveExpiredCommunityConsentVotes } from '$lib/server/votes/consent-resolution';
 
 type ScheduledSyncResults = [
 	Awaited<ReturnType<typeof syncShiftsFromMonday>>,
@@ -78,6 +79,20 @@ export async function runScheduledShiftSync(
 			syncFailure = cause;
 		}
 
+		if (!syncResults) throw syncFailure;
+
+		let consentResolutions = { reviewed: 0, approved: 0, objected: 0, failed: 0 };
+		try {
+			consentResolutions = await resolveExpiredCommunityConsentVotes(env, new Date(scheduledTime));
+		} catch (cause) {
+			console.error(
+				JSON.stringify({
+					event: 'community_consent_resolution_failed',
+					message: cause instanceof Error ? cause.message : 'Unknown resolution error'
+				})
+			);
+		}
+
 		let discordVotes = { eligible: 0, posted: 0, failed: 0 };
 		try {
 			discordVotes = await notifyNewVotes(env, scheduledTime);
@@ -90,7 +105,6 @@ export async function runScheduledShiftSync(
 			);
 		}
 
-		if (!syncResults) throw syncFailure;
 		const [shifts, events, members, givebutter, equipment, switchReminders] = syncResults;
 		console.log(
 			JSON.stringify({
@@ -113,6 +127,10 @@ export async function runScheduledShiftSync(
 				equipmentCount: equipment.count,
 				equipmentFailed: equipment.failed,
 				equipmentRemoved: equipment.removed,
+				consentVotesReviewed: consentResolutions.reviewed,
+				consentVotesApproved: consentResolutions.approved,
+				consentVotesObjected: consentResolutions.objected,
+				consentVotesFailed: consentResolutions.failed,
 				discordVotesEligible: discordVotes.eligible,
 				discordVotesPosted: discordVotes.posted,
 				discordVotesFailed: discordVotes.failed,

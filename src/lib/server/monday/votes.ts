@@ -24,7 +24,7 @@ const VOTE_TYPES = new Set<VoteType>([
 ]);
 
 type Column = { id: string; text: string | null; value: string | null };
-type Item = { id: string; name: string; column_values: Column[] };
+type Item = { id: string; name: string; created_at?: string | null; column_values: Column[] };
 type Page = { cursor: string | null; items: Item[] };
 
 const INITIAL = `
@@ -32,7 +32,7 @@ const INITIAL = `
 		boards(ids: [$boardId]) {
 			items_page(limit: 500) {
 				cursor
-				items { id name column_values(ids: $columnIds) { id text value } }
+				items { id name created_at column_values(ids: $columnIds) { id text value } }
 			}
 		}
 	}
@@ -41,7 +41,7 @@ const NEXT = `
 	query VoteBoardNext($cursor: String!, $columnIds: [String!]!) {
 		next_items_page(cursor: $cursor, limit: 500) {
 			cursor
-			items { id name column_values(ids: $columnIds) { id text value } }
+			items { id name created_at column_values(ids: $columnIds) { id text value } }
 		}
 	}
 `;
@@ -64,16 +64,18 @@ function normalizedQuestion(value: string): string {
 }
 
 export function consentDeadline(submittedAt: string): string {
-	const submitted = new Date(`${submittedAt}T12:00:00Z`);
-	submitted.setUTCDate(submitted.getUTCDate() + 48);
-	return submitted.toISOString().slice(0, 10);
+	const submitted = new Date(
+		/^\d{4}-\d{2}-\d{2}$/u.test(submittedAt) ? `${submittedAt}T00:00:00Z` : submittedAt
+	);
+	if (Number.isNaN(submitted.getTime())) return '';
+	return new Date(submitted.getTime() + 48 * 60 * 60 * 1000).toISOString();
 }
 
 export function mapMotion(item: Item): Vote | null {
 	const columns = map(item);
 	const type = text(columns, ACTIVITY_COLUMNS.type) as VoteType;
 	if (!VOTE_TYPES.has(type)) return null;
-	const submittedAt = text(columns, ACTIVITY_COLUMNS.submitDate);
+	const submittedAt = item.created_at?.trim() || text(columns, ACTIVITY_COLUMNS.submitDate);
 	return {
 		id: item.id,
 		type,

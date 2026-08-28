@@ -96,6 +96,7 @@ type RawUpdate = {
 type Item = {
 	id: string;
 	name: string;
+	created_at?: string | null;
 	column_values: Column[];
 	updates?: RawUpdate[];
 	subitems?: Item[];
@@ -110,6 +111,7 @@ const INITIAL = `
 				items {
 					id
 					name
+					created_at
 					updates(limit: 100) {
 						id text_body created_at creator_id
 						creator { name }
@@ -160,6 +162,7 @@ const NEXT = `
 			items {
 				id
 				name
+				created_at
 				updates(limit: 100) {
 					id text_body created_at creator_id
 					creator { name }
@@ -428,7 +431,7 @@ export function mapCommunityEvent(item: Item, syncedAt: string): ProjectEventRec
 			canvaUrl: safeUrl(columns, COMMUNITY_COLUMNS.canva),
 			additionalInfo: text(columns, COMMUNITY_COLUMNS.additionalInfo),
 			itemId: text(columns, COMMUNITY_COLUMNS.itemId) || item.id,
-			creationLog: text(columns, COMMUNITY_COLUMNS.created),
+			creationLog: item.created_at?.trim() || text(columns, COMMUNITY_COLUMNS.created),
 			_mondayUpdates: mondayUpdates(item),
 			mondayUrl: mondayUrl(COMMUNITY_BOARD_ID, item.id)
 		},

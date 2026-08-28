@@ -38,11 +38,19 @@ describe('communityConsentVotes', () => {
 
 		expect(votes).toMatchObject([
 			{
-				submittedAt: '2026-07-26',
+				submittedAt: '2026-07-26T12:00:00.000Z',
 				type: 'Consent Vote',
 				titleUrl: '/items/community/event-1'
 			}
 		]);
+	});
+
+	it('closes voting exactly 48 hours after submission', () => {
+		const record = submission({
+			record: { creationLog: '2026-08-20T14:30:00.000Z', description: 'Open print night' }
+		});
+		expect(communityConsentVotes([record], new Date('2026-08-22T14:29:59.999Z'))).toHaveLength(1);
+		expect(communityConsentVotes([record], new Date('2026-08-22T14:30:00.000Z'))).toHaveLength(0);
 	});
 
 	it('links the motion title using the associated community item ID', () => {
@@ -96,7 +104,7 @@ describe('equipmentConsentVotes', () => {
 				id: 'equipment:request-1',
 				type: 'Consent Vote',
 				question: 'Material/equipment request: Button maker',
-				submittedAt: '2026-07-29',
+				submittedAt: '2026-07-29T13:15:00.000Z',
 				linkUrl: 'https://example.com/button-maker',
 				linkLabel: 'View requested item',
 				details:

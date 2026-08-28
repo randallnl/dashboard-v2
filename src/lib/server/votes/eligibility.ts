@@ -5,35 +5,35 @@ function recordString(record: Record<string, unknown>, key: string): string {
 	return typeof record[key] === 'string' ? record[key] : '';
 }
 
+export function communityConsentVote(record: ProjectEventRecord): Vote | null {
+	if (record.source !== 'community' || record.status.toLocaleLowerCase('en-US') !== 'pending') {
+		return null;
+	}
+	const createdText = recordString(record.record, 'creationLog') || record.syncedAt;
+	const created = new Date(createdText);
+	if (Number.isNaN(created.getTime())) return null;
+	const submittedAt = created.toISOString();
+	const itemId = recordString(record.record, 'itemId') || record.id;
+	return {
+		id: `community:${record.id}`,
+		type: 'Consent Vote',
+		question: record.title,
+		details: recordString(record.record, 'description'),
+		submittedAt,
+		deadline: consentDeadline(submittedAt),
+		submittedBy: record.owner.trim(),
+		titleUrl: `/items/community/${encodeURIComponent(itemId)}`
+	};
+}
+
 export function communityConsentVotes(
 	records: ProjectEventRecord[],
 	now: Date = new Date()
 ): Vote[] {
-	return records.flatMap((record) => {
-		if (record.source !== 'community' || record.status.toLocaleLowerCase('en-US') !== 'pending') {
-			return [];
-		}
-		const createdText = recordString(record.record, 'creationLog') || record.syncedAt;
-		const created = new Date(createdText);
-		if (Number.isNaN(created.getTime()) || created > now) return [];
-		const submittedAt = created.toISOString().slice(0, 10);
-		const deadline = consentDeadline(submittedAt);
-		const itemId = recordString(record.record, 'itemId') || record.id;
-		const deadlineEnd = new Date(`${deadline}T23:59:59.999Z`);
-		if (deadlineEnd < now) return [];
-		return [
-			{
-				id: `community:${record.id}`,
-				type: 'Consent Vote' as const,
-				question: record.title,
-				details: recordString(record.record, 'description'),
-				submittedAt,
-				deadline,
-				submittedBy: record.owner.trim(),
-				titleUrl: `/items/community/${encodeURIComponent(itemId)}`
-			}
-		];
-	});
+	return records
+		.map(communityConsentVote)
+		.filter((vote): vote is Vote => vote !== null)
+		.filter((vote) => new Date(vote.submittedAt) <= now && new Date(vote.deadline) > now);
 }
 
 function estimatedCostLabel(value: string): string {
@@ -49,9 +49,9 @@ export function equipmentConsentVotes(
 	return requests.flatMap((request) => {
 		const created = new Date(request.submittedAt || request.syncedAt);
 		if (Number.isNaN(created.getTime()) || created > now) return [];
-		const submittedAt = created.toISOString().slice(0, 10);
+		const submittedAt = created.toISOString();
 		const deadline = consentDeadline(submittedAt);
-		if (new Date(`${deadline}T23:59:59.999Z`) < now) return [];
+		if (new Date(deadline) <= now) return [];
 		const details = [
 			request.requestor ? `Requested by: ${request.requestor}` : '',
 			request.estimatedCost ? `Estimated cost: ${estimatedCostLabel(request.estimatedCost)}` : '',

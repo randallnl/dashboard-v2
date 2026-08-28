@@ -37,10 +37,9 @@ async function attempt<T>(source: string, operation: () => Promise<T>, fallback:
 }
 
 export function recentVote(vote: Vote, now: Date): boolean {
-	if (!/^\d{4}-\d{2}-\d{2}$/u.test(vote.submittedAt)) return false;
-	const earliestDate = new Date(now.getTime() - RECENT_VOTE_MS).toISOString().slice(0, 10);
-	const today = now.toISOString().slice(0, 10);
-	return vote.submittedAt >= earliestDate && vote.submittedAt <= today;
+	const submitted = new Date(vote.submittedAt);
+	if (Number.isNaN(submitted.getTime())) return false;
+	return submitted <= now && submitted.getTime() >= now.getTime() - RECENT_VOTE_MS;
 }
 
 export function discordPayload(vote: Vote, dashboardUrl: string) {

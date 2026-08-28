@@ -193,6 +193,7 @@ describe('Monday event mapping', () => {
 			{
 				id: 'community-1',
 				name: 'Print night',
+				created_at: '2026-07-26T15:42:00.000Z',
 				column_values: [{ id: 'date_Mjj7b71V', text: '', value: '{"date":"2026-08-04"}' }]
 			},
 			'2026-07-26T16:00:00.000Z'
@@ -203,6 +204,7 @@ describe('Monday event mapping', () => {
 			adminOnly: false,
 			record: {
 				itemId: 'community-1',
+				creationLog: '2026-07-26T15:42:00.000Z',
 				mondayUrl: 'https://queerlective.monday.com/boards/8052311890/pulses/community-1'
 			}
 		});

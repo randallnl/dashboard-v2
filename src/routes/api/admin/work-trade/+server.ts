@@ -13,7 +13,12 @@ export const GET: RequestHandler = async ({ url, locals, platform }) => {
 	requireAdmin(context);
 	const month = url.searchParams.get('month') || '';
 	if (!MONTH.test(month)) error(400, 'A valid month is required.');
-	return json({ discounts: await new WorkTradeRepository(platform!.env.DB).list(month) });
+	const repository = new WorkTradeRepository(platform!.env.DB);
+	const [discounts, generation] = await Promise.all([
+		repository.list(month),
+		repository.findGeneration(month)
+	]);
+	return json({ discounts, generation });
 };
 
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
@@ -44,8 +49,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			)
 			.filter((summary) => summary && summary.activityCount > 0);
 		await Promise.all(summaries.map((summary) => repository.upsert(summary!, now)));
+		await repository.recordGeneration(month, context.viewer.id, summaries.length, now);
 		return json({
 			discounts: await repository.list(month),
+			generation: await repository.findGeneration(month),
 			message: `Generated ${summaries.length} work-trade summaries from Monday.`
 		});
 	}

@@ -19,7 +19,11 @@ export { VolunteerRepository } from './volunteer-repository';
 export type { VolunteerSignup } from './volunteer-repository';
 export { VoteRepository } from './vote-repository';
 export { WorkTradeRepository } from './work-trade-repository';
-export type { WorkTradeDiscount, WorkTradeStatus } from './work-trade-repository';
+export type {
+	WorkTradeDiscount,
+	WorkTradeGeneration,
+	WorkTradeStatus
+} from './work-trade-repository';
 export type {
 	CleanupResult,
 	ColabShiftRow,

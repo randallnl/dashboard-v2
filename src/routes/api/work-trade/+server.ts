@@ -15,8 +15,15 @@ export const GET: RequestHandler = async ({ url, locals, platform }) => {
 	const month = /^\d{4}-(?:0[1-9]|1[0-2])$/u.test(url.searchParams.get('month') || '')
 		? url.searchParams.get('month')!
 		: previousMonth();
-	const discount = await new WorkTradeRepository(platform!.env.DB).find(context.member.id, month);
-	return json({ month, discount }, { headers: { 'cache-control': 'private, no-store' } });
+	const repository = new WorkTradeRepository(platform!.env.DB);
+	const [discount, generation] = await Promise.all([
+		repository.find(context.member.id, month),
+		repository.findGeneration(month)
+	]);
+	return json(
+		{ month, discount, generation },
+		{ headers: { 'cache-control': 'private, no-store' } }
+	);
 };
 
 export const POST: RequestHandler = async ({ request, locals, platform }) => {

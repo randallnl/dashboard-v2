@@ -38,6 +38,19 @@
 		else expandedVotedVotes.add(voteId);
 	}
 
+	function deadlineLabel(value: string): string {
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return value;
+		return new Intl.DateTimeFormat(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+			timeZoneName: 'short'
+		}).format(date);
+	}
+
 	async function notifyDiscord() {
 		notifyingDiscord = true;
 		message = '';
@@ -197,9 +210,15 @@
 				<article class:voted={vote.hasVoted} class:vote-collapsed={!detailsExpanded}>
 					<div class="vote-meta">
 						<span>{vote.type}</span>
-						{#if vote.deadline}<time datetime={vote.deadline}>Consent deadline {vote.deadline}</time
+						{#if vote.deadline}<time datetime={vote.deadline}
+								>Consent deadline {deadlineLabel(vote.deadline)}</time
 							>{/if}
 					</div>
+					{#if vote.type === 'Consent Vote'}
+						<p class="consent-auto-approval">
+							Automatically approves after 48 hours unless a member selects “Don’t approve.”
+						</p>
+					{/if}
 					{#if vote.submittedBy}
 						<p class="vote-submitter">
 							<span aria-hidden="true">Community-led event</span>
