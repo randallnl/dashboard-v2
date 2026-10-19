@@ -41,6 +41,7 @@ npm run validate
 Required production bindings:
 
 - `DB`: D1 database
+- `SOCIAL_MEDIA_ASSETS`: R2 bucket for the private social-content media library
 - `MONDAY_API_TOKEN`: Secrets Store binding (the application will also support a classic string secret)
 - `EMAIL`: Email Service binding
 - `LOGIN_FROM_EMAIL`: non-secret environment variable

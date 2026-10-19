@@ -16,6 +16,7 @@
 		UpcomingProjectAssignment
 	} from '$lib/types/domain';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 
 	let {
@@ -53,8 +54,42 @@
 	);
 	const websiteUrl = $derived(safeExternalUrl(member.website));
 	const creativeGroundUrl = $derived(safeExternalUrl(member.creativeGroundUrl));
-	let activeSection = $state('overview');
+	type DashboardView =
+		| 'overview'
+		| 'resources'
+		| 'shifts'
+		| 'calendar'
+		| 'votes'
+		| 'work-trade'
+		| 'history'
+		| 'profile'
+		| 'admin';
+	const dashboardViews: DashboardView[] = [
+		'overview',
+		'resources',
+		'shifts',
+		'calendar',
+		'votes',
+		'work-trade',
+		'history',
+		'profile',
+		'admin'
+	];
+	const activeSection = $derived.by(() => {
+		const requested = page.url.searchParams.get('view');
+		if (!dashboardViews.includes(requested as DashboardView)) return 'overview';
+		if (requested === 'shifts' && !capabilities.canViewShifts) return 'overview';
+		if (requested === 'calendar' && !capabilities.canViewCalendar) return 'overview';
+		if (requested === 'votes' && !capabilities.canVote) return 'overview';
+		if (requested === 'admin' && (!viewerCapabilities.canManageProjects || isViewingAs)) {
+			return 'overview';
+		}
+		return requested as DashboardView;
+	});
 	let moreMenuOpen = $state(false);
+	function dashboardHref(view: DashboardView): string {
+		return view === 'overview' ? resolve('/') : `${resolve('/')}?view=${view}`;
+	}
 
 	function safeExternalUrl(value: string): string {
 		if (!value) return '';
@@ -71,22 +106,6 @@
 	}
 
 	onMount(() => {
-		const sectionIds = ['overview', 'resources', 'shifts', 'calendar', 'votes', 'history', 'admin'];
-		const sections = sectionIds
-			.map((id) => document.getElementById(id))
-			.filter((section): section is HTMLElement => Boolean(section));
-		let frame = 0;
-		const updateActiveSection = () => {
-			cancelAnimationFrame(frame);
-			frame = requestAnimationFrame(() => {
-				const offset = 130;
-				const current =
-					[...sections]
-						.reverse()
-						.find((section) => section.getBoundingClientRect().top <= offset) ?? sections[0];
-				if (current) activeSection = current.id;
-			});
-		};
 		const rememberDetailPosition = (event: MouseEvent) => {
 			const target = event.target instanceof Element ? event.target.closest('a') : null;
 			if (target?.getAttribute('href')?.startsWith('/items/')) {
@@ -102,12 +121,8 @@
 				)
 			);
 		}
-		window.addEventListener('scroll', updateActiveSection, { passive: true });
 		document.addEventListener('click', rememberDetailPosition);
-		updateActiveSection();
 		return () => {
-			cancelAnimationFrame(frame);
-			window.removeEventListener('scroll', updateActiveSection);
 			document.removeEventListener('click', rememberDetailPosition);
 		};
 	});
@@ -121,25 +136,39 @@
 			<span class="brand-mark" aria-hidden="true">Q</span>
 			<span>CoLab</span>
 		</a>
+		<!-- dashboardHref resolves the root route before adding the selected view query -->
+		<!-- eslint-disable svelte/no-navigation-without-resolve -->
 		<nav aria-label="Member navigation">
-			<a class:nav-active={activeSection === 'overview'} href="#overview">Overview</a>
+			<a class:nav-active={activeSection === 'overview'} href={dashboardHref('overview')}
+				>Overview</a
+			>
 			{#if capabilities.canViewShifts}
-				<a class:nav-active={activeSection === 'shifts'} href="#shifts">Shifts</a>
+				<a class:nav-active={activeSection === 'shifts'} href={dashboardHref('shifts')}>Shifts</a>
 			{/if}
 			{#if capabilities.canViewCalendar}
-				<a class:nav-active={activeSection === 'calendar'} href="#calendar">Calendar</a>
+				<a class:nav-active={activeSection === 'calendar'} href={dashboardHref('calendar')}
+					>Calendar</a
+				>
 			{/if}
 			{#if capabilities.canVote}
-				<a class:nav-active={activeSection === 'votes'} href="#votes">Votes</a>
+				<a class:nav-active={activeSection === 'votes'} href={dashboardHref('votes')}>Votes</a>
 			{/if}
-			<a class:nav-active={activeSection === 'history'} href="#history">History</a>
-			<a class:nav-active={activeSection === 'resources'} href="#resources">Resources</a>
+			<a class:nav-active={activeSection === 'work-trade'} href={dashboardHref('work-trade')}
+				>Work trade</a
+			>
+			<a class:nav-active={activeSection === 'history'} href={dashboardHref('history')}>History</a>
+			<a class:nav-active={activeSection === 'resources'} href={dashboardHref('resources')}
+				>Resources</a
+			>
+			<a class:nav-active={activeSection === 'profile'} href={dashboardHref('profile')}>Profile</a>
 			{#if viewerCapabilities.canManageProjects && !isViewingAs}
-				<a class:nav-active={activeSection === 'admin'} href="#admin">
+				<a class:nav-active={activeSection === 'admin'} href={dashboardHref('admin')}>
 					{viewerCapabilities.isAdmin ? 'Admin' : 'Projects'}
 				</a>
+				<a href={resolve('/social')}>Social</a>
 			{/if}
 		</nav>
+		<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		<div class="dashboard-header-actions">
 			<NotificationCenter
 				shifts={upcomingMemberShifts}
@@ -165,63 +194,68 @@
 	{/if}
 
 	<main class="dashboard-main" id="main-content">
-		<section class="welcome-card" id="overview">
-			<div>
-				<p class="eyebrow">Member overview</p>
-				<h1>Hi, {firstName}.</h1>
-				<p>Your CoLab membership, studio tools, and community resources live here.</p>
-			</div>
-			<span class="membership-pill">{member.membershipType || 'CoLab Member'}</span>
-		</section>
+		{#if activeSection === 'overview'}
+			<section class="welcome-card" id="overview">
+				<div>
+					<p class="eyebrow">Member overview</p>
+					<h1>Hi, {firstName}.</h1>
+					<p>Here’s what’s coming up for you at the CoLab.</p>
+				</div>
+				<span class="membership-pill">{member.membershipType || 'CoLab Member'}</span>
+			</section>
 
-		<UpcomingMemberPanel
-			shifts={upcomingMemberShifts}
-			projects={upcomingProjects}
-			availableShifts={initialAvailableShifts}
-			readOnly={isViewingAs}
-		/>
+			<UpcomingMemberPanel
+				shifts={upcomingMemberShifts}
+				projects={upcomingProjects}
+				availableShifts={initialAvailableShifts}
+				readOnly={isViewingAs}
+			/>
+		{/if}
 
-		<article class="resources-card dashboard-top-resources" id="resources">
-			<p class="eyebrow">Quick links</p>
-			<h2>Resources</h2>
-			<div class="resource-links">
-				{#if lockboxCode}
-					<div class="resource-detail">
-						<span>Studio lock-box code</span>
-						<code>{lockboxCode}</code>
-					</div>
-				{/if}
-				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-				<a href="https://portal.queerlective.com/login" target="_blank" rel="noreferrer">
-					<span>Manage CoLab member retail</span><span aria-hidden="true">↗</span>
-				</a>
-				{#if capabilities.canSubmitCommunityEvents}
-					<a href="https://wkf.ms/4aSHDGu" target="_blank" rel="noreferrer">
-						<span>Submit a community-led event</span><span aria-hidden="true">↗</span>
-					</a>
-				{/if}
-				<a href="https://wkf.ms/4sNxnqk" target="_blank" rel="noreferrer">
-					<span>Request materials or equipment</span><span aria-hidden="true">↗</span>
-				</a>
-				<a href="mailto:Randall@queerlective.com">
-					<span>Contact CoLab support</span><span aria-hidden="true">→</span>
-				</a>
-				{#if websiteUrl}
+		{#if activeSection === 'resources'}<article
+				class="resources-card dashboard-top-resources"
+				id="resources"
+			>
+				<p class="eyebrow">Quick links</p>
+				<h2>Resources</h2>
+				<div class="resource-links">
+					{#if lockboxCode}
+						<div class="resource-detail">
+							<span>Studio lock-box code</span>
+							<code>{lockboxCode}</code>
+						</div>
+					{/if}
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-					<a href={websiteUrl} target="_blank" rel="noreferrer">
-						<span>Your website</span><span aria-hidden="true">↗</span>
+					<a href="https://portal.queerlective.com/login" target="_blank" rel="noreferrer">
+						<span>Manage CoLab member retail</span><span aria-hidden="true">↗</span>
 					</a>
-				{/if}
-				{#if creativeGroundUrl}
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-					<a href={creativeGroundUrl} target="_blank" rel="noreferrer">
-						<span>Your CreativeGround profile</span><span aria-hidden="true">↗</span>
+					{#if capabilities.canSubmitCommunityEvents}
+						<a href="https://wkf.ms/4aSHDGu" target="_blank" rel="noreferrer">
+							<span>Submit a community-led event</span><span aria-hidden="true">↗</span>
+						</a>
+					{/if}
+					<a href="https://wkf.ms/4sNxnqk" target="_blank" rel="noreferrer">
+						<span>Request materials or equipment</span><span aria-hidden="true">↗</span>
 					</a>
-				{/if}
-			</div>
-		</article>
+					<a href="mailto:Randall@queerlective.com">
+						<span>Contact CoLab support</span><span aria-hidden="true">→</span>
+					</a>
+					{#if websiteUrl}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={websiteUrl} target="_blank" rel="noreferrer">
+							<span>Your website</span><span aria-hidden="true">↗</span>
+						</a>
+					{/if}
+					{#if creativeGroundUrl}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={creativeGroundUrl} target="_blank" rel="noreferrer">
+							<span>Your CreativeGround profile</span><span aria-hidden="true">↗</span>
+						</a>
+					{/if}
+				</div>
+			</article>{/if}
 
-		{#if capabilities.canViewShifts}
+		{#if activeSection === 'shifts' && capabilities.canViewShifts}
 			<ShiftPanel
 				isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
 				readOnly={isViewingAs}
@@ -229,77 +263,88 @@
 			/>
 		{/if}
 
-		{#if capabilities.canViewCalendar}
+		{#if activeSection === 'calendar' && capabilities.canViewCalendar}
 			<CalendarPanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
 		{/if}
 
-		{#if capabilities.canVote}
+		{#if activeSection === 'votes' && capabilities.canVote}
 			<VotePanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
 		{/if}
 
-		<WorkTradePanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
+		{#if activeSection === 'work-trade'}
+			<WorkTradePanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
+		{/if}
 
-		<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />
+		{#if activeSection === 'history'}
+			<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />
+		{/if}
 
-		<section class="member-details-grid profile-only" id="profile" aria-label="Member identity">
-			<article class="profile-card">
-				<div class="section-heading compact">
-					<div>
-						<p class="eyebrow">Member identity</p>
-						<h2>Profile</h2>
+		{#if activeSection === 'profile'}<section
+				class="member-details-grid profile-only"
+				id="profile"
+				aria-label="Member identity"
+			>
+				<article class="profile-card">
+					<div class="section-heading compact">
+						<div>
+							<p class="eyebrow">Member identity</p>
+							<h2>Profile</h2>
+						</div>
+						<span class="member-id">ID {member.id}</span>
 					</div>
-					<span class="member-id">ID {member.id}</span>
-				</div>
-				<dl class="profile-list">
-					<div>
-						<dt>Preferred name</dt>
-						<dd>{member.preferredName}</dd>
-					</div>
-					<div>
-						<dt>Email</dt>
-						<dd>{member.email}</dd>
-					</div>
-					{#if member.businessName}<div>
-							<dt>Business</dt>
-							<dd>{member.businessName}</dd>
-						</div>{/if}
-					{#if member.phone}<div>
-							<dt>Phone</dt>
-							<dd>{member.phone}</dd>
-						</div>{/if}
-					{#if member.signUpDate}<div>
-							<dt>Member since</dt>
-							<dd>{member.signUpDate}</dd>
-						</div>{/if}
-				</dl>
-				{#if !hasProfileDetails}
-					<ContentState
-						kind="empty"
-						title="Your basic membership is connected"
-						message="Additional profile details can be added through the CoLab team."
-					/>
-				{/if}
-			</article>
-		</section>
+					<dl class="profile-list">
+						<div>
+							<dt>Preferred name</dt>
+							<dd>{member.preferredName}</dd>
+						</div>
+						<div>
+							<dt>Email</dt>
+							<dd>{member.email}</dd>
+						</div>
+						{#if member.businessName}<div>
+								<dt>Business</dt>
+								<dd>{member.businessName}</dd>
+							</div>{/if}
+						{#if member.phone}<div>
+								<dt>Phone</dt>
+								<dd>{member.phone}</dd>
+							</div>{/if}
+						{#if member.signUpDate}<div>
+								<dt>Member since</dt>
+								<dd>{member.signUpDate}</dd>
+							</div>{/if}
+					</dl>
+					{#if !hasProfileDetails}
+						<ContentState
+							kind="empty"
+							title="Your basic membership is connected"
+							message="Additional profile details can be added through the CoLab team."
+						/>
+					{/if}
+				</article>
+			</section>{/if}
 
-		{#if viewerCapabilities.canManageProjects && !isViewingAs}
+		{#if activeSection === 'admin' && viewerCapabilities.canManageProjects && !isViewingAs}
 			<AdminProjectsPanel isAdmin={viewerCapabilities.isAdmin} />
 		{/if}
 	</main>
 
+	<!-- dashboardHref resolves the root route before adding the selected view query -->
+	<!-- eslint-disable svelte/no-navigation-without-resolve -->
 	<nav class="mobile-nav dashboard-mobile-nav" aria-label="Mobile member navigation">
-		<a class:active={activeSection === 'overview'} href="#overview">Overview</a>
+		<a class:active={activeSection === 'overview'} href={dashboardHref('overview')}>Overview</a>
 		{#if capabilities.canViewCalendar}
-			<a class:active={activeSection === 'calendar'} href="#calendar">Calendar</a>
+			<a class:active={activeSection === 'calendar'} href={dashboardHref('calendar')}>Calendar</a>
 		{:else if capabilities.canViewShifts}
-			<a class:active={activeSection === 'shifts'} href="#shifts">Shifts</a>
+			<a class:active={activeSection === 'shifts'} href={dashboardHref('shifts')}>Shifts</a>
 		{:else}
-			<a class:active={activeSection === 'history'} href="#history">History</a>
+			<a class:active={activeSection === 'history'} href={dashboardHref('history')}>History</a>
 		{/if}
-		<a class:active={activeSection === 'resources'} href="#resources">Resources</a>
+		<a class:active={activeSection === 'resources'} href={dashboardHref('resources')}>Resources</a>
 		<button
 			type="button"
-			class:active={moreMenuOpen}
+			class:active={moreMenuOpen ||
+				['votes', 'work-trade', 'history', 'profile', 'admin'].includes(activeSection)}
 			aria-expanded={moreMenuOpen}
 			aria-controls="mobile-more-menu"
 			onclick={() => (moreMenuOpen = !moreMenuOpen)}
@@ -307,6 +352,7 @@
 			More
 		</button>
 	</nav>
+	<!-- eslint-enable svelte/no-navigation-without-resolve -->
 
 	{#if moreMenuOpen}
 		<button
@@ -321,17 +367,24 @@
 				<h2>More</h2>
 				<button type="button" class="text-button" onclick={closeMobileMenu}>Close</button>
 			</div>
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
 			<nav aria-label="More dashboard sections">
-				{#if capabilities.canViewShifts}<a href="#shifts" onclick={closeMobileMenu}>Shifts</a>{/if}
-				{#if capabilities.canVote}<a href="#votes" onclick={closeMobileMenu}>Community votes</a
+				{#if capabilities.canViewShifts}<a href={dashboardHref('shifts')} onclick={closeMobileMenu}
+						>Shifts</a
 					>{/if}
-				<a href="#history" onclick={closeMobileMenu}>History and payments</a>
-				<a href="#resources" onclick={closeMobileMenu}>Resources</a>
-				<a href="#profile" onclick={closeMobileMenu}>Profile</a>
+				{#if capabilities.canVote}<a href={dashboardHref('votes')} onclick={closeMobileMenu}
+						>Community votes</a
+					>{/if}
+				<a href={dashboardHref('work-trade')} onclick={closeMobileMenu}>Work-trade discount</a>
+				<a href={dashboardHref('history')} onclick={closeMobileMenu}>History and payments</a>
+				<a href={dashboardHref('resources')} onclick={closeMobileMenu}>Resources</a>
+				<a href={dashboardHref('profile')} onclick={closeMobileMenu}>Profile</a>
 				{#if viewerCapabilities.canManageProjects && !isViewingAs}
-					<a href="#admin" onclick={closeMobileMenu}>Project management</a>
+					<a href={dashboardHref('admin')} onclick={closeMobileMenu}>Project management</a>
+					<a href={resolve('/social')} onclick={closeMobileMenu}>Social content</a>
 				{/if}
 			</nav>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		</div>
 	{/if}
 </div>

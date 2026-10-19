@@ -27,6 +27,7 @@
 		<a href={resolve('/#resources')}>Resources</a>
 		{#if capabilities.canManageProjects}
 			<a href={resolve('/#admin')}>{capabilities.isAdmin ? 'Admin' : 'Projects'}</a>
+			<a href={resolve('/social')}>Social</a>
 		{/if}
 	</nav>
 	<div class="member-menu">

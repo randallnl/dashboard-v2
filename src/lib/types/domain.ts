@@ -206,3 +206,78 @@ export type CalendarEvent = {
 	attachments: EventAttachment[];
 	pageUrl: string;
 };
+
+export const SOCIAL_PLATFORMS = [
+	'facebook',
+	'instagram',
+	'tiktok',
+	'bluesky',
+	'threads',
+	'youtube'
+] as const;
+
+export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+export type SocialPostStatus = 'draft' | 'review' | 'scheduled' | 'published';
+export type SocialPostReviewAction = 'submitted' | 'approved' | 'changes_requested' | 'commented';
+
+export type SocialPostChannel = {
+	platform: SocialPlatform;
+	copy: string;
+	status: SocialPostStatus;
+	scheduledAt: string;
+	publishedAt: string;
+	publishedUrl: string;
+};
+
+export type SocialPostAsset = {
+	id: string;
+	postId: string;
+	storage: 'r2' | 'source';
+	objectKey: string;
+	sourceUrl: string;
+	filename: string;
+	contentType: string;
+	byteSize: number;
+	createdAt: string;
+};
+
+export type SocialLibraryAsset = {
+	id: string;
+	objectKey: string;
+	filename: string;
+	contentType: string;
+	byteSize: number;
+	altText: string;
+	tags: string[];
+	credit: string;
+	createdByMemberId: string;
+	createdAt: string;
+};
+
+export type SocialPostReview = {
+	id: string;
+	postId: string;
+	action: SocialPostReviewAction;
+	note: string;
+	memberId: string;
+	memberName: string;
+	createdAt: string;
+};
+
+export type SocialPost = {
+	id: string;
+	title: string;
+	copy: string;
+	status: SocialPostStatus;
+	scheduledAt: string;
+	publishedAt: string;
+	publishedUrl: string;
+	projectSource: ProjectEventSource | '';
+	projectId: string;
+	createdByMemberId: string;
+	createdAt: string;
+	updatedAt: string;
+	channels: SocialPostChannel[];
+	assets: SocialPostAsset[];
+	reviews: SocialPostReview[];
+};

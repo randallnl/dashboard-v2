@@ -16,6 +16,12 @@
 			"database_id": "fd34016a-db11-4ee7-8103-73f149118172"
 		}
 	],
+	"r2_buckets": [
+		{
+			"binding": "SOCIAL_MEDIA_ASSETS",
+			"bucket_name": "queerlective-social-assets"
+		}
+	],
 	"secrets_store_secrets": [
 		{
 			"binding": "MONDAY_API_TOKEN",

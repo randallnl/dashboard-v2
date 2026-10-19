@@ -612,6 +612,16 @@
 			<p class="eyebrow">{data.record.source} dashboard</p>
 			<h1>{recordTitle}</h1>
 			<p>{recordDate}</p>
+			{#if data.canEdit}
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				<a
+					class="project-social-action"
+					href={resolve('/social') +
+						`?source=${data.record.source}&id=${encodeURIComponent(data.record.id)}`}
+					>Create social draft →</a
+				>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			{/if}
 			<div class="project-pills item-dashboard-pills" aria-label="Project attributes">
 				{#if recordStatus}
 					<span class="project-pill pill-status">Status · {recordStatus}</span>
