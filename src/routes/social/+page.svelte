@@ -619,8 +619,8 @@
 			<span class="brand-mark" aria-hidden="true">Q</span><span>CoLab</span>
 		</a>
 		<nav aria-label="Workspace navigation">
-			<a href={resolve('/#overview')}>Dashboard</a>
-			<a href={resolve('/#admin')}>Projects</a>
+			<a href={resolve('/')}>Dashboard</a>
+			<a href={resolve('/projects')}>Projects</a>
 			<a class="nav-active" href={resolve('/social')}>Social content</a>
 		</nav>
 		<div class="member-menu">

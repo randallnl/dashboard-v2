@@ -595,13 +595,15 @@
 
 <ProjectDashboardHeader
 	member={data.member}
-	capabilities={data.capabilities}
+	canManageProjects={data.canEdit}
+	canViewCalendar={data.capabilities.canViewCalendar}
+	isAdmin={data.isAdmin}
 	source={data.record.source}
 	title={recordTitle}
 />
 
 <main class="item-dashboard" id="main-content">
-	<a href={resolve('/#calendar')}>← Back to dashboard</a>
+	<a href={data.canEdit ? resolve('/projects') : resolve('/?view=calendar')}>← Back to dashboard</a>
 	<header
 		class:has-hero-image={Boolean(heroImage)}
 		style:background-image={heroImage

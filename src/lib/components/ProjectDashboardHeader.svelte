@@ -1,15 +1,19 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { Member, MemberCapabilities, ProjectEventSource } from '$lib/types/domain';
+	import type { Member, ProjectEventSource } from '$lib/types/domain';
 
 	let {
 		member,
-		capabilities,
+		canManageProjects,
+		canViewCalendar,
+		isAdmin,
 		source,
 		title
 	}: {
 		member: Member;
-		capabilities: MemberCapabilities;
+		canManageProjects: boolean;
+		canViewCalendar: boolean;
+		isAdmin: boolean;
 		source: ProjectEventSource;
 		title: string;
 	} = $props();
@@ -21,12 +25,13 @@
 		<span>CoLab</span>
 	</a>
 	<nav aria-label="Project dashboard navigation">
-		<a href={resolve('/#overview')}>Dashboard</a>
-		{#if capabilities.canViewCalendar}<a href={resolve('/#calendar')}>Calendar</a>{/if}
+		<a href={resolve('/')}>Dashboard</a>
+		{#if canViewCalendar}<a href={resolve('/?view=calendar')}>Calendar</a>{/if}
 		<a class="nav-active" href="#main-content">Project</a>
-		<a href={resolve('/#resources')}>Resources</a>
-		{#if capabilities.canManageProjects}
-			<a href={resolve('/#admin')}>{capabilities.isAdmin ? 'Admin' : 'Projects'}</a>
+		<a href={resolve('/?view=resources')}>Resources</a>
+		{#if canManageProjects}
+			<a href={resolve('/projects')}>Projects</a>
+			{#if isAdmin}<a href={resolve('/?view=admin')}>Admin</a>{/if}
 			<a href={resolve('/social')}>Social</a>
 		{/if}
 	</nav>
@@ -50,8 +55,8 @@
 </nav>
 
 <nav class="mobile-nav project-mobile-nav" aria-label="Mobile project navigation">
-	<a href={resolve('/#overview')}>Dashboard</a>
-	{#if capabilities.canViewCalendar}<a href={resolve('/#calendar')}>Calendar</a>{/if}
+	<a href={resolve('/')}>Dashboard</a>
+	{#if canViewCalendar}<a href={resolve('/?view=calendar')}>Calendar</a>{/if}
 	<a href="#main-content">Project</a>
-	<a href={resolve('/#resources')}>Resources</a>
+	<a href={resolve('/?view=resources')}>Resources</a>
 </nav>

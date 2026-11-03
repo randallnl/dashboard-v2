@@ -87,7 +87,7 @@
 		if (requested === 'shifts' && !capabilities.canViewShifts) return 'overview';
 		if (requested === 'calendar' && !capabilities.canViewCalendar) return 'overview';
 		if (requested === 'votes' && !capabilities.canVote) return 'overview';
-		if (requested === 'admin' && (!viewerCapabilities.canManageProjects || isViewingAs)) {
+		if (requested === 'admin' && (!viewerCapabilities.isAdmin || isViewingAs)) {
 			return 'overview';
 		}
 		return requested as DashboardView;
@@ -171,9 +171,10 @@
 			>
 			<a class:nav-active={activeSection === 'profile'} href={dashboardHref('profile')}>Profile</a>
 			{#if viewerCapabilities.canManageProjects && !isViewingAs}
-				<a class:nav-active={activeSection === 'admin'} href={dashboardHref('admin')}>
-					{viewerCapabilities.isAdmin ? 'Admin' : 'Projects'}
-				</a>
+				<a href={resolve('/projects')}>Projects</a>
+				{#if viewerCapabilities.isAdmin}
+					<a class:nav-active={activeSection === 'admin'} href={dashboardHref('admin')}>Admin</a>
+				{/if}
 				<a href={resolve('/social')}>Social</a>
 			{/if}
 		</nav>
@@ -344,8 +345,8 @@
 				</article>
 			</section>{/if}
 
-		{#if activeSection === 'admin' && viewerCapabilities.canManageProjects && !isViewingAs}
-			<AdminProjectsPanel isAdmin={viewerCapabilities.isAdmin} />
+		{#if activeSection === 'admin' && viewerCapabilities.isAdmin && !isViewingAs}
+			<AdminProjectsPanel isAdmin />
 		{/if}
 	</main>
 
@@ -402,7 +403,10 @@
 				<a href={dashboardHref('documents')} onclick={closeMobileMenu}>CoLab documents</a>
 				<a href={dashboardHref('profile')} onclick={closeMobileMenu}>Profile</a>
 				{#if viewerCapabilities.canManageProjects && !isViewingAs}
-					<a href={dashboardHref('admin')} onclick={closeMobileMenu}>Project management</a>
+					<a href={resolve('/projects')} onclick={closeMobileMenu}>Projects</a>
+					{#if viewerCapabilities.isAdmin}
+						<a href={dashboardHref('admin')} onclick={closeMobileMenu}>Admin</a>
+					{/if}
 					<a href={resolve('/social')} onclick={closeMobileMenu}>Social content</a>
 				{/if}
 			</nav>
