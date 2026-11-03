@@ -9,6 +9,8 @@
 		rootFolderId: string;
 		documents: DriveDocument[];
 		sync: DriveSyncState;
+		favoriteIds: string[];
+		recentlyViewedIds: string[];
 	};
 	type DocumentFilter = 'all' | 'document' | 'spreadsheet' | 'presentation' | 'pdf' | 'image';
 
@@ -22,6 +24,10 @@
 	let filter = $state<DocumentFilter>('all');
 	let listView = $state(false);
 	let selected = $state<DriveDocument | null>(null);
+	let favoriteOnly = $state(false);
+	const favoriteIds = new SvelteSet<string>();
+	let recentlyViewedIds = $state<string[]>([]);
+	let personalizationMessage = $state('');
 
 	async function loadDocuments() {
 		loading = true;
@@ -32,6 +38,9 @@
 			const payload = (await response.json()) as DocumentsResponse;
 			documents = payload.documents;
 			sync = payload.sync;
+			favoriteIds.clear();
+			for (const id of payload.favoriteIds) favoriteIds.add(id);
+			recentlyViewedIds = payload.recentlyViewedIds;
 			rootFolderId = payload.rootFolderId;
 			if (!currentFolderId) currentFolderId = payload.rootFolderId;
 		} catch (cause) {
@@ -62,14 +71,23 @@
 			.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
 			.slice(0, 4)
 	);
+	const recentlyViewed = $derived(
+		recentlyViewedIds
+			.map((id) => files.find((document) => document.id === id))
+			.filter((document): document is DriveDocument => Boolean(document))
+			.slice(0, 4)
+	);
 	const visibleDocuments = $derived.by(() => {
 		const query = search.trim().toLocaleLowerCase('en-US');
 		const candidates = query
 			? documents.filter((item) =>
 					`${item.name} ${pathLabel(item)}`.toLocaleLowerCase('en-US').includes(query)
 				)
-			: documents.filter((item) => item.parentId === currentFolderId);
+			: favoriteOnly
+				? files
+				: documents.filter((item) => item.parentId === currentFolderId);
 		return candidates
+			.filter((item) => !favoriteOnly || favoriteIds.has(item.id))
 			.filter((item) => item.isFolder || filter === 'all' || fileCategory(item) === filter)
 			.sort((a, b) =>
 				a.isFolder !== b.isFolder ? (a.isFolder ? -1 : 1) : a.name.localeCompare(b.name)
@@ -160,6 +178,38 @@
 		search = '';
 		filter = 'all';
 	}
+
+	async function saveInteraction(body: Record<string, unknown>) {
+		const response = await fetch('/api/documents', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		if (!response.ok) throw new Error('Your document preferences could not be saved.');
+	}
+
+	async function toggleFavorite(document: DriveDocument) {
+		const favorite = !favoriteIds.has(document.id);
+		if (favorite) favoriteIds.add(document.id);
+		else favoriteIds.delete(document.id);
+		personalizationMessage = favorite ? 'Added to favorites.' : 'Removed from favorites.';
+		try {
+			await saveInteraction({ action: 'favorite', documentId: document.id, favorite });
+		} catch (cause) {
+			if (favorite) favoriteIds.delete(document.id);
+			else favoriteIds.add(document.id);
+			personalizationMessage = cause instanceof Error ? cause.message : 'Preference not saved.';
+		}
+	}
+
+	function openDocument(document: DriveDocument) {
+		selected = document;
+		recentlyViewedIds = [
+			document.id,
+			...recentlyViewedIds.filter((id) => id !== document.id)
+		].slice(0, 8);
+		void saveInteraction({ action: 'view', documentId: document.id }).catch(() => undefined);
+	}
 </script>
 
 <section class="document-library" id="documents" aria-labelledby="documents-title">
@@ -230,6 +280,14 @@
 					onclick={() => (listView = true)}>List</button
 				>
 			</div>
+			<button
+				type="button"
+				class="document-favorites-filter"
+				class:active={favoriteOnly}
+				aria-pressed={favoriteOnly}
+				onclick={() => (favoriteOnly = !favoriteOnly)}
+				>★ Favorites {favoriteIds.size ? `(${favoriteIds.size})` : ''}</button
+			>
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a
 				href="https://drive.google.com/drive/folders/1wEEDbh0PmGiPkdS6S_LfLZeIcQtOSIEm"
@@ -237,19 +295,26 @@
 				rel="noreferrer">Open Drive ↗</a
 			>
 		</div>
+		<p class="sr-only" aria-live="polite">{personalizationMessage}</p>
 
-		{#if !search && currentFolderId === rootFolderId && recentDocuments.length}
+		{#if !search && !favoriteOnly && currentFolderId === rootFolderId && (recentlyViewed.length || recentDocuments.length)}
 			<section class="document-recent" aria-labelledby="recent-documents-title">
 				<div class="document-section-heading">
 					<div>
 						<p class="eyebrow">Quick access</p>
-						<h2 id="recent-documents-title">Recently updated</h2>
+						<h2 id="recent-documents-title">
+							{recentlyViewed.length ? 'Recently viewed' : 'Recently updated'}
+						</h2>
 					</div>
-					<span>The latest changes from Drive</span>
+					<span
+						>{recentlyViewed.length
+							? 'Pick up where you left off'
+							: 'The latest changes from Drive'}</span
+					>
 				</div>
 				<div class="document-recent-row">
-					{#each recentDocuments as document (document.id)}
-						<button type="button" onclick={() => (selected = document)}
+					{#each recentlyViewed.length ? recentlyViewed : recentDocuments as document (document.id)}
+						<button type="button" onclick={() => openDocument(document)}
 							><span class={`document-icon type-${fileCategory(document)}`} aria-hidden="true"
 								>{icon(document)}</span
 							><span
@@ -263,7 +328,7 @@
 			</section>
 		{/if}
 
-		{#if !search}
+		{#if !search && !favoriteOnly}
 			<nav class="document-breadcrumbs" aria-label="Document folder breadcrumbs">
 				<button
 					type="button"
@@ -282,7 +347,13 @@
 		{/if}
 
 		<div class="document-results-heading">
-			<h2>{search ? 'Search results' : breadcrumbs.at(-1)?.name || 'Browse all documents'}</h2>
+			<h2>
+				{favoriteOnly
+					? 'Favorite documents'
+					: search
+						? 'Search results'
+						: breadcrumbs.at(-1)?.name || 'Browse all documents'}
+			</h2>
 			<span>{visibleDocuments.length} {visibleDocuments.length === 1 ? 'item' : 'items'}</span>
 		</div>
 		{#if visibleDocuments.length}
@@ -297,17 +368,29 @@
 								><span class="document-icon type-folder" aria-hidden="true">{icon(document)}</span
 								><span><strong>{document.name}</strong><small>Folder · Open to browse</small></span
 								><span class="document-open" aria-hidden="true">→</span></button
-							>{:else}<button type="button" onclick={() => (selected = document)}
-								><span class={`document-icon type-${fileCategory(document)}`} aria-hidden="true"
-									>{icon(document)}</span
-								><span
-									><strong>{document.name}</strong><small
-										>{typeLabel(document)}{document.modifiedAt
-											? ` · Updated ${formatDate(document.modifiedAt)}`
-											: ''}</small
-									>{#if search}<small class="document-path">{pathLabel(document)}</small>{/if}</span
-								><span class="document-open">Preview</span></button
-							>{/if}
+							>{:else}<div class="document-card">
+								<button type="button" onclick={() => openDocument(document)}
+									><span class={`document-icon type-${fileCategory(document)}`} aria-hidden="true"
+										>{icon(document)}</span
+									><span
+										><strong>{document.name}</strong><small
+											>{typeLabel(document)}{document.modifiedAt
+												? ` · Updated ${formatDate(document.modifiedAt)}`
+												: ''}</small
+										>{#if search}<small class="document-path">{pathLabel(document)}</small
+											>{/if}</span
+									><span class="document-open">Preview</span></button
+								><button
+									class="document-favorite-action"
+									class:active={favoriteIds.has(document.id)}
+									type="button"
+									aria-label={favoriteIds.has(document.id)
+										? `Remove ${document.name} from favorites`
+										: `Add ${document.name} to favorites`}
+									aria-pressed={favoriteIds.has(document.id)}
+									onclick={() => toggleFavorite(document)}>★</button
+								>
+							</div>{/if}
 					</li>
 				{/each}
 			</ul>
@@ -317,9 +400,11 @@
 				title={search ? 'No matching documents' : 'No documents found'}
 				message={search
 					? 'Try another name, folder, or file-type filter.'
-					: filter === 'all'
-						? 'Files added in Google Drive will appear after the next sync.'
-						: 'Try selecting another file type.'}
+					: favoriteOnly
+						? 'Use the star on a document to keep it handy here.'
+						: filter === 'all'
+							? 'Files added in Google Drive will appear after the next sync.'
+							: 'Try selecting another file type.'}
 			/>
 		{/if}
 	{/if}
@@ -383,6 +468,12 @@
 					type="button"
 					onclick={() => navigator.clipboard.writeText(selected?.webViewUrl || '')}
 					>Copy link</button
+				>
+				<button
+					type="button"
+					class:active={favoriteIds.has(selected.id)}
+					onclick={() => selected && toggleFavorite(selected)}
+					>{favoriteIds.has(selected.id) ? '★ Favorited' : '☆ Add to favorites'}</button
 				>
 			</div>
 		</div>

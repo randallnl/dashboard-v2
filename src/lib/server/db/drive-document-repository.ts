@@ -72,4 +72,69 @@ export class DriveDocumentRepository {
 			errorMessage: row?.error_message ?? ''
 		};
 	}
+
+	async personalization(memberId: string): Promise<{
+		favoriteIds: string[];
+		recentlyViewedIds: string[];
+	}> {
+		const result = await this.db
+			.prepare(
+				`SELECT interaction.document_id, interaction.is_favorite, interaction.last_viewed_at
+				 FROM drive_document_interactions interaction
+				 INNER JOIN drive_documents document ON document.id = interaction.document_id
+				 WHERE interaction.member_id = ?
+				 ORDER BY interaction.last_viewed_at DESC`
+			)
+			.bind(memberId)
+			.all<{ document_id: string; is_favorite: number; last_viewed_at: string }>();
+		return {
+			favoriteIds: result.results
+				.filter((row) => row.is_favorite === 1)
+				.map((row) => row.document_id),
+			recentlyViewedIds: result.results
+				.filter((row) => row.last_viewed_at)
+				.slice(0, 8)
+				.map((row) => row.document_id)
+		};
+	}
+
+	async isVisible(documentId: string, allowed: DriveDocumentVisibility[]): Promise<boolean> {
+		if (!allowed.length) return false;
+		const placeholders = allowed.map(() => '?').join(', ');
+		const row = await this.db
+			.prepare(
+				`SELECT id FROM drive_documents WHERE id = ? AND is_folder = 0 AND visibility IN (${placeholders})`
+			)
+			.bind(documentId, ...allowed)
+			.first<{ id: string }>();
+		return Boolean(row);
+	}
+
+	async setFavorite(memberId: string, documentId: string, favorite: boolean, now: string) {
+		await this.db
+			.prepare(
+				`INSERT INTO drive_document_interactions
+					(member_id, document_id, is_favorite, favorited_at)
+				 VALUES (?, ?, ?, ?)
+				 ON CONFLICT(member_id, document_id) DO UPDATE SET
+					is_favorite = excluded.is_favorite,
+					favorited_at = excluded.favorited_at`
+			)
+			.bind(memberId, documentId, favorite ? 1 : 0, favorite ? now : '')
+			.run();
+	}
+
+	async recordView(memberId: string, documentId: string, now: string) {
+		await this.db
+			.prepare(
+				`INSERT INTO drive_document_interactions
+					(member_id, document_id, last_viewed_at, view_count)
+				 VALUES (?, ?, ?, 1)
+				 ON CONFLICT(member_id, document_id) DO UPDATE SET
+					last_viewed_at = excluded.last_viewed_at,
+					view_count = drive_document_interactions.view_count + 1`
+			)
+			.bind(memberId, documentId, now)
+			.run();
+	}
 }
