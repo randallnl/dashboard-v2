@@ -116,6 +116,12 @@
 			mediaFiles.length +
 			(selectedPost ? 0 : selectedProjectAssetUrls.length + selectedLibraryAssetIds.length)
 	);
+	const workflowCounts = $derived.by(() => ({
+		drafts: posts.filter((post) => post.status === 'draft').length,
+		inReview: posts.filter((post) => post.status === 'review').length,
+		scheduled: posts.filter((post) => post.status === 'scheduled').length,
+		published: posts.filter((post) => post.status === 'published').length
+	}));
 	const visibleLibraryAssets = $derived(
 		libraryAssets.filter((asset) => {
 			const query = librarySearch.trim().toLocaleLowerCase();
@@ -636,472 +642,538 @@
 	<main class="social-main" id="main-content">
 		<section class="social-hero">
 			<div>
-				<p class="eyebrow">Team content studio</p>
-				<h1>Make the next post feel easy.</h1>
-				<p>
-					Draft once, shape it for the channels that matter, and keep every planned post in one
-					shared place.
-				</p>
+				<p class="eyebrow">Team publishing desk</p>
+				<h1>Keep the schedule moving.</h1>
+				<p>See what is due, create a post from scratch, and give every draft a clear next step.</p>
 			</div>
-			<button type="button" onclick={resetEditor}>+ New post</button>
+			<button type="button" onclick={resetEditor}>+ New independent post</button>
 		</section>
 
-		<section class="social-start-card" aria-labelledby="start-project-title">
-			<div>
-				<p class="eyebrow">Project shortcut</p>
-				<h2 id="start-project-title">Start with a project</h2>
-				<p>
-					Pull a project’s name, date, description, and existing visual assets into a new draft.
-				</p>
-			</div>
-			<div class="social-start-controls">
-				<label>
-					<span class="sr-only">Choose a project</span>
-					<select bind:value={projectPicker}>
-						<option value="">Choose a project item</option>
-						{#each data.projectItems as item (item.id)}
-							<option value={item.id}
-								>{item.title}{item.dateValue ? ` · ${item.dateValue}` : ''}</option
-							>
-						{/each}
-					</select>
-				</label>
-				<button
-					type="button"
-					class="secondary-action"
-					onclick={startFromProject}
-					disabled={!projectPicker}>Generate draft</button
+		<section class="social-content-hub">
+			<aside class="social-tool-rail" aria-label="Content creation tools">
+				<section class="social-rail-card social-create-card" aria-labelledby="create-content-title">
+					<p class="eyebrow">Start here</p>
+					<h2 id="create-content-title">Create content</h2>
+					<p>Start with a blank post whenever you have an idea, update, or timely reminder.</p>
+					<button type="button" onclick={resetEditor}>+ Blank post</button>
+				</section>
+
+				<section
+					class="social-rail-card social-project-shortcut"
+					aria-labelledby="start-project-title"
 				>
-			</div>
-		</section>
-
-		<section class="social-calendar" aria-labelledby="social-calendar-title">
-			<div class="social-calendar-heading">
-				<div>
-					<p class="eyebrow">Plan ahead</p>
-					<h2 id="social-calendar-title">Weekly content calendar</h2>
-					<p>{calendarRange}</p>
-				</div>
-				<div class="social-calendar-controls" aria-label="Calendar week controls">
-					<button
-						type="button"
-						class="secondary-action"
-						onclick={() => (calendarWeekOffset -= 1)}
-						aria-label="Previous week">←</button
-					>
-					<button type="button" class="secondary-action" onclick={() => (calendarWeekOffset = 0)}
-						>This week</button
-					>
-					<button
-						type="button"
-						class="secondary-action"
-						onclick={() => (calendarWeekOffset += 1)}
-						aria-label="Next week">→</button
-					>
-				</div>
-			</div>
-			<div class="social-calendar-grid">
-				{#each calendarDays as day (day.key)}
-					<section
-						class:today={day.key === calendarDateKey(new Date())}
-						class="social-calendar-day"
-					>
-						<header>
-							<time datetime={day.key}>
-								<span
-									>{new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(day.date)}</span
+					<p class="eyebrow">Optional context</p>
+					<h2 id="start-project-title">Start from a project</h2>
+					<p>Bring its details and existing graphics into a draft when they are useful.</p>
+					<label>
+						<span class="sr-only">Choose a project</span>
+						<select bind:value={projectPicker}>
+							<option value="">Choose a project item</option>
+							{#each data.projectItems as item (item.id)}
+								<option value={item.id}
+									>{item.title}{item.dateValue ? ` · ${item.dateValue}` : ''}</option
 								>
-								<strong>{day.date.getDate()}</strong>
-							</time>
-						</header>
-						{#if day.posts.length}
-							<div class="social-calendar-posts">
-								{#each day.posts as post (post.id)}
-									<button
-										type="button"
-										class:selected={post.id === selectedId}
-										class="social-calendar-post"
-										onclick={() => openPost(post)}
-									>
-										<span>{timeLabel(post.scheduledAt)}</span><strong>{post.title}</strong>
-									</button>
-								{/each}
-							</div>
-						{:else}
-							<p>No posts scheduled</p>
-						{/if}
-					</section>
-				{/each}
-			</div>
-		</section>
+							{/each}
+						</select>
+					</label>
+					<button type="button" onclick={startFromProject} disabled={!projectPicker}
+						>Generate draft</button
+					>
+				</section>
 
-		<section class="social-layout">
-			<form
-				class="social-editor"
-				onsubmit={(event) => {
-					event.preventDefault();
-					void savePost();
-				}}
-			>
-				<div class="social-editor-heading">
-					<div>
-						<p class="eyebrow">{selectedPost ? 'Working draft' : 'Create independently'}</p>
-						<h2>{formHeading}</h2>
-					</div>
-					{#if selectedPost}
-						<button type="button" class="text-button" onclick={resetEditor}>Create another</button>
-					{/if}
-				</div>
-
-				{#if project}
-					<p class="social-project-link">
-						<span>From project</span><a
-							href={resolve('/items/[source]/[id]', { source: project.source, id: project.id })}
-							>{project.title}</a
-						>
-					</p>
-					{#if !selectedPost}
-						<section class="social-project-reference" aria-labelledby="project-reference-title">
-							<div class="social-reference-heading">
-								<div>
-									<p class="eyebrow">Project reference</p>
-									<h3 id="project-reference-title">{project.title}</h3>
-								</div>
-								{#if projectGraphics.length}
-									<span
-										>{selectedProjectGraphicCount}/{projectGraphics.length} graphics selected</span
-									>
-								{/if}
-							</div>
-							{#if project.details?.length}
-								<dl class="social-reference-details">
-									{#each project.details as detail (detail.label)}
-										<div>
-											<dt>{detail.label}</dt>
-											<dd>{detail.value}</dd>
-										</div>
-									{/each}
-								</dl>
-							{/if}
-							{#if project.description}
-								<p class="social-reference-description">{project.description}</p>
-							{/if}
-							{#if projectGraphics.length}
-								<fieldset class="social-project-graphic-picker">
-									<legend>Use project graphics in this post</legend>
-									<div>
-										{#each projectGraphics as graphic (graphic.sourceUrl)}
-											<label class:selected={projectGraphicSelected(graphic)}>
-												<input
-													type="checkbox"
-													checked={projectGraphicSelected(graphic)}
-													onchange={() => toggleProjectGraphic(graphic)}
-												/>
-												<img src={graphic.sourceUrl} alt="" />
-												<span>{graphic.filename}</span>
-											</label>
-										{/each}
-									</div>
-								</fieldset>
-							{:else}
-								<p class="social-reference-empty">This project has no image attachments yet.</p>
-							{/if}
-						</section>
-					{/if}
-				{/if}
-
-				<label class="social-title-field"
-					><span>Working title</span><input bind:value={title} maxlength="160" required /></label
+				<section
+					class="social-rail-card social-template-tools"
+					aria-labelledby="draft-starters-title"
 				>
-				<label class="social-copy-field">
-					<span>Post copy</span>
-					<textarea
-						bind:value={copy}
-						rows="9"
-						maxlength="10000"
-						placeholder="Write the post…"
-						required></textarea>
-					<small>{copy.length}/10,000 characters</small>
-				</label>
-
-				<fieldset class="social-template-picker">
-					<legend>Quick-start templates</legend>
-					<p>Insert a reusable outline, then replace the bracketed prompts with the specifics.</p>
-					<div>
+					<p class="eyebrow">Prompt kit</p>
+					<h2 id="draft-starters-title">Draft starters</h2>
+					<p>Choose an outline, then make it your own in the editor.</p>
+					<div class="social-rail-template-list">
 						{#each contentTemplates as template (template.label)}
 							<button type="button" onclick={() => applyTemplate(template)}>{template.label}</button
 							>
 						{/each}
 					</div>
-				</fieldset>
+				</section>
 
-				<fieldset class="social-platform-picker">
-					<legend>Where should this post go?</legend>
-					<div>
-						{#each platforms as platform (platform.value)}
-							<label class:chosen={isPlatformSelected(platform.value)}>
-								<input
-									type="checkbox"
-									checked={isPlatformSelected(platform.value)}
-									onchange={() => togglePlatform(platform.value)}
-								/>
-								<span>{platform.label}</span>
-							</label>
-						{/each}
-					</div>
-				</fieldset>
-
-				{#if selectedPlatforms.length}
-					<fieldset class="social-channel-versions">
-						<legend>Channel versions &amp; preflight</legend>
-						<p>Keep the shared copy, or tailor a channel without creating a separate post.</p>
-						<div>
-							{#each selectedPlatforms as platform (platform)}
-								<section class="social-channel-version">
-									<header>
-										<div>
-											<strong>{platformLabel(platform)}</strong>
-											<span
-												>{channelUsesSharedCopy(platform)
-													? 'Using shared copy'
-													: 'Custom version'}</span
-											>
-										</div>
-										<span>{channelCopy(platform).length} characters</span>
-									</header>
-									<textarea
-										value={channelCopy(platform)}
-										rows="4"
-										maxlength="10000"
-										oninput={(event) =>
-											setChannelCopy(platform, (event.currentTarget as HTMLTextAreaElement).value)}
-									></textarea>
-									<div class="social-channel-version-footer">
-										<ul>
-											<li class="social-channel-version-guide">{channelGuides[platform]}</li>
-											{#each channelPreflight(platform) as check (check)}
-												<li>{check}</li>
-											{/each}
-										</ul>
-										{#if !channelUsesSharedCopy(platform)}
-											<button type="button" onclick={() => resetChannelCopy(platform)}
-												>Use shared copy</button
-											>
-										{/if}
-									</div>
-								</section>
-							{/each}
-						</div>
-					</fieldset>
-				{/if}
-
-				<div class="social-schedule-grid">
-					<label>
-						<span>Workflow</span>
-						<select bind:value={status}>
-							<option value="draft">Draft</option>
-							<option value="review">Ready for review</option>
-							<option value="scheduled">Scheduled</option>
-							<option value="published">Published manually</option>
-						</select>
-					</label>
-					{#if status === 'scheduled'}
-						<label
-							><span>Publish time</span><input
-								bind:value={scheduledAt}
-								type="datetime-local"
-								required
-							/></label
-						>
-					{:else if status === 'published'}
-						<label
-							><span>Published time</span><input
-								bind:value={publishedAt}
-								type="datetime-local"
-								required
-							/></label
-						>
-					{/if}
-				</div>
-				{#if status === 'published'}
-					<label
-						><span>Live post link (optional)</span><input
-							bind:value={publishedUrl}
-							type="url"
-							placeholder="https://…"
-						/></label
+				<a class="social-library-shortcut" href="#asset-library-title">
+					<span aria-hidden="true">▣</span>
+					<span
+						><strong>Asset library</strong><small>{libraryAssets.length} shared visuals</small
+						></span
 					>
-				{/if}
+				</a>
+			</aside>
 
-				<label class="social-media-input">
-					<span>Visuals</span>
-					<input
-						bind:this={mediaInput}
-						type="file"
-						accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime"
-						multiple
-						onchange={selectMedia}
-					/>
-					<small>JPG, PNG, GIF, WebP, MP4, or MOV · up to 20 MB per file</small>
-					{#if mediaFiles.length}<strong
-							>{mediaFiles.length} file{mediaFiles.length === 1 ? '' : 's'} ready to upload</strong
-						>{/if}
-				</label>
-
-				{#if selectedPost}
-					<section class="social-review-workflow" aria-labelledby="review-workflow-title">
-						<div class="social-review-heading">
-							<div>
-								<p class="eyebrow">Team review</p>
-								<h3 id="review-workflow-title">Approval trail</h3>
-							</div>
-							<span class={`social-status ${selectedPost.status}`}
-								>{postStatusLabel(selectedPost)}</span
-							>
+			<div class="social-schedule-column">
+				<section class="social-calendar" aria-labelledby="social-calendar-title">
+					<div class="social-calendar-heading">
+						<div>
+							<p class="eyebrow">Publishing plan</p>
+							<h2 id="social-calendar-title">Scheduled content</h2>
+							<p>{calendarRange}</p>
 						</div>
-						<p>
-							Keep feedback and decisions beside the draft so the next person knows exactly what is
-							ready to schedule.
-						</p>
-						<label>
-							<span>Review note</span>
-							<textarea
-								bind:value={reviewNote}
-								rows="3"
-								maxlength="2000"
-								placeholder="Share feedback, context, or an approval note…"></textarea>
-						</label>
-						<div class="social-review-actions">
-							{#if selectedPost.status !== 'review'}
-								<button
-									type="button"
-									onclick={() => void requestReview()}
-									disabled={saving || reviewSaving}>Request review</button
-								>
-							{:else}
-								<button
-									type="button"
-									class="approve-action"
-									onclick={() => void saveReview('approved')}
-									disabled={reviewSaving}>Approve</button
-								>
-								<button
-									type="button"
-									class="secondary-action"
-									onclick={() => void saveReview('changes_requested')}
-									disabled={reviewSaving}>Request changes</button
-								>
-							{/if}
+						<div class="social-calendar-controls" aria-label="Calendar week controls">
 							<button
 								type="button"
 								class="secondary-action"
-								onclick={() => void saveReview('commented')}
-								disabled={reviewSaving || !reviewNote.trim()}>Add comment</button
+								onclick={() => (calendarWeekOffset -= 1)}
+								aria-label="Previous week">←</button
 							>
-						</div>
-						{#if selectedPost.reviews.length}
-							<ol class="social-review-history">
-								{#each selectedPost.reviews as review (review.id)}
-									<li>
-										<div>
-											<strong>{review.memberName}</strong>
-											<span>{reviewActionLabel(review.action)}</span>
-											<time datetime={review.createdAt}>{dateLabel(review.createdAt)}</time>
-										</div>
-										{#if review.note}<p>{review.note}</p>{/if}
-									</li>
-								{/each}
-							</ol>
-						{:else}
-							<p class="social-review-empty">No review activity yet.</p>
-						{/if}
-					</section>
-				{/if}
-
-				<div class="social-editor-actions">
-					<button type="submit" disabled={saving}>{saving ? 'Saving…' : formLabel}</button>
-					<button
-						type="button"
-						class="secondary-action"
-						onclick={copyToClipboard}
-						disabled={!copy.trim()}>Copy text</button
-					>
-				</div>
-				{#if message}<p
-						class:form-error={failed}
-						class="social-message"
-						role={failed ? 'alert' : 'status'}
-					>
-						{message}
-					</p>{/if}
-				<p class="social-integration-note">
-					Scheduled posts stay in this shared queue. Direct publishing will become available after
-					each social account is connected.
-				</p>
-			</form>
-
-			<aside class="social-posts" aria-labelledby="social-posts-title">
-				<div class="social-list-heading">
-					<div>
-						<p class="eyebrow">Shared queue</p>
-						<h2 id="social-posts-title">Content calendar</h2>
-					</div>
-					<span>{posts.length}</span>
-				</div>
-				{#if loading}
-					<p class="social-empty">Loading the team’s drafts…</p>
-				{:else if loadError}
-					<div class="social-empty">
-						<p>{loadError}</p>
-						<button type="button" onclick={loadPosts}>Try again</button>
-					</div>
-				{:else if !posts.length}
-					<p class="social-empty">
-						No social posts yet. Create a draft from scratch or start with a project.
-					</p>
-				{:else}
-					<div class="social-post-list">
-						{#each posts as post (post.id)}
 							<button
 								type="button"
-								class:selected={post.id === selectedId}
-								class="social-post-card"
-								onclick={() => openPost(post)}
+								class="secondary-action"
+								onclick={() => (calendarWeekOffset = 0)}>This week</button
 							>
-								<div class="social-card-media">
-									{#if post.assets[0]}
-										{#if isVideo(post.assets[0])}
-											<span aria-label="Video attachment">▶</span>
-										{:else}
-											<img src={assetUrl(post.assets[0])} alt="" />
-										{/if}
-									{:else}<span aria-hidden="true">✦</span>{/if}
-								</div>
-								<div>
-									<div class="social-card-title">
-										<strong>{post.title}</strong><span class={`social-status ${post.status}`}
-											>{postStatusLabel(post)}</span
-										>
-									</div>
-									<p>{post.copy}</p>
-									<div class="social-card-meta">
+							<button
+								type="button"
+								class="secondary-action"
+								onclick={() => (calendarWeekOffset += 1)}
+								aria-label="Next week">→</button
+							>
+						</div>
+					</div>
+					<div class="social-calendar-grid">
+						{#each calendarDays as day (day.key)}
+							<section
+								class:today={day.key === calendarDateKey(new Date())}
+								class="social-calendar-day"
+							>
+								<header>
+									<time datetime={day.key}>
 										<span
-											>{post.channels
-												.map(
-													(channel) =>
-														platforms.find((platform) => platform.value === channel.platform)?.label
-												)
-												.join(' · ')}</span
+											>{new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(
+												day.date
+											)}</span
 										>
-										{#if post.scheduledAt}<time datetime={post.scheduledAt}
-												>{dateLabel(post.scheduledAt)}</time
-											>{/if}
+										<strong>{day.date.getDate()}</strong>
+									</time>
+								</header>
+								{#if day.posts.length}
+									<div class="social-calendar-posts">
+										{#each day.posts as post (post.id)}
+											<button
+												type="button"
+												class:selected={post.id === selectedId}
+												class="social-calendar-post"
+												onclick={() => openPost(post)}
+											>
+												<span>{timeLabel(post.scheduledAt)}</span><strong>{post.title}</strong>
+											</button>
+										{/each}
 									</div>
-								</div>
-							</button>
+								{:else}
+									<p>No posts scheduled</p>
+								{/if}
+							</section>
 						{/each}
 					</div>
-				{/if}
+				</section>
+
+				<section class="social-layout">
+					<form
+						class="social-editor"
+						onsubmit={(event) => {
+							event.preventDefault();
+							void savePost();
+						}}
+					>
+						<div class="social-editor-heading">
+							<div>
+								<p class="eyebrow">{selectedPost ? 'Working draft' : 'Create independently'}</p>
+								<h2>{formHeading}</h2>
+							</div>
+							{#if selectedPost}
+								<button type="button" class="text-button" onclick={resetEditor}
+									>Create another</button
+								>
+							{/if}
+						</div>
+
+						{#if project}
+							<p class="social-project-link">
+								<span>From project</span><a
+									href={resolve('/items/[source]/[id]', { source: project.source, id: project.id })}
+									>{project.title}</a
+								>
+							</p>
+							{#if !selectedPost}
+								<section class="social-project-reference" aria-labelledby="project-reference-title">
+									<div class="social-reference-heading">
+										<div>
+											<p class="eyebrow">Project reference</p>
+											<h3 id="project-reference-title">{project.title}</h3>
+										</div>
+										{#if projectGraphics.length}
+											<span
+												>{selectedProjectGraphicCount}/{projectGraphics.length} graphics selected</span
+											>
+										{/if}
+									</div>
+									{#if project.details?.length}
+										<dl class="social-reference-details">
+											{#each project.details as detail (detail.label)}
+												<div>
+													<dt>{detail.label}</dt>
+													<dd>{detail.value}</dd>
+												</div>
+											{/each}
+										</dl>
+									{/if}
+									{#if project.description}
+										<p class="social-reference-description">{project.description}</p>
+									{/if}
+									{#if projectGraphics.length}
+										<fieldset class="social-project-graphic-picker">
+											<legend>Use project graphics in this post</legend>
+											<div>
+												{#each projectGraphics as graphic (graphic.sourceUrl)}
+													<label class:selected={projectGraphicSelected(graphic)}>
+														<input
+															type="checkbox"
+															checked={projectGraphicSelected(graphic)}
+															onchange={() => toggleProjectGraphic(graphic)}
+														/>
+														<img src={graphic.sourceUrl} alt="" />
+														<span>{graphic.filename}</span>
+													</label>
+												{/each}
+											</div>
+										</fieldset>
+									{:else}
+										<p class="social-reference-empty">This project has no image attachments yet.</p>
+									{/if}
+								</section>
+							{/if}
+						{/if}
+
+						<label class="social-title-field"
+							><span>Working title</span><input
+								bind:value={title}
+								maxlength="160"
+								required
+							/></label
+						>
+						<label class="social-copy-field">
+							<span>Post copy</span>
+							<textarea
+								bind:value={copy}
+								rows="9"
+								maxlength="10000"
+								placeholder="Write the post…"
+								required></textarea>
+							<small>{copy.length}/10,000 characters</small>
+						</label>
+
+						<fieldset class="social-platform-picker">
+							<legend>Where should this post go?</legend>
+							<div>
+								{#each platforms as platform (platform.value)}
+									<label class:chosen={isPlatformSelected(platform.value)}>
+										<input
+											type="checkbox"
+											checked={isPlatformSelected(platform.value)}
+											onchange={() => togglePlatform(platform.value)}
+										/>
+										<span>{platform.label}</span>
+									</label>
+								{/each}
+							</div>
+						</fieldset>
+
+						{#if selectedPlatforms.length}
+							<fieldset class="social-channel-versions">
+								<legend>Channel versions &amp; preflight</legend>
+								<p>Keep the shared copy, or tailor a channel without creating a separate post.</p>
+								<div>
+									{#each selectedPlatforms as platform (platform)}
+										<section class="social-channel-version">
+											<header>
+												<div>
+													<strong>{platformLabel(platform)}</strong>
+													<span
+														>{channelUsesSharedCopy(platform)
+															? 'Using shared copy'
+															: 'Custom version'}</span
+													>
+												</div>
+												<span>{channelCopy(platform).length} characters</span>
+											</header>
+											<textarea
+												value={channelCopy(platform)}
+												rows="4"
+												maxlength="10000"
+												oninput={(event) =>
+													setChannelCopy(
+														platform,
+														(event.currentTarget as HTMLTextAreaElement).value
+													)}></textarea>
+											<div class="social-channel-version-footer">
+												<ul>
+													<li class="social-channel-version-guide">{channelGuides[platform]}</li>
+													{#each channelPreflight(platform) as check (check)}
+														<li>{check}</li>
+													{/each}
+												</ul>
+												{#if !channelUsesSharedCopy(platform)}
+													<button type="button" onclick={() => resetChannelCopy(platform)}
+														>Use shared copy</button
+													>
+												{/if}
+											</div>
+										</section>
+									{/each}
+								</div>
+							</fieldset>
+						{/if}
+
+						<div class="social-schedule-grid">
+							<label>
+								<span>Workflow</span>
+								<select bind:value={status}>
+									<option value="draft">Draft</option>
+									<option value="review">Ready for review</option>
+									<option value="scheduled">Scheduled</option>
+									<option value="published">Published manually</option>
+								</select>
+							</label>
+							{#if status === 'scheduled'}
+								<label
+									><span>Publish time</span><input
+										bind:value={scheduledAt}
+										type="datetime-local"
+										required
+									/></label
+								>
+							{:else if status === 'published'}
+								<label
+									><span>Published time</span><input
+										bind:value={publishedAt}
+										type="datetime-local"
+										required
+									/></label
+								>
+							{/if}
+						</div>
+						{#if status === 'published'}
+							<label
+								><span>Live post link (optional)</span><input
+									bind:value={publishedUrl}
+									type="url"
+									placeholder="https://…"
+								/></label
+							>
+						{/if}
+
+						<label class="social-media-input">
+							<span>Visuals</span>
+							<input
+								bind:this={mediaInput}
+								type="file"
+								accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime"
+								multiple
+								onchange={selectMedia}
+							/>
+							<small>JPG, PNG, GIF, WebP, MP4, or MOV · up to 20 MB per file</small>
+							{#if mediaFiles.length}<strong
+									>{mediaFiles.length} file{mediaFiles.length === 1 ? '' : 's'} ready to upload</strong
+								>{/if}
+						</label>
+
+						{#if selectedPost}
+							<section class="social-review-workflow" aria-labelledby="review-workflow-title">
+								<div class="social-review-heading">
+									<div>
+										<p class="eyebrow">Team review</p>
+										<h3 id="review-workflow-title">Approval trail</h3>
+									</div>
+									<span class={`social-status ${selectedPost.status}`}
+										>{postStatusLabel(selectedPost)}</span
+									>
+								</div>
+								<p>
+									Keep feedback and decisions beside the draft so the next person knows exactly what
+									is ready to schedule.
+								</p>
+								<label>
+									<span>Review note</span>
+									<textarea
+										bind:value={reviewNote}
+										rows="3"
+										maxlength="2000"
+										placeholder="Share feedback, context, or an approval note…"></textarea>
+								</label>
+								<div class="social-review-actions">
+									{#if selectedPost.status !== 'review'}
+										<button
+											type="button"
+											onclick={() => void requestReview()}
+											disabled={saving || reviewSaving}>Request review</button
+										>
+									{:else}
+										<button
+											type="button"
+											class="approve-action"
+											onclick={() => void saveReview('approved')}
+											disabled={reviewSaving}>Approve</button
+										>
+										<button
+											type="button"
+											class="secondary-action"
+											onclick={() => void saveReview('changes_requested')}
+											disabled={reviewSaving}>Request changes</button
+										>
+									{/if}
+									<button
+										type="button"
+										class="secondary-action"
+										onclick={() => void saveReview('commented')}
+										disabled={reviewSaving || !reviewNote.trim()}>Add comment</button
+									>
+								</div>
+								{#if selectedPost.reviews.length}
+									<ol class="social-review-history">
+										{#each selectedPost.reviews as review (review.id)}
+											<li>
+												<div>
+													<strong>{review.memberName}</strong>
+													<span>{reviewActionLabel(review.action)}</span>
+													<time datetime={review.createdAt}>{dateLabel(review.createdAt)}</time>
+												</div>
+												{#if review.note}<p>{review.note}</p>{/if}
+											</li>
+										{/each}
+									</ol>
+								{:else}
+									<p class="social-review-empty">No review activity yet.</p>
+								{/if}
+							</section>
+						{/if}
+
+						<div class="social-editor-actions">
+							<button type="submit" disabled={saving}>{saving ? 'Saving…' : formLabel}</button>
+							<button
+								type="button"
+								class="secondary-action"
+								onclick={copyToClipboard}
+								disabled={!copy.trim()}>Copy text</button
+							>
+						</div>
+						{#if message}<p
+								class:form-error={failed}
+								class="social-message"
+								role={failed ? 'alert' : 'status'}
+							>
+								{message}
+							</p>{/if}
+						<p class="social-integration-note">
+							Scheduled posts stay in this shared queue. Direct publishing will become available
+							after each social account is connected.
+						</p>
+					</form>
+				</section>
+			</div>
+
+			<aside class="social-context-rail" aria-label="Publishing context">
+				<section
+					class="social-rail-card social-workflow-summary"
+					aria-labelledby="workflow-summary-title"
+				>
+					<p class="eyebrow">At a glance</p>
+					<h2 id="workflow-summary-title">Publishing status</h2>
+					<dl>
+						<div>
+							<dt>Drafts</dt>
+							<dd>{workflowCounts.drafts}</dd>
+						</div>
+						<div>
+							<dt>In review</dt>
+							<dd>{workflowCounts.inReview}</dd>
+						</div>
+						<div>
+							<dt>Scheduled</dt>
+							<dd>{workflowCounts.scheduled}</dd>
+						</div>
+						<div>
+							<dt>Published</dt>
+							<dd>{workflowCounts.published}</dd>
+						</div>
+					</dl>
+				</section>
+
+				<section class="social-rail-card social-scheduling-note">
+					<p class="eyebrow">Planning cue</p>
+					<h2>Give it a next step</h2>
+					<p>
+						Keep posts in Draft while shaping them, move them to Review for feedback, then set a
+						publish time when they are ready.
+					</p>
+				</section>
+
+				<section class="social-posts" aria-labelledby="social-posts-title">
+					<div class="social-list-heading">
+						<div>
+							<p class="eyebrow">All content</p>
+							<h2 id="social-posts-title">Content queue</h2>
+						</div>
+						<span>{posts.length}</span>
+					</div>
+					{#if loading}
+						<p class="social-empty">Loading the team’s drafts…</p>
+					{:else if loadError}
+						<div class="social-empty">
+							<p>{loadError}</p>
+							<button type="button" onclick={loadPosts}>Try again</button>
+						</div>
+					{:else if !posts.length}
+						<p class="social-empty">
+							No social posts yet. Create a draft from scratch or start with a project.
+						</p>
+					{:else}
+						<div class="social-post-list">
+							{#each posts as post (post.id)}
+								<button
+									type="button"
+									class:selected={post.id === selectedId}
+									class="social-post-card"
+									onclick={() => openPost(post)}
+								>
+									<div class="social-card-media">
+										{#if post.assets[0]}
+											{#if isVideo(post.assets[0])}
+												<span aria-label="Video attachment">▶</span>
+											{:else}
+												<img src={assetUrl(post.assets[0])} alt="" />
+											{/if}
+										{:else}<span aria-hidden="true">✦</span>{/if}
+									</div>
+									<div>
+										<div class="social-card-title">
+											<strong>{post.title}</strong><span class={`social-status ${post.status}`}
+												>{postStatusLabel(post)}</span
+											>
+										</div>
+										<p>{post.copy}</p>
+										<div class="social-card-meta">
+											<span
+												>{post.channels
+													.map(
+														(channel) =>
+															platforms.find((platform) => platform.value === channel.platform)
+																?.label
+													)
+													.join(' · ')}</span
+											>
+											{#if post.scheduledAt}<time datetime={post.scheduledAt}
+													>{dateLabel(post.scheduledAt)}</time
+												>{/if}
+										</div>
+									</div>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</section>
 			</aside>
 		</section>
 
