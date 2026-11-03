@@ -10,4 +10,17 @@ describe('request boundary headers', () => {
 		expect(response.headers.get('x-frame-options')).toBe('DENY');
 		expect(response.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
 	});
+
+	it('allows only Queerlective to embed the public CoLab updates page', () => {
+		const response = applyResponseHeaders(
+			new Response('ok'),
+			'request-123',
+			'/embed/colab-updates'
+		);
+
+		expect(response.headers.get('x-frame-options')).toBeNull();
+		expect(response.headers.get('content-security-policy')).toBe(
+			"frame-ancestors 'self' https://queerlective.com https://www.queerlective.com"
+		);
+	});
 });

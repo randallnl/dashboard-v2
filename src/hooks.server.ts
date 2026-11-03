@@ -7,14 +7,22 @@ import type { Handle, HandleServerError } from '@sveltejs/kit';
 const SECURITY_HEADERS = {
 	'referrer-policy': 'strict-origin-when-cross-origin',
 	'x-content-type-options': 'nosniff',
-	'x-frame-options': 'DENY',
 	'permissions-policy': 'camera=(), microphone=(), geolocation=()'
 } as const;
 
-export function applyResponseHeaders(response: Response, requestId: string): Response {
+const EMBEDDABLE_COLAB_UPDATES_PATH = '/embed/colab-updates';
+const COLAB_EMBED_ANCESTORS = "'self' https://queerlective.com https://www.queerlective.com";
+
+export function applyResponseHeaders(response: Response, requestId: string, path = ''): Response {
 	response.headers.set('x-request-id', requestId);
 	for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
 		response.headers.set(name, value);
+	}
+	if (path === EMBEDDABLE_COLAB_UPDATES_PATH) {
+		response.headers.set('content-security-policy', `frame-ancestors ${COLAB_EMBED_ANCESTORS}`);
+		response.headers.delete('x-frame-options');
+	} else {
+		response.headers.set('x-frame-options', 'DENY');
 	}
 	return response;
 }
@@ -27,7 +35,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const env = event.platform?.env;
 
 	if (!token || !env?.DB) {
-		return applyResponseHeaders(await resolve(event), requestId);
+		return applyResponseHeaders(await resolve(event), requestId, event.url.pathname);
 	}
 
 	const sessionHash = await hashToken(token);
@@ -42,7 +50,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			secure: true,
 			sameSite: 'lax'
 		});
-		return applyResponseHeaders(await resolve(event), requestId);
+		return applyResponseHeaders(await resolve(event), requestId, event.url.pathname);
 	}
 
 	const session: AuthenticatedSession = {
@@ -70,7 +78,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	return applyResponseHeaders(await resolve(event), requestId);
+	return applyResponseHeaders(await resolve(event), requestId, event.url.pathname);
 };
 
 export const handleError: HandleServerError = ({ error, event, status, message }) => {

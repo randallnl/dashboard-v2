@@ -78,6 +78,9 @@
 	const activeSection = $derived.by(() => {
 		const requested = page.url.searchParams.get('view');
 		if (!dashboardViews.includes(requested as DashboardView)) return 'overview';
+		if (requested === 'shifts' && capabilities.canViewCalendar && capabilities.canViewShifts) {
+			return 'calendar';
+		}
 		if (requested === 'shifts' && !capabilities.canViewShifts) return 'overview';
 		if (requested === 'calendar' && !capabilities.canViewCalendar) return 'overview';
 		if (requested === 'votes' && !capabilities.canVote) return 'overview';
@@ -142,12 +145,12 @@
 			<a class:nav-active={activeSection === 'overview'} href={dashboardHref('overview')}
 				>Overview</a
 			>
-			{#if capabilities.canViewShifts}
+			{#if capabilities.canViewShifts && !capabilities.canViewCalendar}
 				<a class:nav-active={activeSection === 'shifts'} href={dashboardHref('shifts')}>Shifts</a>
 			{/if}
 			{#if capabilities.canViewCalendar}
 				<a class:nav-active={activeSection === 'calendar'} href={dashboardHref('calendar')}
-					>Calendar</a
+					>Schedule</a
 				>
 			{/if}
 			{#if capabilities.canVote}
@@ -264,6 +267,13 @@
 		{/if}
 
 		{#if activeSection === 'calendar' && capabilities.canViewCalendar}
+			{#if capabilities.canViewShifts}
+				<ShiftPanel
+					isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
+					readOnly={isViewingAs}
+					{initialAvailableShifts}
+				/>
+			{/if}
 			<CalendarPanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
 		{/if}
 
@@ -334,7 +344,7 @@
 	<nav class="mobile-nav dashboard-mobile-nav" aria-label="Mobile member navigation">
 		<a class:active={activeSection === 'overview'} href={dashboardHref('overview')}>Overview</a>
 		{#if capabilities.canViewCalendar}
-			<a class:active={activeSection === 'calendar'} href={dashboardHref('calendar')}>Calendar</a>
+			<a class:active={activeSection === 'calendar'} href={dashboardHref('calendar')}>Schedule</a>
 		{:else if capabilities.canViewShifts}
 			<a class:active={activeSection === 'shifts'} href={dashboardHref('shifts')}>Shifts</a>
 		{:else}
@@ -369,8 +379,9 @@
 			</div>
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
 			<nav aria-label="More dashboard sections">
-				{#if capabilities.canViewShifts}<a href={dashboardHref('shifts')} onclick={closeMobileMenu}
-						>Shifts</a
+				{#if capabilities.canViewShifts && !capabilities.canViewCalendar}<a
+						href={dashboardHref('shifts')}
+						onclick={closeMobileMenu}>Shifts</a
 					>{/if}
 				{#if capabilities.canVote}<a href={dashboardHref('votes')} onclick={closeMobileMenu}
 						>Community votes</a
