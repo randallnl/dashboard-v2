@@ -4,11 +4,21 @@
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"compatibility_date": "2026-07-24",
 	"compatibility_flags": ["nodejs_compat"],
+	"keep_vars": true,
+	"workers_dev": true,
+	"preview_urls": true,
 	"assets": {
 		"directory": ".svelte-kit/cloudflare",
 		"binding": "ASSETS",
 		"run_worker_first": true
 	},
+	"routes": [
+		{
+			"pattern": "dashboard.queerlective.com",
+			"zone_name": "queerlective.com",
+			"custom_domain": true
+		}
+	],
 	"d1_databases": [
 		{
 			"binding": "DB",

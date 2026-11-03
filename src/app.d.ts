@@ -6,6 +6,11 @@
 import type { AuthenticatedSession } from '$lib/server/auth/types';
 
 declare global {
+	interface Env {
+		COLAB_DISCORD_PUBLIC_KEY: string;
+		COLAB_DISCORD_CHANNEL_ID: string;
+	}
+
 	namespace App {
 		interface Error {
 			message: string;

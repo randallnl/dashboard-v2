@@ -1,3 +1,5 @@
 # Copy to .dev.vars for local development. Never commit real secrets.
 MONDAY_API_TOKEN=
+COLAB_DISCORD_PUBLIC_KEY=
+COLAB_DISCORD_CHANNEL_ID=
 
