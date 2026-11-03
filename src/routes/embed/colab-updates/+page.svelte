@@ -1,12 +1,55 @@
 <script lang="ts">
 	import { displayColabDate } from '$lib/public/colab-updates';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
+
+	const EMBED_PARENT_ORIGINS = new Set([
+		'https://queerlective.com',
+		'https://www.queerlective.com'
+	]);
 
 	let { data }: { data: PageData } = $props();
 
 	const weekLabel = $derived(
 		`${displayColabDate(data.week.from)} – ${displayColabDate(data.week.through)}`
 	);
+
+	function embedParentOrigin(): string {
+		if (window.parent === window || !document.referrer) return '';
+		try {
+			const origin = new URL(document.referrer).origin;
+			return EMBED_PARENT_ORIGINS.has(origin) ? origin : '';
+		} catch {
+			return '';
+		}
+	}
+
+	onMount(() => {
+		const targetOrigin = embedParentOrigin();
+		if (!targetOrigin) return;
+
+		const publishHeight = () => {
+			const height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+			window.parent.postMessage(
+				{ source: 'queerlective-colab-updates', type: 'resize', height },
+				targetOrigin
+			);
+		};
+
+		const observer = new ResizeObserver(publishHeight);
+		observer.observe(document.documentElement);
+		observer.observe(document.body);
+		const initialFrame = requestAnimationFrame(publishHeight);
+		window.addEventListener('load', publishHeight);
+		window.addEventListener('resize', publishHeight);
+
+		return () => {
+			cancelAnimationFrame(initialFrame);
+			observer.disconnect();
+			window.removeEventListener('load', publishHeight);
+			window.removeEventListener('resize', publishHeight);
+		};
+	});
 </script>
 
 <svelte:head>
