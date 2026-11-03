@@ -594,18 +594,24 @@
 	.care-note ul {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.6rem;
+		gap: 0.7rem 1.25rem;
 		margin: 1.5rem 0 0;
 	}
 
 	.care-note li {
-		padding: 0.75rem 0.85rem;
-		border: 1px solid rgb(255 255 255 / 19%);
-		border-radius: 0.7rem;
-		background: rgb(255 255 255 / 9%);
-		font-size: 0.8rem;
+		position: relative;
+		padding-left: 1.35rem;
+		font-size: 0.84rem;
 		font-weight: 700;
 		line-height: 1.35;
+	}
+
+	.care-note li::before {
+		position: absolute;
+		left: 0;
+		color: #e0ea8b;
+		content: '✓';
+		font-weight: 900;
 	}
 
 	footer {
