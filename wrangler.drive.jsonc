@@ -1,0 +1,21 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "drive-dashboard-sync",
+	"main": "src/drive-sync-worker.ts",
+	"compatibility_date": "2026-11-03",
+	"compatibility_flags": ["nodejs_compat"],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "queerlective-dashboard",
+			"database_id": "fd34016a-db11-4ee7-8103-73f149118172"
+		}
+	],
+	"triggers": {
+		"crons": ["*/15 * * * *"]
+	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+}

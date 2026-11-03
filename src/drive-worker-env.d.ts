@@ -1,0 +1,5 @@
+interface DriveSyncEnv {
+	GOOGLE_DRIVE_CLIENT_EMAIL: string;
+	GOOGLE_DRIVE_ROOT_FOLDER_ID: string;
+	GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: string;
+}

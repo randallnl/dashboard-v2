@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/triple-slash-reference */
 /// <reference path="../worker-configuration.d.ts" />
 /// <reference path="../cron-worker-configuration.d.ts" />
+/// <reference path="../drive-worker-configuration.d.ts" />
 
 import type { AuthenticatedSession } from '$lib/server/auth/types';
 

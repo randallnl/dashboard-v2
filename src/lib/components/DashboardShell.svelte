@@ -2,6 +2,7 @@
 	import CalendarPanel from '$lib/components/CalendarPanel.svelte';
 	import AdminProjectsPanel from '$lib/components/AdminProjectsPanel.svelte';
 	import ContentState from '$lib/components/ContentState.svelte';
+	import DocumentLibrary from '$lib/components/DocumentLibrary.svelte';
 	import MemberHistoryPanel from '$lib/components/MemberHistoryPanel.svelte';
 	import NotificationCenter from '$lib/components/NotificationCenter.svelte';
 	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
@@ -57,6 +58,7 @@
 	type DashboardView =
 		| 'overview'
 		| 'resources'
+		| 'documents'
 		| 'shifts'
 		| 'calendar'
 		| 'votes'
@@ -67,6 +69,7 @@
 	const dashboardViews: DashboardView[] = [
 		'overview',
 		'resources',
+		'documents',
 		'shifts',
 		'calendar',
 		'votes',
@@ -162,6 +165,9 @@
 			<a class:nav-active={activeSection === 'history'} href={dashboardHref('history')}>History</a>
 			<a class:nav-active={activeSection === 'resources'} href={dashboardHref('resources')}
 				>Resources</a
+			>
+			<a class:nav-active={activeSection === 'documents'} href={dashboardHref('documents')}
+				>Documents</a
 			>
 			<a class:nav-active={activeSection === 'profile'} href={dashboardHref('profile')}>Profile</a>
 			{#if viewerCapabilities.canManageProjects && !isViewingAs}
@@ -289,6 +295,10 @@
 			<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />
 		{/if}
 
+		{#if activeSection === 'documents'}
+			<DocumentLibrary />
+		{/if}
+
 		{#if activeSection === 'profile'}<section
 				class="member-details-grid profile-only"
 				id="profile"
@@ -354,7 +364,7 @@
 		<button
 			type="button"
 			class:active={moreMenuOpen ||
-				['votes', 'work-trade', 'history', 'profile', 'admin'].includes(activeSection)}
+				['votes', 'work-trade', 'history', 'documents', 'profile', 'admin'].includes(activeSection)}
 			aria-expanded={moreMenuOpen}
 			aria-controls="mobile-more-menu"
 			onclick={() => (moreMenuOpen = !moreMenuOpen)}
@@ -389,6 +399,7 @@
 				<a href={dashboardHref('work-trade')} onclick={closeMobileMenu}>Work-trade discount</a>
 				<a href={dashboardHref('history')} onclick={closeMobileMenu}>History and payments</a>
 				<a href={dashboardHref('resources')} onclick={closeMobileMenu}>Resources</a>
+				<a href={dashboardHref('documents')} onclick={closeMobileMenu}>CoLab documents</a>
 				<a href={dashboardHref('profile')} onclick={closeMobileMenu}>Profile</a>
 				{#if viewerCapabilities.canManageProjects && !isViewingAs}
 					<a href={dashboardHref('admin')} onclick={closeMobileMenu}>Project management</a>
