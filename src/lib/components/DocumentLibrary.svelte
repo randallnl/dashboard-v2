@@ -11,6 +11,7 @@
 		sync: DriveSyncState;
 		favoriteIds: string[];
 		recentlyViewedIds: string[];
+		canCurate: boolean;
 	};
 	type DocumentFilter = 'all' | 'document' | 'spreadsheet' | 'presentation' | 'pdf' | 'image';
 
@@ -28,6 +29,24 @@
 	const favoriteIds = new SvelteSet<string>();
 	let recentlyViewedIds = $state<string[]>([]);
 	let personalizationMessage = $state('');
+	let canCurate = $state(false);
+	let categoryFilter = $state('');
+	let annotationCategory = $state('');
+	let annotationSummary = $state('');
+	let annotationKeywords = $state('');
+	let annotationFeatured = $state(false);
+	let annotationSaving = $state(false);
+	let annotationMessage = $state('');
+	const categoryOptions = [
+		'Policies',
+		'Operations',
+		'Finance',
+		'Marketing',
+		'Programs',
+		'Templates',
+		'Member resources',
+		'Other'
+	];
 
 	async function loadDocuments() {
 		loading = true;
@@ -41,6 +60,7 @@
 			favoriteIds.clear();
 			for (const id of payload.favoriteIds) favoriteIds.add(id);
 			recentlyViewedIds = payload.recentlyViewedIds;
+			canCurate = payload.canCurate;
 			rootFolderId = payload.rootFolderId;
 			if (!currentFolderId) currentFolderId = payload.rootFolderId;
 		} catch (cause) {
@@ -77,17 +97,24 @@
 			.filter((document): document is DriveDocument => Boolean(document))
 			.slice(0, 4)
 	);
+	const featuredDocuments = $derived(files.filter((document) => document.isFeatured).slice(0, 6));
+	const availableCategories = $derived(
+		[...new SvelteSet(files.map((document) => document.category).filter(Boolean))].sort()
+	);
 	const visibleDocuments = $derived.by(() => {
 		const query = search.trim().toLocaleLowerCase('en-US');
 		const candidates = query
 			? documents.filter((item) =>
-					`${item.name} ${pathLabel(item)}`.toLocaleLowerCase('en-US').includes(query)
+					`${item.name} ${item.category} ${item.summary} ${item.keywords} ${pathLabel(item)}`
+						.toLocaleLowerCase('en-US')
+						.includes(query)
 				)
 			: favoriteOnly
 				? files
 				: documents.filter((item) => item.parentId === currentFolderId);
 		return candidates
 			.filter((item) => !favoriteOnly || favoriteIds.has(item.id))
+			.filter((item) => !categoryFilter || item.isFolder || item.category === categoryFilter)
 			.filter((item) => item.isFolder || filter === 'all' || fileCategory(item) === filter)
 			.sort((a, b) =>
 				a.isFolder !== b.isFolder ? (a.isFolder ? -1 : 1) : a.name.localeCompare(b.name)
@@ -122,7 +149,6 @@
 		if (document.mimeType.startsWith('image/')) return 'image';
 		return 'file';
 	}
-
 	function typeLabel(document: DriveDocument): string {
 		if (document.isFolder) return 'Folder';
 		if (document.isShortcut) return 'Shortcut';
@@ -204,11 +230,41 @@
 
 	function openDocument(document: DriveDocument) {
 		selected = document;
+		annotationCategory = document.category;
+		annotationSummary = document.summary;
+		annotationKeywords = document.keywords;
+		annotationFeatured = document.isFeatured;
+		annotationMessage = '';
 		recentlyViewedIds = [
 			document.id,
 			...recentlyViewedIds.filter((id) => id !== document.id)
 		].slice(0, 8);
 		void saveInteraction({ action: 'view', documentId: document.id }).catch(() => undefined);
+	}
+
+	async function saveAnnotation() {
+		if (!selected) return;
+		annotationSaving = true;
+		annotationMessage = '';
+		try {
+			await saveInteraction({
+				action: 'annotate',
+				documentId: selected.id,
+				category: annotationCategory,
+				summary: annotationSummary,
+				keywords: annotationKeywords,
+				featured: annotationFeatured
+			});
+			selected.category = annotationCategory.trim();
+			selected.summary = annotationSummary.trim();
+			selected.keywords = annotationKeywords.trim();
+			selected.isFeatured = annotationFeatured;
+			annotationMessage = 'Document details saved.';
+		} catch (cause) {
+			annotationMessage = cause instanceof Error ? cause.message : 'Document details not saved.';
+		} finally {
+			annotationSaving = false;
+		}
 	}
 </script>
 
@@ -267,6 +323,14 @@
 					><option value="pdf">PDFs</option><option value="image">Images</option></select
 				></label
 			>
+			<label class="document-filter"
+				><span>Category</span><select bind:value={categoryFilter}
+					><option value="">All categories</option
+					>{#each availableCategories as category (category)}<option value={category}
+							>{category}</option
+						>{/each}</select
+				></label
+			>
 			<div class="document-view-toggle" aria-label="Document display">
 				<button
 					type="button"
@@ -296,6 +360,50 @@
 			>
 		</div>
 		<p class="sr-only" aria-live="polite">{personalizationMessage}</p>
+		{#if availableCategories.length}
+			<div class="document-category-shortcuts" aria-label="Browse document categories">
+				<button type="button" class:active={!categoryFilter} onclick={() => (categoryFilter = '')}
+					>All</button
+				>
+				{#each availableCategories as category (category)}
+					<button
+						type="button"
+						class:active={categoryFilter === category}
+						onclick={() => (categoryFilter = category)}>{category}</button
+					>
+				{/each}
+			</div>
+		{/if}
+
+		{#if !search && !favoriteOnly && currentFolderId === rootFolderId && featuredDocuments.length}
+			<section class="document-featured" aria-labelledby="featured-documents-title">
+				<div class="document-section-heading">
+					<div>
+						<p class="eyebrow">Start here</p>
+						<h2 id="featured-documents-title">Featured documents</h2>
+					</div>
+					<span>Important resources selected by the CoLab team</span>
+				</div>
+				<div class="document-featured-grid">
+					{#each featuredDocuments as document (document.id)}
+						<button type="button" onclick={() => openDocument(document)}>
+							<span class={`document-icon type-${fileCategory(document)}`} aria-hidden="true"
+								>{icon(document)}</span
+							>
+							<span>
+								{#if document.category}<small class="document-category-pill"
+										>{document.category}</small
+									>{/if}
+								<strong>{document.name}</strong>
+								{#if document.summary}<p>{document.summary}</p>{:else}<small
+										>{typeLabel(document)}</small
+									>{/if}
+							</span>
+						</button>
+					{/each}
+				</div>
+			</section>
+		{/if}
 
 		{#if !search && !favoriteOnly && currentFolderId === rootFolderId && (recentlyViewed.length || recentDocuments.length)}
 			<section class="document-recent" aria-labelledby="recent-documents-title">
@@ -377,7 +485,13 @@
 											>{typeLabel(document)}{document.modifiedAt
 												? ` · Updated ${formatDate(document.modifiedAt)}`
 												: ''}</small
-										>{#if search}<small class="document-path">{pathLabel(document)}</small
+										>{#if document.category}<small class="document-card-category"
+												>{document.category}</small
+											>{/if}
+										{#if document.summary}<small class="document-card-summary"
+												>{document.summary}</small
+											>{/if}
+										{#if search}<small class="document-path">{pathLabel(document)}</small
 											>{/if}</span
 									><span class="document-open">Preview</span></button
 								><button
@@ -452,6 +566,16 @@
 						<dt>Size</dt>
 						<dd>{formatSize(selected.byteSize)}</dd>
 					</div>{/if}
+				{#if selected.category || selected.summary || selected.isFeatured}
+					<div class="document-curated-details">
+						<div>
+							{#if selected.isFeatured}<span class="document-featured-pill">Featured</span>{/if}
+							{#if selected.category}<span class="document-category-pill">{selected.category}</span
+								>{/if}
+						</div>
+						{#if selected.summary}<p>{selected.summary}</p>{/if}
+					</div>
+				{/if}
 				<div>
 					<dt>Access</dt>
 					<dd class="document-access-pill">
@@ -476,6 +600,45 @@
 					>{favoriteIds.has(selected.id) ? '★ Favorited' : '☆ Add to favorites'}</button
 				>
 			</div>
+			{#if canCurate}
+				<details class="document-curation-editor">
+					<summary>Curate document details</summary>
+					<div class="document-curation-fields">
+						<label
+							>Category<select bind:value={annotationCategory}
+								><option value="">No category</option
+								>{#each categoryOptions as category (category)}<option value={category}
+										>{category}</option
+									>{/each}</select
+							></label
+						>
+						<label
+							>Plain-language summary<textarea
+								bind:value={annotationSummary}
+								maxlength="500"
+								rows="3"
+								placeholder="Explain what this document is and when members should use it."
+							></textarea></label
+						>
+						<label
+							>Search keywords and aliases<input
+								bind:value={annotationKeywords}
+								maxlength="300"
+								placeholder="Examples: lockbox, closing checklist, reimbursement"
+							/></label
+						>
+						<label class="document-featured-toggle"
+							><input type="checkbox" bind:checked={annotationFeatured} /> Feature this document at the
+							top of the library</label
+						>
+						<div>
+							<button type="button" disabled={annotationSaving} onclick={saveAnnotation}
+								>{annotationSaving ? 'Saving…' : 'Save details'}</button
+							><span aria-live="polite">{annotationMessage}</span>
+						</div>
+					</div>
+				</details>
+			{/if}
 		</div>
 	</div>
 {/if}

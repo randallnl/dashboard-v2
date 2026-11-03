@@ -15,6 +15,10 @@ export type DriveDocument = {
 	shortcutTargetId: string;
 	visibility: DriveDocumentVisibility;
 	syncedAt: string;
+	category: string;
+	summary: string;
+	keywords: string;
+	isFeatured: boolean;
 };
 
 export type DriveSyncState = {

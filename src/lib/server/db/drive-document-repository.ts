@@ -16,6 +16,10 @@ type DriveDocumentRow = {
 	shortcut_target_id: string;
 	visibility: DriveDocumentVisibility;
 	synced_at: string;
+	category: string;
+	summary: string;
+	keywords: string;
+	is_featured: number;
 };
 
 function mapDocument(row: DriveDocumentRow): DriveDocument {
@@ -33,7 +37,11 @@ function mapDocument(row: DriveDocumentRow): DriveDocument {
 		isShortcut: row.is_shortcut === 1,
 		shortcutTargetId: row.shortcut_target_id,
 		visibility: row.visibility,
-		syncedAt: row.synced_at
+		syncedAt: row.synced_at,
+		category: row.category,
+		summary: row.summary,
+		keywords: row.keywords,
+		isFeatured: row.is_featured === 1
 	};
 }
 
@@ -45,7 +53,15 @@ export class DriveDocumentRepository {
 		const placeholders = allowed.map(() => '?').join(', ');
 		const result = await this.db
 			.prepare(
-				`SELECT * FROM drive_documents WHERE visibility IN (${placeholders}) ORDER BY is_folder DESC, name COLLATE NOCASE`
+				`SELECT document.*,
+					COALESCE(annotation.category, '') AS category,
+					COALESCE(annotation.summary, '') AS summary,
+					COALESCE(annotation.keywords, '') AS keywords,
+					COALESCE(annotation.is_featured, 0) AS is_featured
+				 FROM drive_documents document
+				 LEFT JOIN drive_document_annotations annotation ON annotation.document_id = document.id
+				 WHERE document.visibility IN (${placeholders})
+				 ORDER BY document.is_folder DESC, document.name COLLATE NOCASE`
 			)
 			.bind(...allowed)
 			.all<DriveDocumentRow>();
@@ -135,6 +151,46 @@ export class DriveDocumentRepository {
 					view_count = drive_document_interactions.view_count + 1`
 			)
 			.bind(memberId, documentId, now)
+			.run();
+	}
+
+	async saveAnnotation(input: {
+		documentId: string;
+		category: string;
+		summary: string;
+		keywords: string;
+		featured: boolean;
+		updatedBy: string;
+		now: string;
+	}) {
+		await this.db
+			.prepare(
+				`INSERT INTO drive_document_annotations
+					(document_id, category, summary, keywords, is_featured, featured_at, updated_at, updated_by)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				 ON CONFLICT(document_id) DO UPDATE SET
+					category = excluded.category,
+					summary = excluded.summary,
+					keywords = excluded.keywords,
+					is_featured = excluded.is_featured,
+					featured_at = CASE
+						WHEN excluded.is_featured = 1 AND drive_document_annotations.is_featured = 0
+						THEN excluded.featured_at
+						ELSE drive_document_annotations.featured_at
+					END,
+					updated_at = excluded.updated_at,
+					updated_by = excluded.updated_by`
+			)
+			.bind(
+				input.documentId,
+				input.category,
+				input.summary,
+				input.keywords,
+				input.featured ? 1 : 0,
+				input.featured ? input.now : '',
+				input.now,
+				input.updatedBy
+			)
 			.run();
 	}
 }

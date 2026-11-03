@@ -1,4 +1,8 @@
-import { loadMemberContext, requireWritableMemberView } from '$lib/server/auth/member-context';
+import {
+	loadMemberContext,
+	requireAdmin,
+	requireWritableMemberView
+} from '$lib/server/auth/member-context';
 import { DriveDocumentRepository } from '$lib/server/db';
 import type { DriveDocumentVisibility } from '$lib/types/drive';
 import { error, json } from '@sveltejs/kit';
@@ -23,7 +27,13 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 		repository.syncState(),
 		repository.personalization(context.member.id)
 	]);
-	return json({ rootFolderId: ROOT_FOLDER_ID, documents, sync, ...personalization });
+	return json({
+		rootFolderId: ROOT_FOLDER_ID,
+		documents,
+		sync,
+		canCurate: context.viewerCapabilities.isAdmin && !context.isViewingAs,
+		...personalization
+	});
 };
 
 export const POST: RequestHandler = async ({ locals, platform, request }) => {
@@ -34,15 +44,35 @@ export const POST: RequestHandler = async ({ locals, platform, request }) => {
 		action?: string;
 		documentId?: string;
 		favorite?: boolean;
+		category?: string;
+		summary?: string;
+		keywords?: string;
+		featured?: boolean;
 	} | null;
 	const documentId = body?.documentId?.trim() ?? '';
 	if (!documentId) error(400, 'Document required');
-	if (body?.action !== 'favorite' && body?.action !== 'view') error(400, 'Invalid action');
+	if (body?.action !== 'favorite' && body?.action !== 'view' && body?.action !== 'annotate')
+		error(400, 'Invalid action');
 	const repository = new DriveDocumentRepository(env!.DB);
 	if (!(await repository.isVisible(documentId, allowedVisibility(context))))
 		error(404, 'Document not found');
 	const now = new Date().toISOString();
-	if (body.action === 'favorite') {
+	if (body.action === 'annotate') {
+		requireAdmin(context);
+		const category = body.category?.trim().slice(0, 60) ?? '';
+		const summary = body.summary?.trim().slice(0, 500) ?? '';
+		const keywords = body.keywords?.trim().slice(0, 300) ?? '';
+		if (typeof body.featured !== 'boolean') error(400, 'Featured state required');
+		await repository.saveAnnotation({
+			documentId,
+			category,
+			summary,
+			keywords,
+			featured: body.featured,
+			updatedBy: context.viewer.id,
+			now
+		});
+	} else if (body.action === 'favorite') {
 		if (typeof body.favorite !== 'boolean') error(400, 'Favorite state required');
 		await repository.setFavorite(context.member.id, documentId, body.favorite, now);
 	} else {
