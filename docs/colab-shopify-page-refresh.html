@@ -6,6 +6,11 @@
   h1.main-page-title {
     display: none !important;
   }
+
+  /* Shopify's current page template uses this heading rather than .main-page-title. */
+  .text-content > h1.text-content-heading.font-decorative {
+    display: none !important;
+  }
 </style>
 
 <section class="ql-colab-page">
@@ -276,6 +281,201 @@
       .ql-actions { display: grid; grid-template-columns: 1fr; }
       .ql-button { width: 100%; }
     }
+
+    /* Homepage alignment: Fira Sans + Nunito, cream canvas, image-led panels, red pill CTAs. */
+    .ql-colab-page {
+      --ql-ink: #121212;
+      --ql-panel: #ffffff;
+      --ql-panel-light: #f4eee8;
+      --ql-paper: #fffcea;
+      --ql-text: #121212;
+      --ql-muted: #3f3f43;
+      --ql-purple: #6d54aa;
+      --ql-pink: #ff6d87;
+      --ql-yellow: #f4d35e;
+      --ql-line: rgba(18, 18, 18, .12);
+      background: var(--ql-paper);
+      color: var(--ql-text);
+      font-family: "Fira Sans", sans-serif;
+      padding: 0;
+    }
+
+    .ql-colab-shell {
+      background: transparent;
+      padding: clamp(22px, 3vw, 44px) clamp(18px, 4vw, 48px) clamp(58px, 8vw, 108px);
+    }
+
+    .ql-colab-inner { max-width: 1280px; }
+
+    .ql-eyebrow {
+      background: #f4d35e;
+      box-shadow: none;
+      color: #121212;
+      font-size: 12px;
+      letter-spacing: .06em;
+    }
+
+    .ql-hero {
+      background: #24242a;
+      border-radius: 30px;
+      display: block;
+      min-height: min(620px, 74vw);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .ql-hero-copy {
+      color: #ffffff;
+      max-width: 800px;
+      padding: clamp(36px, 5vw, 72px);
+      position: relative;
+      z-index: 2;
+    }
+
+    .ql-hero h1,
+    .ql-section-title,
+    .ql-membership-heading h2,
+    .ql-community-card h2,
+    .ql-resource-copy h2,
+    .ql-final-cta h2,
+    .ql-plan h3 {
+      font-family: Nunito, sans-serif;
+      font-weight: 900;
+      letter-spacing: -.04em;
+    }
+
+    .ql-hero h1 {
+      color: #ffffff;
+      font-size: clamp(46px, 5.8vw, 78px);
+      letter-spacing: -.045em;
+      line-height: .98;
+      max-width: 710px;
+    }
+
+    .ql-intro { color: rgba(255, 255, 255, .92); max-width: 640px; }
+
+    .ql-button {
+      border: 0;
+      border-radius: 9999px;
+      font-family: "Fira Sans", sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      min-height: 48px;
+      padding: 13px 28px;
+    }
+
+    .ql-colab-page a.ql-button {
+      text-decoration: none !important;
+    }
+
+    .ql-button:hover { box-shadow: none; transform: translateY(-2px); }
+    .ql-colab-page a.ql-button-primary { background: #ff0000; color: #ffffff !important; }
+    .ql-colab-page a.ql-button-secondary { background: #ffffff; color: #121212 !important; }
+    .ql-colab-page a.ql-button-outline { background: rgba(18,18,18,.55); border: 1px solid rgba(255,255,255,.82); color: #ffffff !important; }
+
+    .ql-hero-copy .ql-actions { position: relative; z-index: 3; }
+
+    .ql-hero-image {
+      border-radius: 0;
+      box-shadow: none;
+      inset: 0;
+      min-height: 0;
+      position: absolute;
+      transform: none;
+      z-index: 0;
+    }
+
+    .ql-hero-image::after {
+      background: linear-gradient(90deg, rgba(18,18,18,.75) 0%, rgba(18,18,18,.48) 52%, rgba(18,18,18,.25) 100%);
+    }
+
+    .ql-photo-caption { bottom: 22px; font-size: 13px; left: auto; max-width: 230px; right: 24px; text-align: right; }
+
+    .ql-number-row {
+      border: 0;
+      gap: 18px;
+      margin: 42px 0 0;
+      padding: 0;
+    }
+
+    .ql-number-row div { background: #f4eee8; border-radius: 18px; color: #343438; padding: 20px; }
+    .ql-number-row strong { color: #121212; font-family: Nunito, sans-serif; font-size: 19px; font-weight: 900; }
+
+    .ql-section { margin-top: clamp(48px, 6vw, 80px); }
+    .ql-section-title { color: #121212; font-size: clamp(43px, 5.5vw, 68px); line-height: 1; }
+    .ql-section-intro { color: #3f3f43; }
+
+    .ql-story-photo,
+    .ql-community-photo { border-radius: 28px; }
+    .ql-story-photo { min-height: 440px; }
+    .ql-story-photo { position: relative; }
+    .ql-story-photo .ql-story-inset {
+      border: 5px solid #fffcea;
+      border-radius: 18px;
+      bottom: 20px;
+      box-shadow: 0 10px 26px rgba(18, 18, 18, .22);
+      height: 42%;
+      left: 20px;
+      object-fit: cover;
+      position: absolute;
+      width: 43%;
+    }
+
+    .ql-feature-grid { gap: 16px; }
+    .ql-feature { background: #ffffff; border: 0; border-radius: 22px; box-shadow: 0 8px 22px rgba(65, 47, 37, .07); min-height: 188px; }
+    .ql-feature span { background: #6d54aa; height: 34px; margin-bottom: 25px; width: 34px; }
+    .ql-feature h3 { color: #121212; font-family: Nunito, sans-serif; font-size: 21px; font-weight: 900; }
+    .ql-feature p { color: #4d4d51; }
+
+    .ql-membership { margin-top: clamp(48px, 6vw, 80px); }
+    .ql-membership-heading h2 { color: #121212; }
+    .ql-membership-heading p { color: #4d4d51; }
+    .ql-plan-grid { gap: 22px; }
+    .ql-plan { background: #ffffff; border: 0; border-radius: 24px; box-shadow: 0 8px 22px rgba(65, 47, 37, .07); min-height: 445px; }
+    .ql-plan-featured { background: #ece4ff; }
+    .ql-plan-tag { color: #6d54aa; }
+    .ql-plan h3,
+    .ql-price,
+    .ql-plan ul { color: #121212; }
+    .ql-plan > p:not(.ql-plan-tag) { color: #4d4d51; }
+    .ql-plan li { border-color: rgba(18,18,18,.1); }
+    .ql-plan li::before { color: #ff0000; }
+
+    .ql-community-card { align-items: center; background: #dff3ee; border-radius: 30px; color: #121212; gap: 0; margin-top: clamp(48px, 6vw, 80px); }
+    .ql-community-copy { padding: clamp(36px, 6vw, 72px); }
+    .ql-community-card h2 { color: #121212; line-height: 1; }
+    .ql-community-card p { color: #303337; }
+    .ql-community-photo { height: 360px; max-height: 360px; min-height: 360px; }
+
+    .ql-resource-strip { background: #121212; border-radius: 30px; gap: 42px; margin-top: clamp(48px, 6vw, 80px); padding: clamp(30px, 5vw, 62px); }
+    .ql-resource-copy h2 { color: #ffffff; }
+    .ql-resource-copy p { color: rgba(255,255,255,.78); }
+    .ql-colab-page a.ql-resource-link { background: #ffffff; border: 1px solid #ffffff; border-radius: 18px; color: #121212 !important; text-decoration: none !important; }
+    .ql-colab-page a.ql-resource-link:hover { background: #f4d35e; border-color: #f4d35e; }
+    .ql-resource-link span { color: #6d54aa; }
+
+    .ql-final-cta { background: #ffffff; border: 0; border-radius: 30px; margin-top: clamp(48px, 6vw, 80px); padding: clamp(46px, 7vw, 88px) 24px; }
+    .ql-final-cta h2 { color: #121212; }
+    .ql-final-cta p { color: #4d4d51; }
+
+    @media (max-width: 900px) {
+      .ql-hero { min-height: 610px; }
+      .ql-community-copy { padding: 42px 30px; }
+      .ql-community-photo { height: 280px; max-height: 280px; min-height: 280px; }
+    }
+
+    @media (max-width: 650px) {
+      .ql-hero { border-radius: 22px; min-height: 610px; }
+      .ql-hero-copy { padding: 32px 24px; }
+      .ql-hero h1 { font-size: clamp(42px, 13vw, 50px); }
+      .ql-photo-caption { display: none; }
+      .ql-number-row div { padding: 17px; }
+      .ql-story-photo { min-height: 310px; }
+      .ql-story-photo .ql-story-inset { border-width: 3px; bottom: 12px; left: 12px; }
+      .ql-resource-strip,
+      .ql-community-card,
+      .ql-final-cta { border-radius: 22px; }
+    }
   </style>
 
   <div class="ql-colab-shell">
@@ -291,7 +491,7 @@
           </div>
         </div>
         <div class="ql-hero-image">
-          <img src="COLAB_STUDIO_HERO_URL" alt="The colorful Queerlective CoLab studio" loading="eager">
+          <img src="https://cdn.shopify.com/s/files/1/0605/0535/8543/files/IMG_0041_3f6f73e1-23d0-4577-acea-3a6d98e86763.jpg?v=1793725889" alt="The colorful Queerlective CoLab studio" loading="eager">
           <p class="ql-photo-caption">The CoLab is full of possibilities—and room for whatever we make next.</p>
         </div>
       </div>
@@ -307,7 +507,8 @@
         <p class="ql-section-intro">CoLab is part studio, part organizing hub, and part community experiment—built for artists, organizers, makers, and neighbors who want to create together and support each other.</p>
         <div class="ql-story-grid">
           <div class="ql-story-photo">
-            <img src="COLAB_RETAIL_URL" alt="Queerlective goods and art displayed in the studio" loading="lazy">
+            <img src="https://cdn.shopify.com/s/files/1/0605/0535/8543/files/DSC08302_1.jpg?v=1793725892" alt="Queerlective goods and art displayed in the studio" loading="lazy">
+            <img class="ql-story-inset" src="https://cdn.shopify.com/s/files/1/0605/0535/8543/files/IMG_3631_496757b3-f0bf-447f-b517-b7c3d27fc3b8.jpg?v=1793725889" alt="A moment from the Queerlective CoLab" loading="lazy">
           </div>
           <div class="ql-feature-grid">
             <article class="ql-feature"><span>01</span><h3>Creative workspace</h3><p>Access shared art supplies, tools, equipment, and a welcoming place to make.</p></article>
@@ -356,7 +557,7 @@
           <p>Queerlective can help with planning, promotion, materials, and mentorship—especially if it is your first time organizing something.</p>
         </div>
         <div class="ql-community-photo">
-          <img src="COLAB_COMMUNITY_URL" alt="A CoLab community member making flowers during a workshop" loading="lazy">
+          <img src="https://cdn.shopify.com/s/files/1/0605/0535/8543/files/IMG_5091.jpg?v=1793725889" alt="A CoLab community member making flowers during a workshop" loading="lazy">
         </div>
       </div>
 
