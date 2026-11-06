@@ -14,6 +14,7 @@ export type { ProjectEventHost } from './host-repository';
 export type { NewMagicLoginToken, NewMagicSession } from './auth-repository';
 export { ProjectEventRepository } from './project-repository';
 export type { ProjectEventFilters, ProjectEventPage, ProjectEventSort } from './project-repository';
+export { QuickLinkRepository } from './quick-link-repository';
 export { ShiftRepository } from './shift-repository';
 export { SocialAssetLibraryRepository } from './social-asset-library-repository';
 export type { NewSocialLibraryAsset } from './social-asset-library-repository';

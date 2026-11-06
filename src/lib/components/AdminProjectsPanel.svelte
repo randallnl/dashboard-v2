@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import ContentState from '$lib/components/ContentState.svelte';
 	import DataFreshness from '$lib/components/DataFreshness.svelte';
 	import type { ProjectEventRecord } from '$lib/types/domain';
@@ -32,6 +33,9 @@
 	let syncing = $state(false);
 	let syncMessage = $state('');
 	let syncFailed = $state(false);
+	let quickLinkIds = $state<string[]>([]);
+	let updatingQuickLink = $state<string | null>(null);
+	let quickLinkMessage = $state('');
 
 	const totalPages = $derived(Math.max(1, Math.ceil(total / pageSize)));
 	const syncedAt = $derived(
@@ -97,6 +101,45 @@
 		}
 	}
 
+	function includedInQuickLinks(record: ProjectEventRecord): boolean {
+		return record.source === 'project' && quickLinkIds.includes(record.id);
+	}
+
+	async function loadQuickLinks() {
+		try {
+			const response = await fetch('/api/admin/quick-links');
+			const result = (await response.json()) as { projectIds?: string[] };
+			if (response.ok) quickLinkIds = result.projectIds ?? [];
+		} catch {
+			// Project management remains usable if the publishing preferences cannot load.
+		}
+	}
+
+	async function toggleQuickLink(record: ProjectEventRecord) {
+		const included = !includedInQuickLinks(record);
+		updatingQuickLink = record.id;
+		quickLinkMessage = '';
+		try {
+			const response = await fetch('/api/admin/quick-links', {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ projectId: record.id, included })
+			});
+			const result = (await response.json()) as { message?: string };
+			if (!response.ok) throw new Error(result.message || 'Could not update quick links.');
+			quickLinkIds = included
+				? [...quickLinkIds, record.id]
+				: quickLinkIds.filter((id) => id !== record.id);
+			quickLinkMessage = included
+				? `${record.title} is now on the public links page.`
+				: `${record.title} was removed from the public links page.`;
+		} catch (cause) {
+			quickLinkMessage = cause instanceof Error ? cause.message : 'Could not update quick links.';
+		} finally {
+			updatingQuickLink = null;
+		}
+	}
+
 	function applyFilters(event: SubmitEvent) {
 		event.preventDefault();
 		void load(1);
@@ -138,6 +181,7 @@
 
 	onMount(() => {
 		void load(1);
+		void loadQuickLinks();
 	});
 </script>
 
@@ -156,6 +200,18 @@
 			</div>
 		{/if}
 	</div>
+	<div class="quick-links-manager">
+		<div>
+			<p class="eyebrow">Public quick links</p>
+			<p>
+				Choose projects to feature at <a href={resolve('/links')} target="_blank" rel="noreferrer"
+					>your public links page</a
+				>. The title, description, cover image, and link stay synced from each project.
+			</p>
+		</div>
+		<span>{quickLinkIds.length} selected</span>
+	</div>
+	{#if quickLinkMessage}<p class="admin-message" role="status">{quickLinkMessage}</p>{/if}
 
 	{#if syncMessage}
 		<p class="admin-message" class:error={syncFailed} role={syncFailed ? 'alert' : 'status'}>
@@ -222,58 +278,75 @@
 		<p class="result-count">{total} matching record{total === 1 ? '' : 's'}</p>
 		<div class="admin-project-grid">
 			{#each records as record (`${record.source}:${record.id}`)}
-				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-				<a class="project-tile" href={`/items/${record.source}/${record.id}`}>
-					<div class="poster-frame">
-						{#if validUrl(field(record, 'posterUrl')) && !brokenPosters[posterKey(record)]}
-							<img
-								src={validUrl(field(record, 'posterUrl'))}
-								alt=""
-								onerror={() => (brokenPosters[posterKey(record)] = true)}
-							/>
-						{:else}
-							<span aria-hidden="true">{record.source === 'project' ? 'P' : 'C'}</span>
-						{/if}
-					</div>
-					<div class="project-tile-body">
-						<div class="project-row-heading">
-							<div>
-								<span class="source-pill">{record.source}</span>
-								<h3>{record.title}</h3>
+				<article class="project-tile">
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a class="project-tile-link" href={`/items/${record.source}/${record.id}`}>
+						<div class="poster-frame">
+							{#if validUrl(field(record, 'posterUrl')) && !brokenPosters[posterKey(record)]}
+								<img
+									src={validUrl(field(record, 'posterUrl'))}
+									alt=""
+									onerror={() => (brokenPosters[posterKey(record)] = true)}
+								/>
+							{:else}
+								<span aria-hidden="true">{record.source === 'project' ? 'P' : 'C'}</span>
+							{/if}
+						</div>
+						<div class="project-tile-body">
+							<div class="project-row-heading">
+								<div>
+									<span class="source-pill">{record.source}</span>
+									<h3>{record.title}</h3>
+								</div>
+								<p>{dateLabel(record.dateValue)}</p>
 							</div>
-							<p>{dateLabel(record.dateValue)}</p>
+							<div class="project-pills">
+								{#if record.status}
+									<span class="project-pill pill-status">Status · {record.status}</span>
+								{/if}
+								{#if field(record, 'goal') || field(record, 'category')}
+									<span class="project-pill pill-goal">
+										Goal · {field(record, 'goal') || field(record, 'category')}
+									</span>
+								{/if}
+								{#if record.location}
+									<span class="project-pill pill-location">Location · {record.location}</span>
+								{/if}
+								{#if field(record, 'strategicGoal')}
+									<span class="project-pill pill-strategic">
+										Strategic goal · {field(record, 'strategicGoal')}
+									</span>
+								{/if}
+								{#if field(record, 'priority')}
+									<span class="project-pill pill-priority">
+										Priority · {field(record, 'priority')}
+									</span>
+								{/if}
+							</div>
+							<small
+								>{record.owner || 'Owner not set'} · Synced {dateLabel(
+									record.syncedAt.slice(0, 10)
+								)}</small
+							>
+							<span class="card-primary-action">Manage →</span>
 						</div>
-						<div class="project-pills">
-							{#if record.status}
-								<span class="project-pill pill-status">Status · {record.status}</span>
-							{/if}
-							{#if field(record, 'goal') || field(record, 'category')}
-								<span class="project-pill pill-goal">
-									Goal · {field(record, 'goal') || field(record, 'category')}
-								</span>
-							{/if}
-							{#if record.location}
-								<span class="project-pill pill-location">Location · {record.location}</span>
-							{/if}
-							{#if field(record, 'strategicGoal')}
-								<span class="project-pill pill-strategic">
-									Strategic goal · {field(record, 'strategicGoal')}
-								</span>
-							{/if}
-							{#if field(record, 'priority')}
-								<span class="project-pill pill-priority">
-									Priority · {field(record, 'priority')}
-								</span>
-							{/if}
-						</div>
-						<small
-							>{record.owner || 'Owner not set'} · Synced {dateLabel(
-								record.syncedAt.slice(0, 10)
-							)}</small
+					</a>
+					{#if record.source === 'project'}
+						<button
+							type="button"
+							class:included={includedInQuickLinks(record)}
+							class="quick-link-toggle"
+							onclick={() => toggleQuickLink(record)}
+							disabled={updatingQuickLink === record.id}
 						>
-						<span class="card-primary-action">Manage →</span>
-					</div>
-				</a>
+							{updatingQuickLink === record.id
+								? 'Saving…'
+								: includedInQuickLinks(record)
+									? 'On public links'
+									: 'Add to public links'}
+						</button>
+					{/if}
+				</article>
 			{/each}
 		</div>
 		<div class="pagination" aria-label="Project pages">
