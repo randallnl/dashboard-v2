@@ -202,10 +202,10 @@
 	</div>
 	<div class="quick-links-manager">
 		<div>
-			<p class="eyebrow">Public quick links</p>
+			<p class="eyebrow">Queerlective quick links</p>
 			<p>
 				Choose projects to feature at <a href={resolve('/links')} target="_blank" rel="noreferrer"
-					>your public links page</a
+					>the Queerlective links page</a
 				>. The title, description, cover image, and link stay synced from each project.
 			</p>
 		</div>

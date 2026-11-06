@@ -6384,7 +6384,7 @@ h2 {
 .quick-links-page {
 	min-height: 100dvh;
 	padding: clamp(2rem, 8vw, 5rem) 1rem;
-	background: radial-gradient(circle at top, #e3eddc 0, #faf7f0 47%, #f4e7c9 100%);
+	background: radial-gradient(circle at top right, #f9b7c9 0, #ffc1cf 35%, #ffe2b4 100%);
 }
 
 .quick-links-shell {
@@ -6397,25 +6397,20 @@ h2 {
 	text-align: center;
 }
 
-.quick-links-mark {
-	display: inline-grid;
-	width: 3rem;
-	height: 3rem;
-	margin-bottom: 1rem;
-	place-items: center;
-	border-radius: 1rem;
-	background: #194639;
-	color: #f4e7c9;
-	font-family: 'Manrope', sans-serif;
-	font-size: 1.35rem;
-	font-weight: 800;
+.quick-links-logo {
+	display: block;
+	width: min(100%, 23rem);
+	margin: 0 auto 1.15rem;
+	border-radius: 0.8rem;
 }
 
 .quick-links-shell h1 {
-	margin: 0.35rem 0 0.6rem;
+	max-width: none;
+	margin: 0.35rem auto 0.6rem;
 	color: #17251e;
 	font-size: clamp(2.25rem, 9vw, 4rem);
 	line-height: 0.96;
+	text-align: center;
 }
 
 .quick-links-intro {
