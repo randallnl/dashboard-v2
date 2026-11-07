@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import MemberPortalNavigation from '$lib/components/MemberPortalNavigation.svelte';
 	import type {
 		SocialLibraryAsset,
 		SocialPlatform,
@@ -75,6 +76,7 @@
 	let loading = $state(true);
 	let loadError = $state('');
 	let saving = $state(false);
+	let deleting = $state(false);
 	let message = $state('');
 	let failed = $state(false);
 	let selectedId = $state('');
@@ -98,6 +100,8 @@
 	let librarySearch = $state('');
 	let libraryFile = $state<File | null>(null);
 	let libraryFileInput = $state<HTMLInputElement>();
+	let composer = $state<HTMLElement>();
+	let titleInput = $state<HTMLInputElement>();
 	let libraryAltText = $state('');
 	let libraryTags = $state('');
 	let libraryCredit = $state('');
@@ -275,14 +279,6 @@
 		return file.type.startsWith('video/') || /\.(mp4|mov)$/iu.test(file.name);
 	}
 
-	function applyTemplate(template: ContentTemplate) {
-		const templateBody = template.body(project?.title || '[Project name]');
-		copy = copy.trim() ? `${copy.trim()}\n\n${templateBody}` : templateBody;
-		channelCopies = {};
-		message = `${template.label} outline added. Tailor the bracketed prompts before review.`;
-		failed = false;
-	}
-
 	function reviewActionLabel(action: SocialPostReviewAction): string {
 		return {
 			submitted: 'Submitted for review',
@@ -346,6 +342,61 @@
 		failed = false;
 	}
 
+	function hasEditorContent(): boolean {
+		return Boolean(
+			selectedId ||
+			title !== 'New social post' ||
+			copy.trim() ||
+			status !== 'draft' ||
+			scheduledAt ||
+			publishedAt ||
+			publishedUrl ||
+			project ||
+			selectedProjectAssetUrls.length ||
+			mediaFiles.length ||
+			selectedLibraryAssetIds.length ||
+			Object.keys(channelCopies).length ||
+			selectedPlatforms.length !== 2 ||
+			!selectedPlatforms.includes('instagram') ||
+			!selectedPlatforms.includes('facebook')
+		);
+	}
+
+	function focusComposer() {
+		requestAnimationFrame(() => {
+			const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			composer?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+			window.setTimeout(() => titleInput?.focus({ preventScroll: true }), reducedMotion ? 0 : 280);
+		});
+	}
+
+	function confirmNewPost(nextStep: string): boolean {
+		if (!hasEditorContent()) return true;
+		return window.confirm(
+			`Start ${nextStep}? This will clear the content currently in the editor. Saved posts will remain in the content queue.`
+		);
+	}
+
+	function startIndependentPost() {
+		if (!confirmNewPost('a new independent post')) return;
+		resetEditor();
+		focusComposer();
+	}
+
+	function startBlankPost() {
+		if (!confirmNewPost('a blank post')) return;
+		resetEditor();
+		focusComposer();
+	}
+
+	function startFromPrompt(template: ContentTemplate) {
+		if (!confirmNewPost(`a ${template.label.toLocaleLowerCase()} prompt`)) return;
+		resetEditor();
+		copy = template.body('[Project name]');
+		message = `${template.label} prompt added. Tailor the bracketed prompts before review.`;
+		focusComposer();
+	}
+
 	function openPost(post: SocialPost) {
 		selectedId = post.id;
 		title = post.title;
@@ -391,6 +442,7 @@
 
 	function startFromProject() {
 		if (!projectPicker) return;
+		if (!confirmNewPost('a project-based post')) return;
 		window.location.assign(
 			`${resolve('/social')}?source=project&id=${encodeURIComponent(projectPicker)}`
 		);
@@ -554,6 +606,34 @@
 		}
 	}
 
+	async function deleteDraft() {
+		const post = selectedPost;
+		if (!post || post.status !== 'draft') return;
+		if (
+			!window.confirm(
+				`Delete “${post.title}”? This will permanently remove this draft and its uploads.`
+			)
+		) {
+			return;
+		}
+		deleting = true;
+		failed = false;
+		message = '';
+		try {
+			const response = await fetch(`/api/social/posts/${post.id}`, { method: 'DELETE' });
+			const result = (await response.json()) as { message?: string };
+			if (!response.ok) throw new Error(result.message || 'Could not delete this draft.');
+			posts = posts.filter((candidate) => candidate.id !== post.id);
+			resetEditor();
+			message = result.message || 'Draft deleted.';
+		} catch (cause) {
+			failed = true;
+			message = cause instanceof Error ? cause.message : 'Could not delete this draft.';
+		} finally {
+			deleting = false;
+		}
+	}
+
 	async function saveReview(action: SocialPostReviewAction) {
 		if (!selectedId) {
 			failed = true;
@@ -608,6 +688,7 @@
 
 	onMount(() => {
 		void loadPosts();
+		if (data.starter) focusComposer();
 	});
 </script>
 
@@ -624,11 +705,12 @@
 		<a class="brand" href={resolve('/')} aria-label="CoLab dashboard home">
 			<span class="brand-mark" aria-hidden="true">Q</span><span>CoLab</span>
 		</a>
-		<nav aria-label="Workspace navigation">
-			<a href={resolve('/')}>Dashboard</a>
-			<a href={resolve('/projects')}>Projects</a>
-			<a class="nav-active" href={resolve('/social')}>Social content</a>
-		</nav>
+		<MemberPortalNavigation
+			active="social"
+			capabilities={data.capabilities}
+			viewerCapabilities={data.viewerCapabilities}
+			isViewingAs={data.isViewingAs}
+		/>
 		<div class="member-menu">
 			<div>
 				<strong>{data.member.preferredName}</strong><span>{data.member.membershipType}</span>
@@ -646,7 +728,7 @@
 				<h1>Keep the schedule moving.</h1>
 				<p>See what is due, create a post from scratch, and give every draft a clear next step.</p>
 			</div>
-			<button type="button" onclick={resetEditor}>+ New independent post</button>
+			<button type="button" onclick={startIndependentPost}>+ New independent post</button>
 		</section>
 
 		<section class="social-content-hub">
@@ -655,7 +737,7 @@
 					<p class="eyebrow">Start here</p>
 					<h2 id="create-content-title">Create content</h2>
 					<p>Start with a blank post whenever you have an idea, update, or timely reminder.</p>
-					<button type="button" onclick={resetEditor}>+ Blank post</button>
+					<button type="button" onclick={startBlankPost}>+ Blank post</button>
 				</section>
 
 				<section
@@ -690,7 +772,8 @@
 					<p>Choose an outline, then make it your own in the editor.</p>
 					<div class="social-rail-template-list">
 						{#each contentTemplates as template (template.label)}
-							<button type="button" onclick={() => applyTemplate(template)}>{template.label}</button
+							<button type="button" onclick={() => startFromPrompt(template)}
+								>{template.label}</button
 							>
 						{/each}
 					</div>
@@ -772,6 +855,7 @@
 
 				<section class="social-layout">
 					<form
+						bind:this={composer}
 						class="social-editor"
 						onsubmit={(event) => {
 							event.preventDefault();
@@ -784,7 +868,7 @@
 								<h2>{formHeading}</h2>
 							</div>
 							{#if selectedPost}
-								<button type="button" class="text-button" onclick={resetEditor}
+								<button type="button" class="text-button" onclick={startIndependentPost}
 									>Create another</button
 								>
 							{/if}
@@ -849,6 +933,7 @@
 
 						<label class="social-title-field"
 							><span>Working title</span><input
+								bind:this={titleInput}
 								bind:value={title}
 								maxlength="160"
 								required
@@ -1051,13 +1136,23 @@
 						{/if}
 
 						<div class="social-editor-actions">
-							<button type="submit" disabled={saving}>{saving ? 'Saving…' : formLabel}</button>
+							<button type="submit" disabled={saving || deleting}
+								>{saving ? 'Saving…' : formLabel}</button
+							>
 							<button
 								type="button"
 								class="secondary-action"
 								onclick={copyToClipboard}
-								disabled={!copy.trim()}>Copy text</button
+								disabled={!copy.trim() || deleting}>Copy text</button
 							>
+							{#if selectedPost?.status === 'draft'}
+								<button
+									type="button"
+									class="danger-action"
+									onclick={() => void deleteDraft()}
+									disabled={saving || deleting}>{deleting ? 'Deleting…' : 'Delete draft'}</button
+								>
+							{/if}
 						</div>
 						{#if message}<p
 								class:form-error={failed}

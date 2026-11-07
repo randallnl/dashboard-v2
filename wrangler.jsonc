@@ -31,6 +31,11 @@
 			"binding": "SOCIAL_MEDIA_ASSETS",
 			"bucket_name": "queerlective-social-assets"
 		}
+		,
+		{
+			"binding": "CALENDAR_CAMPAIGN_ASSETS",
+			"bucket_name": "queerlective-calendar-campaign"
+		}
 	],
 	"secrets_store_secrets": [
 		{

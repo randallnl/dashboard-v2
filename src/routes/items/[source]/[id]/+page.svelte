@@ -625,9 +625,9 @@
 
 <ProjectDashboardHeader
 	member={data.member}
-	canManageProjects={data.canEdit}
-	canViewCalendar={data.capabilities.canViewCalendar}
-	isAdmin={data.isAdmin}
+	capabilities={data.capabilities}
+	viewerCapabilities={data.viewerCapabilities}
+	isViewingAs={data.isViewingAs}
 	source={data.record.source}
 	title={recordTitle}
 />
@@ -768,7 +768,7 @@
 					</div>
 					{#each entries as [key, value] (key)}
 						{#if !safeUrl(value)}
-							<div>
+							<div class:description-field={key === 'description'}>
 								<dt>{label(key)}</dt>
 								<dd class:rich-description={key === 'description'}>
 									{#if key === 'description'}

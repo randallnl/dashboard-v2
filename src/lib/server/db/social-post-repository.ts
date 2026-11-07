@@ -200,6 +200,14 @@ export class SocialPostRepository {
 		return this.find(id);
 	}
 
+	async deleteDraft(id: string): Promise<boolean> {
+		const result = await this.db
+			.prepare("DELETE FROM social_posts WHERE id = ?1 AND status = 'draft'")
+			.bind(id)
+			.run();
+		return Boolean(result.meta.changes);
+	}
+
 	async addAssets(
 		postId: string,
 		assets: Array<Omit<SocialPostAsset, 'id' | 'postId' | 'createdAt'>>,

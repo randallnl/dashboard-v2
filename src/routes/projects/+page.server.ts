@@ -12,6 +12,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 
 	return {
 		member: layout.member,
+		capabilities: layout.capabilities,
 		viewerCapabilities: layout.viewerCapabilities
 	};
 };

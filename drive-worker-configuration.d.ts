@@ -5,7 +5,7 @@ interface __BaseEnv_DriveSyncEnv {
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
-		mainModule: typeof import('./src/drive-sync-worker');
+		mainModule: typeof import("./src/drive-sync-worker");
 	}
 	interface Env extends __BaseEnv_DriveSyncEnv {}
 }

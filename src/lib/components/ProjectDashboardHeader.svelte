@@ -1,19 +1,20 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { Member, ProjectEventSource } from '$lib/types/domain';
+	import MemberPortalNavigation from '$lib/components/MemberPortalNavigation.svelte';
+	import type { Member, MemberCapabilities, ProjectEventSource } from '$lib/types/domain';
 
 	let {
 		member,
-		canManageProjects,
-		canViewCalendar,
-		isAdmin,
+		capabilities,
+		viewerCapabilities,
+		isViewingAs,
 		source,
 		title
 	}: {
 		member: Member;
-		canManageProjects: boolean;
-		canViewCalendar: boolean;
-		isAdmin: boolean;
+		capabilities: MemberCapabilities;
+		viewerCapabilities: MemberCapabilities;
+		isViewingAs: boolean;
 		source: ProjectEventSource;
 		title: string;
 	} = $props();
@@ -24,17 +25,7 @@
 		<span class="brand-mark" aria-hidden="true">Q</span>
 		<span>CoLab</span>
 	</a>
-	<nav aria-label="Project dashboard navigation">
-		<a href={resolve('/')}>Dashboard</a>
-		{#if canViewCalendar}<a href={resolve('/?view=calendar')}>Calendar</a>{/if}
-		<a class="nav-active" href="#main-content">Project</a>
-		<a href={resolve('/?view=resources')}>Resources</a>
-		{#if canManageProjects}
-			<a href={resolve('/projects')}>Projects</a>
-			{#if isAdmin}<a href={resolve('/?view=admin')}>Admin</a>{/if}
-			<a href={resolve('/social')}>Social</a>
-		{/if}
-	</nav>
+	<MemberPortalNavigation active="project" {capabilities} {viewerCapabilities} {isViewingAs} />
 	<div class="member-menu">
 		<div>
 			<strong>{member.preferredName}</strong>
@@ -52,11 +43,4 @@
 	<a href={resolve('/#calendar')}>{source === 'project' ? 'Projects' : 'Events'}</a>
 	<span aria-hidden="true">›</span>
 	<strong aria-current="page">{title}</strong>
-</nav>
-
-<nav class="mobile-nav project-mobile-nav" aria-label="Mobile project navigation">
-	<a href={resolve('/')}>Dashboard</a>
-	{#if canViewCalendar}<a href={resolve('/?view=calendar')}>Calendar</a>{/if}
-	<a href="#main-content">Project</a>
-	<a href={resolve('/?view=resources')}>Resources</a>
 </nav>

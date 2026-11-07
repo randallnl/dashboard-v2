@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import AdminProjectsPanel from '$lib/components/AdminProjectsPanel.svelte';
+	import MemberPortalNavigation from '$lib/components/MemberPortalNavigation.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	const projectCreationFormUrl =
+		'https://forms.monday.com/forms/149614b6ad962b636bea5cb12b764e54?r=use1';
 </script>
 
 <svelte:head>
@@ -19,14 +22,11 @@
 		<a class="brand" href={resolve('/')} aria-label="CoLab dashboard home">
 			<span class="brand-mark" aria-hidden="true">Q</span><span>CoLab</span>
 		</a>
-		<nav aria-label="Project workspace navigation">
-			<a href={resolve('/')}>Dashboard</a>
-			<a class="nav-active" href={resolve('/projects')}>Projects</a>
-			{#if data.viewerCapabilities.isAdmin}
-				<a href={resolve('/?view=admin')}>Admin</a>
-			{/if}
-			<a href={resolve('/social')}>Social content</a>
-		</nav>
+		<MemberPortalNavigation
+			active="projects"
+			capabilities={data.capabilities}
+			viewerCapabilities={data.viewerCapabilities}
+		/>
 		<div class="member-menu">
 			<div>
 				<strong>{data.member.preferredName}</strong><span>{data.member.membershipType}</span>
@@ -47,15 +47,20 @@
 			<a class="projects-dashboard-link" href={resolve('/')}>Return to dashboard</a>
 		</section>
 
+		<section class="project-create-panel" aria-labelledby="project-create-title">
+			<div class="project-create-heading">
+				<div>
+					<p class="eyebrow">New project</p>
+					<h2 id="project-create-title">Create a project</h2>
+					<p>Use the project intake form to add a new project to the CoLab workspace.</p>
+				</div>
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+				<a class="project-create-action" href={projectCreationFormUrl} target="_blank" rel="noreferrer"
+					>Open project form ↗</a
+				>
+			</div>
+		</section>
+
 		<AdminProjectsPanel />
 	</main>
-
-	<nav class="mobile-nav projects-mobile-nav" aria-label="Mobile project workspace navigation">
-		<a href={resolve('/')}>Dashboard</a>
-		<a class="active" href={resolve('/projects')}>Projects</a>
-		{#if data.viewerCapabilities.isAdmin}
-			<a href={resolve('/?view=admin')}>Admin</a>
-		{/if}
-		<a href={resolve('/social')}>Social</a>
-	</nav>
 </div>

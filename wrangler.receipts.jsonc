@@ -1,0 +1,25 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "receipt-ingest",
+	"main": "src/receipt-ingest-worker.ts",
+	"compatibility_date": "2026-11-05",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "queerlective-dashboard",
+			"database_id": "fd34016a-db11-4ee7-8103-73f149118172"
+		}
+	],
+	"send_email": [
+		{
+			"name": "EMAIL",
+			"allowed_sender_addresses": ["dashboard@nhciviccommons.com"]
+		}
+	],
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+}

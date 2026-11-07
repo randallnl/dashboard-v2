@@ -27,3 +27,24 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
 			: post;
 	return json({ post: reviewedPost ?? post, message: 'Social post updated.' });
 };
+
+export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
+	const env = platform?.env;
+	const context = await loadMemberContext({ session: locals.session, env });
+	requireProjectManager(context);
+	if (!params.id) error(400, 'Post ID is required.');
+	const repository = new SocialPostRepository(env!.DB);
+	const post = await repository.find(params.id);
+	if (!post) error(404, 'Social post not found.');
+	if (post.status !== 'draft') {
+		error(409, 'Only drafts can be deleted.');
+	}
+	if (!(await repository.deleteDraft(post.id))) {
+		error(409, 'This post is no longer a draft and cannot be deleted.');
+	}
+	const draftMediaKeys = post.assets
+		.filter((asset) => asset.storage === 'r2' && asset.objectKey.startsWith(`social/${post.id}/`))
+		.map((asset) => asset.objectKey);
+	await Promise.all(draftMediaKeys.map((objectKey) => env!.SOCIAL_MEDIA_ASSETS.delete(objectKey)));
+	return json({ message: 'Draft deleted.' });
+};

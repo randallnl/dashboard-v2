@@ -119,6 +119,7 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		signups,
 		member: layout.member,
 		capabilities: layout.capabilities,
+		viewerCapabilities: layout.viewerCapabilities,
 		isAdmin: layout.viewerCapabilities.isAdmin && !layout.isViewingAs,
 		canEdit,
 		isViewingAs: layout.isViewingAs,

@@ -5,14 +5,14 @@ interface __BaseEnv_CronEnv {
 	EMAIL: SendEmail;
 	MONDAY_API_TOKEN: SecretsStoreSecret;
 	COLAB_WEBHOOK: SecretsStoreSecret;
-	ENVIRONMENT: 'production';
-	DASHBOARD_URL: 'https://dashboard.queerlective.com';
-	LOGIN_FROM_EMAIL: 'dashboard@nhciviccommons.com';
-	LOGIN_FROM_NAME: 'Queerlective CoLab';
+	ENVIRONMENT: "production";
+	DASHBOARD_URL: "https://dashboard.queerlective.com";
+	LOGIN_FROM_EMAIL: "dashboard@nhciviccommons.com";
+	LOGIN_FROM_NAME: "Queerlective CoLab";
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
-		mainModule: typeof import('./src/cron-worker');
+		mainModule: typeof import("./src/cron-worker");
 	}
 	interface Env extends __BaseEnv_CronEnv {}
 }
@@ -21,7 +21,5 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<
-		Pick<Cloudflare.Env, 'ENVIRONMENT' | 'DASHBOARD_URL' | 'LOGIN_FROM_EMAIL' | 'LOGIN_FROM_NAME'>
-	> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "DASHBOARD_URL" | "LOGIN_FROM_EMAIL" | "LOGIN_FROM_NAME">> {}
 }

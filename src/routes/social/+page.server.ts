@@ -72,6 +72,8 @@ export const load: PageServerLoad = async ({ parent, platform, url }) => {
 	return {
 		member: layout.member,
 		capabilities: layout.capabilities,
+		viewerCapabilities: layout.viewerCapabilities,
+		isViewingAs: layout.isViewingAs,
 		starter,
 		projectItems: projectItems.records.map((record) => ({
 			id: record.id,

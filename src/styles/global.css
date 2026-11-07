@@ -1700,6 +1700,27 @@
 	color: #194639;
 }
 
+.social-editor-actions .danger-action {
+	margin-left: auto;
+	border: 1px solid #cf7869;
+	border-radius: 0.65rem;
+	background: transparent;
+	color: #963d30;
+	font: inherit;
+	font-size: 0.82rem;
+	font-weight: 800;
+	cursor: pointer;
+}
+
+.social-editor-actions .danger-action:hover {
+	background: #f7e1da;
+}
+
+.social-editor-actions .danger-action:disabled {
+	cursor: wait;
+	opacity: 0.65;
+}
+
 .social-message {
 	margin: 0;
 	padding: 0.7rem 0.8rem;
@@ -2131,7 +2152,7 @@
 }
 
 @media (max-width: 800px) {
-	.social-header nav {
+	.social-header > nav:not(.mobile-nav) {
 		display: none;
 	}
 
@@ -2568,6 +2589,8 @@ h2 {
 	max-width: 14ch;
 	margin: 0.2rem 0 0;
 	color: #17251e;
+	font-size: clamp(2rem, 4vw, 3.1rem);
+	line-height: 1.08;
 }
 
 .projects-hero p:not(.eyebrow) {
@@ -2591,6 +2614,56 @@ h2 {
 	background: #f7faf7;
 }
 
+.project-create-panel {
+	margin-top: 1rem;
+	padding: clamp(1.4rem, 3vw, 2rem);
+	border: 1px solid #b8c9bc;
+	border-radius: 1.2rem;
+	background: #faf7f0;
+}
+
+.project-create-heading {
+	display: flex;
+	align-items: end;
+	justify-content: space-between;
+	gap: 1.5rem;
+	margin-bottom: 1.25rem;
+}
+
+.project-create-heading h2 {
+	max-width: none;
+	margin: 0.2rem 0 0;
+	font-size: clamp(1.45rem, 2.5vw, 2rem);
+	line-height: 1.1;
+}
+
+.project-create-heading p:not(.eyebrow) {
+	max-width: 42rem;
+	margin: 0.65rem 0 0;
+	color: #5c6962;
+	line-height: 1.5;
+}
+
+.project-create-action {
+	flex: 0 0 auto;
+	padding: 0.72rem 0.9rem;
+	border: 1px solid #194639;
+	border-radius: 0.6rem;
+	background: #194639;
+	color: #fff;
+	font-size: 0.85rem;
+	font-weight: 750;
+	text-decoration: none;
+}
+
+.project-create-action:hover {
+	background: #2a5c4b;
+}
+
+.projects-main .admin-projects .section-heading h2 {
+	font-size: clamp(1.45rem, 2.5vw, 2rem);
+}
+
 .dashboard-header {
 	position: sticky;
 	z-index: 20;
@@ -2609,14 +2682,14 @@ h2 {
 	text-decoration: none;
 }
 
-.dashboard-header nav {
+.dashboard-header > nav:not(.mobile-nav) {
 	display: flex;
 	gap: 1.5rem;
 	color: #727a75;
 	font-size: 0.9rem;
 }
 
-.dashboard-header nav a {
+.dashboard-header > nav:not(.mobile-nav) a {
 	padding: 0.45rem 0;
 	color: inherit;
 	text-decoration: none;
@@ -3924,6 +3997,69 @@ h2 {
 	text-decoration: underline;
 }
 
+/* Keep the project overview scannable: metadata reads as compact information chips. */
+.item-dashboard-grid .event-extra-fields {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.55rem;
+	margin-top: 1.1rem;
+	padding-top: 1rem;
+}
+
+.item-dashboard-grid .event-extra-fields > div {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: center;
+	gap: 0.45rem;
+	max-width: 100%;
+	padding: 0.48rem 0.65rem;
+	border: 1px solid #c7d7cd;
+	border-radius: 999px;
+	background: #edf5f0;
+	box-shadow: 0 0.1rem 0.25rem rgb(25 70 57 / 6%);
+}
+
+.item-dashboard-grid .event-extra-fields dt {
+	padding: 0.22rem 0.42rem;
+	border-radius: 999px;
+	background: #d7e8de;
+	color: #285846;
+	font-size: 0.62rem;
+	font-weight: 850;
+	letter-spacing: 0.07em;
+	line-height: 1.1;
+	text-transform: uppercase;
+}
+
+.item-dashboard-grid .event-extra-fields dd {
+	margin: 0;
+	color: #194639;
+	font-size: 0.8rem;
+	font-weight: 750;
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+}
+
+.item-dashboard-grid .event-extra-fields > .description-field {
+	display: block;
+	width: 100%;
+	padding: 0.85rem 0.95rem;
+	border-radius: 0.8rem;
+	background: #fffdf8;
+}
+
+.item-dashboard-grid .event-extra-fields > .description-field dt {
+	display: inline-block;
+}
+
+.item-dashboard-grid .event-extra-fields .rich-description {
+	margin-top: 0.48rem;
+	color: #4e5b54;
+	font-size: 0.9rem;
+	font-weight: 400;
+	line-height: 1.6;
+}
+
 .event-dialog-actions {
 	display: flex;
 	flex-wrap: wrap;
@@ -4311,6 +4447,21 @@ h2 {
 	border: 1px solid #d8d1c5;
 	border-radius: 1rem;
 	background: #faf7f0;
+}
+
+/* Project-workspace labels should read as card headings, not page titles. */
+.item-dashboard .workspace-card h2,
+.item-dashboard-grid > article > h2,
+.item-dashboard .inline-editor-heading h2,
+.item-dashboard .event-editor h2,
+.item-dashboard .signup-roster h2,
+.item-dashboard .host-editor h2,
+.item-dashboard .attendee-editor h2,
+.item-dashboard > .item-comments h2 {
+	max-width: none;
+	font-size: clamp(1.25rem, 2vw, 1.7rem);
+	line-height: 1.15;
+	letter-spacing: -0.035em;
 }
 
 @keyframes workspace-panel-in {
@@ -6469,7 +6620,9 @@ h2 {
 	box-shadow: 0 0.4rem 1.2rem rgb(23 37 30 / 8%);
 	color: #17251e;
 	text-decoration: none;
-	transition: transform 160ms ease, box-shadow 160ms ease;
+	transition:
+		transform 160ms ease,
+		box-shadow 160ms ease;
 }
 
 .quick-links-list a:hover {
@@ -6737,7 +6890,7 @@ h2 {
 		grid-template-columns: 1fr auto;
 	}
 
-	.dashboard-header nav {
+	.dashboard-header > nav:not(.mobile-nav) {
 		display: none;
 	}
 
@@ -6762,6 +6915,11 @@ h2 {
 	}
 
 	.projects-hero {
+		align-items: start;
+		flex-direction: column;
+	}
+
+	.project-create-heading {
 		align-items: start;
 		flex-direction: column;
 	}
