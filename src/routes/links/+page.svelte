@@ -23,18 +23,32 @@
 		{#if data.links.length}
 			<nav class="quick-links-list" aria-label="Featured Queerlective links">
 				{#each data.links as link (link.id)}
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-					<a href={link.url} target="_blank" rel="noreferrer">
-						{#if link.image}<img src={link.image} alt="" />{:else}<span
-								class="quick-links-image"
-								aria-hidden="true">↗</span
-							>{/if}
-						<span
-							><strong>{link.title}</strong>{#if link.description}<small>{link.description}</small
-								>{/if}</span
-						>
-						<span class="quick-links-arrow" aria-hidden="true">↗</span>
-					</a>
+					{#if link.url}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={link.url} target="_blank" rel="noreferrer">
+							{#if link.image}<img src={link.image} alt="" />{:else}<span
+									class="quick-links-image"
+									aria-hidden="true">↗</span
+								>{/if}
+							<span
+								><strong>{link.title}</strong>{#if link.description}<small>{link.description}</small
+									>{/if}</span
+							>
+							<span class="quick-links-arrow" aria-hidden="true">↗</span>
+						</a>
+					{:else}
+						<div class="quick-link-card unavailable">
+							{#if link.image}<img src={link.image} alt="" />{:else}<span
+									class="quick-links-image"
+									aria-hidden="true">↗</span
+								>{/if}
+							<span
+								><strong>{link.title}</strong>{#if link.description}<small>{link.description}</small
+									>{/if}</span
+							>
+							<span class="quick-links-pending">Link coming soon</span>
+						</div>
+					{/if}
 				{/each}
 			</nav>
 		{:else}

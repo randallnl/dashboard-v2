@@ -18,24 +18,12 @@ function httpUrl(value: unknown): string {
 export const load: PageServerLoad = async ({ platform }) => {
 	const records = await new QuickLinkRepository(platform!.env.DB).listPublishedProjects();
 	return {
-		links: records
-			.map((project) => ({
-				id: project.id,
-				title: project.title,
-				description: text(project.record.description),
-				image: httpUrl(project.record.posterUrl),
-				url:
-					[
-						project.record.linkUrl,
-						project.record.websiteUrl,
-						project.record.registrationUrl,
-						project.record.link,
-						project.record.publicUrl,
-						project.record.url
-					]
-						.map(httpUrl)
-						.find(Boolean) ?? ''
-			}))
-			.filter((project) => project.url)
+		links: records.map((project) => ({
+			id: project.id,
+			title: project.title,
+			description: text(project.record.description),
+			image: httpUrl(project.record.posterUrl),
+			url: httpUrl(project.record.registrationUrl)
+		}))
 	};
 };

@@ -4,6 +4,7 @@ import {
 	HostRepository,
 	MemberRepository,
 	ProjectEventRepository,
+	QuickLinkRepository,
 	VolunteerRepository
 } from '$lib/server/db';
 import { attendeeEmails } from '$lib/server/monday/events';
@@ -38,6 +39,10 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		error(403, 'This event is not included with this membership.');
 	}
 	const db = platform!.env.DB;
+	const quickLinkIncluded =
+		source === 'project' && canEdit
+			? (await new QuickLinkRepository(db).listProjectIds()).includes(record.id)
+			: false;
 	const host = await new HostRepository(db).find(record.source, record.id);
 	const memberRepository = new MemberRepository(db);
 	const [hostMember, members, comments, participants] = await Promise.all([
@@ -116,6 +121,8 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		capabilities: layout.capabilities,
 		isAdmin: layout.viewerCapabilities.isAdmin && !layout.isViewingAs,
 		canEdit,
-		readOnly: layout.isViewingAs
+		isViewingAs: layout.isViewingAs,
+		readOnly: layout.isViewingAs,
+		quickLinkIncluded
 	};
 };

@@ -703,6 +703,37 @@
 	background: rgb(255 255 255 / 20%);
 }
 
+.project-quick-link-action {
+	margin: 1rem 0 0 0.5rem;
+	padding: 0.65rem 0.85rem;
+	border: 1px solid rgb(255 255 255 / 40%);
+	border-radius: 0.6rem;
+	background: rgb(255 255 255 / 12%);
+	color: #fff;
+	font: inherit;
+	font-size: 0.82rem;
+	font-weight: 800;
+	cursor: pointer;
+}
+
+.project-quick-link-action:hover,
+.project-quick-link-action.included {
+	background: rgb(255 255 255 / 24%);
+}
+
+.project-quick-link-action:disabled {
+	cursor: wait;
+	opacity: 0.7;
+}
+
+.project-quick-link-message {
+	max-width: 46rem;
+	margin: 0.75rem 0 0;
+	color: #fff;
+	font-size: 0.82rem;
+	line-height: 1.45;
+}
+
 .social-workspace {
 	min-height: 100vh;
 	background: #f3efe6;
@@ -6424,7 +6455,8 @@ h2 {
 	gap: 0.8rem;
 }
 
-.quick-links-list a {
+.quick-links-list a,
+.quick-link-card {
 	display: grid;
 	grid-template-columns: 4.5rem minmax(0, 1fr) auto;
 	align-items: center;
@@ -6443,6 +6475,10 @@ h2 {
 .quick-links-list a:hover {
 	transform: translateY(-2px);
 	box-shadow: 0 0.7rem 1.5rem rgb(23 37 30 / 15%);
+}
+
+.quick-link-card.unavailable {
+	background: rgb(255 250 240 / 68%);
 }
 
 .quick-links-list img,
@@ -6485,6 +6521,13 @@ h2 {
 	padding-right: 0.25rem;
 	color: #194639;
 	font-size: 1.2rem;
+}
+
+.quick-links-pending {
+	color: #7e5a24;
+	font-size: 0.72rem;
+	font-weight: 800;
+	white-space: nowrap;
 }
 
 .quick-links-empty {

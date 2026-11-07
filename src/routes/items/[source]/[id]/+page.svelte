@@ -95,6 +95,10 @@
 	let taskCommentBodies = $state<Record<string, string>>({});
 	let postingTaskComment = $state('');
 	let completingTask = $state('');
+	let quickLinkIncluded = $state(untrack(() => data.quickLinkIncluded));
+	let savingQuickLink = $state(false);
+	let quickLinkMessage = $state('');
+	const quickLinkUrl = $derived(safeUrl(recordFields.registrationUrl));
 	const milestone = $derived.by(() => {
 		const today = new Date().toISOString().slice(0, 10);
 		const nextTask = tasks
@@ -589,6 +593,32 @@
 			completingTask = '';
 		}
 	}
+
+	async function toggleQuickLink() {
+		const included = !quickLinkIncluded;
+		savingQuickLink = true;
+		quickLinkMessage = '';
+		try {
+			const response = await fetch('/api/admin/quick-links', {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ projectId: data.record.id, included })
+			});
+			const result = (await response.json()) as { message?: string };
+			if (!response.ok) throw new Error(result.message || 'Could not update Queerlective links.');
+			quickLinkIncluded = included;
+			quickLinkMessage = included
+				? quickLinkUrl
+					? 'This project is now live on the Queerlective links page.'
+					: 'This project is now visible on the Queerlective links page. Add a Registration Link in the project workspace to make it clickable.'
+				: 'This project was removed from the Queerlective links page.';
+		} catch (cause) {
+			quickLinkMessage =
+				cause instanceof Error ? cause.message : 'Could not update Queerlective links.';
+		} finally {
+			savingQuickLink = false;
+		}
+	}
 </script>
 
 <svelte:head><title>{recordTitle} · CoLab</title></svelte:head>
@@ -623,7 +653,25 @@
 					>Create social draft →</a
 				>
 				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+				{#if data.record.source === 'project'}
+					<button
+						type="button"
+						class:included={quickLinkIncluded}
+						class="project-quick-link-action"
+						onclick={toggleQuickLink}
+						disabled={savingQuickLink}
+					>
+						{savingQuickLink
+							? 'Saving…'
+							: quickLinkIncluded
+								? 'Remove from Queerlective links'
+								: 'Add to Queerlective links'}
+					</button>
+				{/if}
 			{/if}
+			{#if quickLinkMessage}<p class="project-quick-link-message" role="status">
+					{quickLinkMessage}
+				</p>{/if}
 			<div class="project-pills item-dashboard-pills" aria-label="Project attributes">
 				{#if recordStatus}
 					<span class="project-pill pill-status">Status · {recordStatus}</span>
