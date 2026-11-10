@@ -35,8 +35,9 @@ export class QuickLinkRepository {
 		const ids = await this.listProjectIds();
 		const projects = new ProjectEventRepository(this.db);
 		const records = await Promise.all(ids.map((id) => projects.findById('project', id)));
-		return records.filter((record): record is ProjectEventRecord =>
-			Boolean(record && !record.adminOnly)
-		);
+		// Inclusion on the public links page is an explicit publishing decision made
+		// from the project details page. It must not be overridden by the internal
+		// "admin only" flag used elsewhere in the project workspace.
+		return records.filter((record): record is ProjectEventRecord => Boolean(record));
 	}
 }
