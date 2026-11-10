@@ -4,6 +4,7 @@
 /// <reference path="../drive-worker-configuration.d.ts" />
 /// <reference path="../receipt-worker-configuration.d.ts" />
 /// <reference path="../project-email-ingest-worker-configuration.d.ts" />
+/// <reference path="../shopify-market-sales-ingest-worker-configuration.d.ts" />
 
 import type { AuthenticatedSession } from '$lib/server/auth/types';
 
@@ -16,6 +17,9 @@ declare global {
 		QBO_CLIENT_ID?: string;
 		QBO_CLIENT_SECRET?: string;
 		QBO_TOKEN_ENCRYPTION_KEY?: string;
+		META_APP_ID?: string;
+		META_APP_SECRET?: string;
+		SOCIAL_TOKEN_ENCRYPTION_KEY?: string;
 		SHOPIFY_CALENDAR_URL?: string;
 	}
 

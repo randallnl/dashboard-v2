@@ -10,11 +10,13 @@ export {
 	isFinanceAccountKey
 } from './finance-reconciliation-repository';
 export { FinanceReportSnapshotRepository } from './finance-report-snapshot-repository';
+export { ShopifyMarketSalesRepository } from './shopify-market-sales-repository';
 export type {
 	FinanceAccountKey,
 	FinanceReconciliationTask
 } from './finance-reconciliation-repository';
 export type { FinanceReportSnapshot } from './finance-report-snapshot-repository';
+export type { ShopifyMarketSale } from './shopify-market-sales-repository';
 export { GivebutterRepository } from './givebutter-repository';
 export { HostRepository } from './host-repository';
 export { MemberRepository, memberNames } from './member-repository';
@@ -42,6 +44,11 @@ export type {
 	NewSocialPostReview,
 	SocialPostUpdate
 } from './social-post-repository';
+export { SocialPlatformConnectionRepository } from './social-platform-connection-repository';
+export type {
+	InstagramConnection,
+	InstagramConnectionCandidate
+} from './social-platform-connection-repository';
 export { ShiftSwitchRepository } from './shift-switch-repository';
 export { VolunteerRepository } from './volunteer-repository';
 export type { VolunteerSignup } from './volunteer-repository';

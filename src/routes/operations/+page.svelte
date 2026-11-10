@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import FinanceReconciliationPanel from '$lib/components/FinanceReconciliationPanel.svelte';
 	import FinanceReportSnapshot from '$lib/components/FinanceReportSnapshot.svelte';
+	import ShopifyMarketSalesPanel from '$lib/components/ShopifyMarketSalesPanel.svelte';
 	import MemberPortalNavigation from '$lib/components/MemberPortalNavigation.svelte';
 	import type { PageData } from './$types';
 
@@ -47,6 +48,7 @@
 		</nav>
 
 		<FinanceReportSnapshot />
+		<ShopifyMarketSalesPanel />
 		<FinanceReconciliationPanel />
 	</main>
 </div>

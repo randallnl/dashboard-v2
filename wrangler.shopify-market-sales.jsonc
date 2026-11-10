@@ -1,0 +1,19 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "shopify-market-sales-ingest",
+	"main": "src/shopify-market-sales-ingest-worker.ts",
+	"compatibility_date": "2026-11-09",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "queerlective-dashboard",
+			"database_id": "fd34016a-db11-4ee7-8103-73f149118172"
+		}
+	],
+	"vars": {
+		"SHOPIFY_SALES_INBOX_EMAIL": "shopify-sales@nhsolidarityecosystem.com"
+	},
+	"observability": { "enabled": true, "head_sampling_rate": 1 }
+}

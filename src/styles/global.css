@@ -993,6 +993,163 @@
 	font-weight: 800;
 }
 
+.social-instagram-connection {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.social-instagram-heading {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 0.6rem;
+}
+
+.social-instagram-heading .eyebrow {
+	margin-bottom: 0.25rem;
+}
+
+.social-instagram-heading h2 {
+	margin: 0;
+	color: #244234;
+	font-family: 'Manrope', sans-serif;
+	font-size: 1rem;
+}
+
+.social-instagram-heading > span {
+	flex: 0 0 auto;
+	padding: 0.25rem 0.4rem;
+	border-radius: 999px;
+	background: #f0e9df;
+	color: #6d6257;
+	font-size: 0.6rem;
+	font-weight: 800;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+.social-instagram-heading > span.connected {
+	background: #e0eee3;
+	color: #28543e;
+}
+
+.social-instagram-copy,
+.social-instagram-setup p,
+.social-instagram-connected p,
+.social-instagram-warning {
+	margin: 0;
+	color: #68716c;
+	font-size: 0.73rem;
+	line-height: 1.45;
+}
+
+.social-instagram-setup,
+.social-instagram-connected {
+	display: grid;
+	gap: 0.45rem;
+}
+
+.social-instagram-setup > strong,
+.social-instagram-connected > strong {
+	color: #244234;
+	font-size: 0.78rem;
+}
+
+.social-instagram-setup code {
+	overflow-wrap: anywhere;
+	padding: 0.45rem;
+	border-radius: 0.45rem;
+	background: #f5f1e9;
+	color: #41594c;
+	font-size: 0.62rem;
+	line-height: 1.35;
+}
+
+.social-instagram-connect,
+.social-instagram-connected .secondary-action {
+	display: inline-flex;
+	width: fit-content;
+	align-items: center;
+	justify-content: center;
+	min-height: 2.25rem;
+	padding: 0.55rem 0.7rem;
+	border-radius: 0.6rem;
+	background: #194639;
+	color: #fff;
+	font-size: 0.72rem;
+	font-weight: 800;
+	text-decoration: none;
+}
+
+.social-instagram-connect:hover {
+	background: #2d6956;
+}
+
+.social-instagram-connected .secondary-action {
+	border: 1px solid #bfcabe;
+	background: transparent;
+	color: #194639;
+}
+
+.social-instagram-warning {
+	color: #8b5c24;
+}
+
+.social-instagram-message {
+	margin: 0;
+	padding: 0.55rem 0.6rem;
+	border-radius: 0.5rem;
+	background: #e4efe7;
+	color: #28543e;
+	font-size: 0.7rem;
+	line-height: 1.4;
+}
+
+.social-instagram-message.error {
+	background: #f7e1da;
+	color: #8b3829;
+}
+
+.social-instagram-account-list {
+	display: grid;
+	gap: 0.45rem;
+}
+
+.social-instagram-account-list button {
+	display: grid;
+	gap: 0.1rem;
+	width: 100%;
+	padding: 0.6rem 0.65rem;
+	border: 1px solid #cdd9ce;
+	border-radius: 0.6rem;
+	background: #f7fbf7;
+	color: #244234;
+	text-align: left;
+	cursor: pointer;
+}
+
+.social-instagram-account-list button:hover {
+	border-color: #75a785;
+	background: #edf5ee;
+}
+
+.social-instagram-account-list button:disabled {
+	cursor: wait;
+	opacity: 0.7;
+}
+
+.social-instagram-account-list span {
+	font-size: 0.75rem;
+	font-weight: 800;
+}
+
+.social-instagram-account-list small,
+.social-instagram-account-list em {
+	color: #68716c;
+	font-size: 0.65rem;
+	font-style: normal;
+}
+
 .social-start-card {
 	display: flex;
 	align-items: center;
@@ -2725,6 +2882,191 @@ h2 {
 .operations-subnav a.active {
 	background: #e1ece2;
 	color: #194639;
+}
+
+.market-sales {
+	margin-top: 1rem;
+	padding: clamp(1.25rem, 3vw, 2rem);
+	border: 1px solid #d8cfb9;
+	border-radius: 1.2rem;
+	background: linear-gradient(135deg, #fffdf7, #f8f2e8);
+}
+
+.market-sales-heading {
+	display: flex;
+	align-items: end;
+	justify-content: space-between;
+	gap: 1.5rem;
+}
+
+.market-sales-heading .eyebrow {
+	margin-bottom: 0.35rem;
+}
+
+.market-sales-heading h2 {
+	max-width: none;
+	margin: 0;
+	font-size: clamp(1.45rem, 2.6vw, 2rem);
+	line-height: 1.12;
+}
+
+.market-sales-heading p:not(.eyebrow) {
+	max-width: 44rem;
+	margin: 0.55rem 0 0;
+	color: #675f52;
+	line-height: 1.5;
+}
+
+.market-sales-inbox {
+	display: grid;
+	gap: 0.25rem;
+	flex: 0 0 auto;
+	color: #776e60;
+	font-size: 0.64rem;
+	font-weight: 850;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.market-sales-inbox code {
+	padding: 0.35rem 0.45rem;
+	border: 1px solid #dfd2b8;
+	border-radius: 0.45rem;
+	background: #fff;
+	color: #55422e;
+	font-size: 0.7rem;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.market-sales-summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.65rem;
+	margin-top: 1.25rem;
+}
+
+.market-sales-summary > div {
+	display: grid;
+	gap: 0.18rem;
+	padding: 0.75rem;
+	border: 1px solid #eadfca;
+	border-radius: 0.75rem;
+	background: rgb(255 255 255 / 75%);
+}
+
+.market-sales-summary strong {
+	color: #5b3d20;
+	font-size: 1.15rem;
+}
+.market-sales-summary span {
+	color: #716758;
+	font-size: 0.69rem;
+	font-weight: 750;
+}
+
+.market-sales-table-wrap {
+	overflow-x: auto;
+	margin-top: 1rem;
+	border: 1px solid #e4d9c5;
+	border-radius: 0.85rem;
+	background: #fffdf9;
+}
+
+.market-sales-table {
+	width: 100%;
+	min-width: 760px;
+	border-collapse: collapse;
+}
+.market-sales-table th {
+	padding: 0.7rem 0.8rem;
+	border-bottom: 1px solid #e6dcc9;
+	color: #786b5b;
+	font-size: 0.64rem;
+	font-weight: 850;
+	letter-spacing: 0.06em;
+	text-align: left;
+	text-transform: uppercase;
+}
+.market-sales-table td {
+	padding: 0.75rem 0.8rem;
+	border-bottom: 1px solid #eee6d9;
+	vertical-align: middle;
+}
+.market-sales-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+.market-sales-table td > strong {
+	display: block;
+	color: #3c342a;
+	font-size: 0.8rem;
+}
+.market-sales-table td > small {
+	display: block;
+	max-width: 15rem;
+	margin-top: 0.18rem;
+	overflow: hidden;
+	color: #817565;
+	font-size: 0.64rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.market-sales-table select {
+	min-width: 12rem;
+	padding: 0.48rem 0.55rem;
+	border: 1px solid #cfc2aa;
+	border-radius: 0.5rem;
+	background: #fff;
+	color: #453d32;
+	font: inherit;
+	font-size: 0.73rem;
+}
+
+.market-tenders {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.65rem;
+	max-width: 15rem;
+}
+.market-tenders span {
+	color: #7a6d5e;
+	font-size: 0.68rem;
+	white-space: nowrap;
+}
+.market-tenders strong {
+	color: #40382f;
+}
+.market-tenders span:nth-child(2) strong {
+	color: #1c6651;
+}
+
+.market-deposit-button {
+	min-height: 2rem;
+	padding: 0.4rem 0.55rem;
+	border: 1px solid #c69a54;
+	border-radius: 0.5rem;
+	background: #fff7e9;
+	color: #79531f;
+	font: inherit;
+	font-size: 0.7rem;
+	font-weight: 800;
+	cursor: pointer;
+}
+.market-deposit-button:hover:not(:disabled) {
+	background: #fff0d4;
+}
+.market-deposit-button.complete {
+	border-color: #a6c9af;
+	background: #eff8ef;
+	color: #286040;
+}
+.market-deposit-button:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+.market-deposit-muted {
+	color: #867a69;
+	font-size: 0.7rem;
 }
 
 .finance-reconciliation {
@@ -5510,6 +5852,145 @@ h2 {
 	margin-top: 1rem;
 }
 
+.project-detail-rails {
+	display: grid;
+	grid-template-columns: minmax(12.5rem, 0.7fr) minmax(0, 2.35fr) minmax(13rem, 0.78fr);
+	align-items: start;
+	gap: 1rem;
+	margin-top: 1rem;
+}
+
+.project-detail-rails.without-project-tools {
+	grid-template-columns: minmax(0, 1fr) minmax(14rem, 0.38fr);
+}
+
+.project-detail-main {
+	display: grid;
+	min-width: 0;
+	gap: 1rem;
+}
+
+.project-detail-rail {
+	position: sticky;
+	top: 8.5rem;
+	display: grid;
+	min-width: 0;
+	gap: 0.8rem;
+}
+
+.project-detail-rail .project-email-forwarding,
+.project-detail-rail .project-drive-workspace {
+	margin: 0;
+	padding: 1rem;
+	box-shadow: 0 0.35rem 1rem rgb(23 37 30 / 5%);
+}
+
+.project-detail-rail .project-drive-workspace {
+	grid-template-columns: 1fr;
+}
+
+.project-detail-rail .project-drive-workspace-actions {
+	justify-content: start;
+}
+
+.project-activity-summary {
+	padding: 1rem;
+	box-shadow: 0 0.35rem 1rem rgb(23 37 30 / 5%);
+}
+
+.project-activity-summary-heading {
+	display: grid;
+	gap: 0.55rem;
+}
+
+.project-activity-summary-heading h2,
+.project-activity-summary-heading p {
+	margin: 0;
+}
+
+.project-activity-summary-heading .data-freshness {
+	justify-self: start;
+}
+
+.project-activity-snapshot {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.4rem;
+	margin: 0.9rem 0 0;
+}
+
+.project-activity-snapshot > div {
+	display: grid;
+	gap: 0.15rem;
+	padding: 0.55rem;
+	border: 1px solid #d6e4dc;
+	border-radius: 0.55rem;
+	background: #f4f9f5;
+}
+
+.project-activity-snapshot dt {
+	color: #617168;
+	font-size: 0.6rem;
+	font-weight: 800;
+	letter-spacing: 0.07em;
+	line-height: 1.2;
+	text-transform: uppercase;
+}
+
+.project-activity-snapshot dd {
+	margin: 0;
+	color: #194639;
+	font-size: 1rem;
+	font-weight: 850;
+}
+
+.project-activity-summary .project-activity {
+	margin: 0.75rem 0;
+}
+
+.project-activity-summary .project-activity li {
+	display: grid;
+	gap: 0.28rem;
+	padding: 0.7rem 0;
+}
+
+.project-activity-summary .project-activity strong {
+	display: block;
+	color: #194639;
+	font-size: 0.78rem;
+	line-height: 1.3;
+}
+
+.project-activity-summary .project-activity p {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	font-size: 0.75rem;
+	line-height: 1.4;
+}
+
+.project-activity-summary .project-activity time {
+	font-size: 0.68rem;
+}
+
+@media (max-width: 1040px) {
+	.project-detail-rails,
+	.project-detail-rails.without-project-tools {
+		grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.7fr);
+	}
+
+	.project-detail-tools {
+		position: static;
+		grid-column: 1 / -1;
+		grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+	}
+
+	.project-detail-updates {
+		position: static;
+	}
+}
+
 .workspace-card {
 	padding: clamp(1.4rem, 3vw, 2rem);
 	border: 1px solid #d8d1c5;
@@ -8224,6 +8705,22 @@ h2 {
 
 	.project-drive-workspace-actions {
 		justify-content: start;
+	}
+
+	.project-detail-rails,
+	.project-detail-rails.without-project-tools {
+		grid-template-columns: 1fr;
+	}
+
+	.project-detail-rail,
+	.project-detail-tools,
+	.project-detail-updates {
+		position: static;
+		grid-column: auto;
+	}
+
+	.project-detail-tools {
+		grid-template-columns: 1fr;
 	}
 
 	.colab-subnav {

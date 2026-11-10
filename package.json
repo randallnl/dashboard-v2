@@ -18,17 +18,18 @@
 		"db:migrate:local": "wrangler d1 migrations apply queerlective-dashboard --local",
 		"db:migrate:remote": "wrangler d1 migrations apply queerlective-dashboard --remote",
 		"db:migrations:list": "wrangler d1 migrations list queerlective-dashboard --remote",
-		"deploy": "npm run deploy:app && npm run deploy:cron && npm run deploy:drive && npm run deploy:finance-reports && npm run deploy:project-email",
+		"deploy": "npm run deploy:app && npm run deploy:cron && npm run deploy:drive && npm run deploy:finance-reports && npm run deploy:project-email && npm run deploy:shopify-sales",
 		"deploy:app": "npm run build && wrangler deploy",
 		"deploy:cron": "wrangler deploy --config wrangler.cron.jsonc",
 		"deploy:drive": "wrangler deploy --config wrangler.drive.jsonc --keep-vars",
 		"deploy:finance-reports": "wrangler deploy --config wrangler.finance-reports.jsonc",
+		"deploy:shopify-sales": "wrangler deploy --config wrangler.shopify-market-sales.jsonc",
 		"deploy:project-email": "wrangler deploy --config wrangler.project-email.jsonc",
 		"deploy:receipts": "wrangler deploy --config wrangler.receipts.jsonc",
 		"deploy:dry-run": "npm run build && wrangler deploy --dry-run",
 		"deploy:cron:dry-run": "wrangler deploy --config wrangler.cron.jsonc --dry-run",
 		"deploy:drive:dry-run": "wrangler deploy --config wrangler.drive.jsonc --dry-run",
-		"cf-types": "wrangler types --include-runtime false && wrangler types cron-worker-configuration.d.ts --config wrangler.cron.jsonc --env-interface CronEnv --include-runtime false && wrangler types drive-worker-configuration.d.ts --config wrangler.drive.jsonc --env-interface DriveSyncEnv --include-runtime false && wrangler types receipt-worker-configuration.d.ts --config wrangler.receipts.jsonc --env-interface ReceiptEnv --include-runtime false && wrangler types finance-report-ingest-worker-configuration.d.ts --config wrangler.finance-reports.jsonc --env-interface FinanceReportIngestEnv --include-runtime false && wrangler types project-email-ingest-worker-configuration.d.ts --config wrangler.project-email.jsonc --env-interface ProjectEmailEnv --include-runtime false"
+		"cf-types": "wrangler types --include-runtime false && wrangler types cron-worker-configuration.d.ts --config wrangler.cron.jsonc --env-interface CronEnv --include-runtime false && wrangler types drive-worker-configuration.d.ts --config wrangler.drive.jsonc --env-interface DriveSyncEnv --include-runtime false && wrangler types receipt-worker-configuration.d.ts --config wrangler.receipts.jsonc --env-interface ReceiptEnv --include-runtime false && wrangler types finance-report-ingest-worker-configuration.d.ts --config wrangler.finance-reports.jsonc --env-interface FinanceReportIngestEnv --include-runtime false && wrangler types project-email-ingest-worker-configuration.d.ts --config wrangler.project-email.jsonc --env-interface ProjectEmailEnv --include-runtime false && wrangler types shopify-market-sales-ingest-worker-configuration.d.ts --config wrangler.shopify-market-sales.jsonc --env-interface ShopifyMarketSalesEnv --include-runtime false"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "latest",

@@ -912,7 +912,79 @@
 			<a href={`#workspace-${section.id}`}>{section.label}</a>
 		{/each}
 	</nav>
-	<DataFreshness syncedAt={data.record.syncedAt} />
+
+	<div
+		class="project-detail-rails"
+		class:without-project-tools={!data.projectEmailForwarding &&
+			!(data.canEdit && data.record.source === 'project')}
+	>
+		{#if data.projectEmailForwarding || (data.canEdit && data.record.source === 'project')}
+			<aside class="project-detail-rail project-detail-tools" aria-label="Project tools">
+				{#if data.projectEmailForwarding}
+					<section class="project-email-forwarding" aria-labelledby="project-email-forwarding-title">
+						<div>
+							<p class="eyebrow">Email to project</p>
+							<h3 id="project-email-forwarding-title">Forward email into this project</h3>
+						</div>
+						<p>
+							Forward messages to <code>{data.projectEmailForwarding.address}</code> and include
+							<code>{data.projectEmailForwarding.subjectTag}</code> in the subject. The email body
+							becomes a project comment and any file attachments are saved to this project’s
+							shared Drive folder.
+						</p>
+						<div class="project-email-forwarding-actions">
+							{#if projectEmailMailto}<a href={projectEmailMailto}>Start an email</a>{/if}
+							<button type="button" onclick={() => void copyProjectEmailAddress()}>Copy address</button>
+						</div>
+						<small>Keep this project-specific subject tag within the project team.</small>
+						{#if projectEmailForwardingMessage}<p role="status">{projectEmailForwardingMessage}</p>{/if}
+					</section>
+				{/if}
+				{#if data.canEdit && data.record.source === 'project'}
+					<section class="project-drive-workspace" aria-labelledby="project-drive-workspace-title">
+						<div>
+							<p class="eyebrow">Google Drive workspace</p>
+							<h3 id="project-drive-workspace-title">
+								{projectDriveFolder ? projectDriveFolder.folderName : 'Create a shared project folder'}
+							</h3>
+							<p>
+								{#if projectDriveFolder}
+									Create Google Docs in the folder or add files there directly. This workspace refreshes from Drive every 15 minutes.
+								{:else}
+									Create a shared folder now so you can open it and start a Google Doc before uploading any files.
+								{/if}
+							</p>
+						</div>
+						<div class="project-drive-workspace-actions">
+							{#if projectDriveFolderUrl}
+								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+								<a href={projectDriveFolderUrl} target="_blank" rel="noreferrer">Open folder ↗</a>
+								<button
+									type="button"
+									class="secondary-action"
+									onclick={() => void prepareProjectDriveFolder()}
+									disabled={preparingProjectDriveFolder}
+								>{preparingProjectDriveFolder ? 'Refreshing…' : 'Refresh Drive files'}</button>
+							{:else}
+								<button
+									type="button"
+									onclick={() => void prepareProjectDriveFolder()}
+									disabled={preparingProjectDriveFolder}
+								>{preparingProjectDriveFolder ? 'Creating…' : 'Create Google Drive folder'}</button>
+							{/if}
+						</div>
+						{#if projectFileMessage}<p
+								class:error={projectFileUploadFailed}
+								role={projectFileUploadFailed ? 'alert' : 'status'}
+							>
+								{projectFileMessage}
+							</p>{/if}
+					</section>
+				{/if}
+			</aside>
+		{/if}
+
+		<div class="project-detail-main">
 
 	<section class="item-dashboard-grid workspace-panel" id="workspace-overview">
 		<article class:editing={editingDetails} class="inline-project-details">
@@ -1069,65 +1141,7 @@
 			</div>
 			<span class="status-pill">{pinnedUrls.length} pinned</span>
 		</div>
-		{#if data.projectEmailForwarding}
-			<section class="project-email-forwarding" aria-labelledby="project-email-forwarding-title">
-				<div>
-					<p class="eyebrow">Email to project</p>
-					<h3 id="project-email-forwarding-title">Forward email into this project</h3>
-				</div>
-				<p>
-					Forward messages to <code>{data.projectEmailForwarding.address}</code> and include
-					<code>{data.projectEmailForwarding.subjectTag}</code> in the subject. The email body becomes
-					a project comment and any file attachments are saved to this project’s shared Drive folder.
-				</p>
-				<div class="project-email-forwarding-actions">
-					{#if projectEmailMailto}<a href={projectEmailMailto}>Start an email</a>{/if}
-					<button type="button" onclick={() => void copyProjectEmailAddress()}>Copy address</button>
-				</div>
-				<small>Keep this project-specific subject tag within the project team.</small>
-				{#if projectEmailForwardingMessage}<p role="status">{projectEmailForwardingMessage}</p>{/if}
-			</section>
-		{/if}
 		{#if data.canEdit && data.record.source === 'project'}
-			<section class="project-drive-workspace" aria-labelledby="project-drive-workspace-title">
-				<div>
-					<p class="eyebrow">Google Drive workspace</p>
-					<h3 id="project-drive-workspace-title">
-						{projectDriveFolder ? projectDriveFolder.folderName : 'Create a shared project folder'}
-					</h3>
-					<p>
-						{#if projectDriveFolder}
-							Create Google Docs in the folder or add files there directly. This workspace refreshes from Drive every 15 minutes.
-						{:else}
-							Create a shared folder now so you can open it and start a Google Doc before uploading any files.
-						{/if}
-					</p>
-				</div>
-				<div class="project-drive-workspace-actions">
-					{#if projectDriveFolderUrl}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={projectDriveFolderUrl} target="_blank" rel="noreferrer">Open folder ↗</a>
-						<button
-							type="button"
-							class="secondary-action"
-							onclick={() => void prepareProjectDriveFolder()}
-							disabled={preparingProjectDriveFolder}
-						>{preparingProjectDriveFolder ? 'Refreshing…' : 'Refresh Drive files'}</button>
-					{:else}
-						<button
-							type="button"
-							onclick={() => void prepareProjectDriveFolder()}
-							disabled={preparingProjectDriveFolder}
-						>{preparingProjectDriveFolder ? 'Creating…' : 'Create Google Drive folder'}</button>
-					{/if}
-				</div>
-				{#if projectFileMessage}<p
-						class:error={projectFileUploadFailed}
-						role={projectFileUploadFailed ? 'alert' : 'status'}
-					>
-						{projectFileMessage}
-					</p>{/if}
-			</section>
 			<form
 				class="project-file-upload"
 				onsubmit={(event) => {
@@ -1567,20 +1581,44 @@
 	<section class="workspace-panel" id="workspace-comments">
 		<ItemComments source={data.record.source} eventId={data.record.id} readOnly={data.readOnly} />
 	</section>
+		</div>
 
-	<section class="workspace-panel workspace-card" id="workspace-activity">
-		<p class="eyebrow">Recent changes</p>
-		<h2>Activity</h2>
-		<ol class="project-activity">
-			{#each activity as item (item.id)}
-				<li>
+		<aside class="project-detail-rail project-detail-updates">
+			<section class="workspace-panel workspace-card project-activity-summary" id="workspace-activity">
+				<div class="project-activity-summary-heading">
 					<div>
-						<strong>{item.label}</strong>
-						<p>{item.detail}</p>
+						<p class="eyebrow">Project pulse</p>
+						<h2>Recent updates</h2>
 					</div>
-					<time datetime={item.at}>{dateTimeLabel(item.at)}</time>
-				</li>
-			{/each}
-		</ol>
-	</section>
+					<DataFreshness syncedAt={data.record.syncedAt} />
+				</div>
+				<dl class="project-activity-snapshot">
+					<div>
+						<dt>Open tasks</dt>
+						<dd>{tasks.filter((task) => !task.completed).length}</dd>
+					</div>
+					<div>
+						<dt>Comments</dt>
+						<dd>{data.recentComments.length}</dd>
+					</div>
+					<div>
+						<dt>Drive files</dt>
+						<dd>{projectDriveFiles.length}</dd>
+					</div>
+				</dl>
+				<ol class="project-activity">
+					{#each activity as item (item.id)}
+						<li>
+							<div>
+								<strong>{item.label}</strong>
+								<p>{item.detail}</p>
+							</div>
+							<time datetime={item.at}>{dateTimeLabel(item.at)}</time>
+						</li>
+					{/each}
+				</ol>
+				<a class="workspace-action" href="#workspace-comments">Open project comments</a>
+			</section>
+		</aside>
+	</div>
 </main>

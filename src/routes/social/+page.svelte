@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import InstagramConnection from '$lib/components/InstagramConnection.svelte';
 	import MemberPortalNavigation from '$lib/components/MemberPortalNavigation.svelte';
 	import type {
 		SocialLibraryAsset,
@@ -1242,6 +1243,8 @@
 						publish time when they are ready.
 					</p>
 				</section>
+
+				<InstagramConnection />
 
 				<section class="social-posts" aria-labelledby="social-posts-title">
 					<div class="social-list-heading">
