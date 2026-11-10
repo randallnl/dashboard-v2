@@ -1,0 +1,28 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "project-email-ingest",
+	"main": "src/project-email-ingest-worker.ts",
+	"compatibility_date": "2026-11-10",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "queerlective-dashboard",
+			"database_id": "fd34016a-db11-4ee7-8103-73f149118172"
+		}
+	],
+	"services": [
+		{
+			"binding": "PROJECT_DRIVE",
+			"service": "drive-dashboard-sync"
+		}
+	],
+	"vars": {
+		"PROJECT_INBOX_EMAIL": "projects@nhsolidarityecosystem.com"
+	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+}

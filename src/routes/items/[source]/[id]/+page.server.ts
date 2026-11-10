@@ -4,6 +4,7 @@ import {
 	HostRepository,
 	MemberRepository,
 	ProjectEventRepository,
+	ProjectDriveRepository,
 	QuickLinkRepository,
 	VolunteerRepository
 } from '$lib/server/db';
@@ -11,6 +12,32 @@ import { attendeeEmails } from '$lib/server/monday/events';
 import type { ProjectEventSource } from '$lib/types/domain';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+
+async function projectEmailToken(db: D1Database, projectId: string): Promise<string> {
+	const existing = await db
+		.prepare(`SELECT inbox_token FROM project_email_addresses WHERE project_id = ?1 LIMIT 1`)
+		.bind(projectId)
+		.first<{ inbox_token: string }>();
+	if (existing?.inbox_token) return existing.inbox_token;
+
+	const now = new Date().toISOString();
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		await db
+			.prepare(
+				`INSERT OR IGNORE INTO project_email_addresses (
+					project_id, inbox_token, created_at, updated_at
+				) VALUES (?1, ?2, ?3, ?3)`
+			)
+			.bind(projectId, crypto.randomUUID(), now)
+			.run();
+		const created = await db
+			.prepare(`SELECT inbox_token FROM project_email_addresses WHERE project_id = ?1 LIMIT 1`)
+			.bind(projectId)
+			.first<{ inbox_token: string }>();
+		if (created?.inbox_token) return created.inbox_token;
+	}
+	error(500, 'Could not prepare the project email address.');
+}
 
 export const load: PageServerLoad = async ({ params, parent, platform }) => {
 	const layout = await parent();
@@ -39,18 +66,42 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		error(403, 'This event is not included with this membership.');
 	}
 	const db = platform!.env.DB;
+	const projectEmailInboxToken =
+		source === 'project' && canEdit ? await projectEmailToken(db, record.id) : '';
 	const quickLinkIncluded =
 		source === 'project' && canEdit
 			? (await new QuickLinkRepository(db).listProjectIds()).includes(record.id)
 			: false;
 	const host = await new HostRepository(db).find(record.source, record.id);
 	const memberRepository = new MemberRepository(db);
-	const [hostMember, members, comments, participants] = await Promise.all([
+	const driveRepository = new ProjectDriveRepository(db);
+	const [
+		hostMember,
+		members,
+		comments,
+		participants,
+		projectRecords,
+		projectDriveFolder,
+		projectDriveFiles
+	] = await Promise.all([
 		host?.memberId ? memberRepository.findById(host.memberId) : Promise.resolve(null),
 		memberRepository.search('', 100),
 		new CommentRepository(db).list(record.source, record.id),
-		new VolunteerRepository(db).listParticipantsForEvent(record.source, record.id)
+		new VolunteerRepository(db).listParticipantsForEvent(record.source, record.id),
+		source === 'project'
+			? new ProjectEventRepository(db).list({ source: 'project', includeAdminOnly: true })
+			: Promise.resolve([]),
+		source === 'project' ? driveRepository.findFolder(source, record.id) : Promise.resolve(null),
+		source === 'project' ? driveRepository.listFiles(source, record.id) : Promise.resolve([])
 	]);
+	const projectStatusOptions = [
+		...new Map(
+			projectRecords
+				.map((project) => project.status.trim())
+				.filter(Boolean)
+				.map((status) => [status.toLocaleLowerCase('en-US'), status] as const)
+		).values()
+	].sort((left, right) => left.localeCompare(right));
 	const memberByEmail = new Map(
 		members.flatMap((member) =>
 			[member.email, ...member.otherEmails]
@@ -124,6 +175,15 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		canEdit,
 		isViewingAs: layout.isViewingAs,
 		readOnly: layout.isViewingAs,
-		quickLinkIncluded
+		quickLinkIncluded,
+		projectStatusOptions,
+		projectDriveFolder,
+		projectDriveFiles,
+		projectEmailForwarding: projectEmailInboxToken
+			? {
+					address: 'projects@nhsolidarityecosystem.com',
+					subjectTag: `[project:${projectEmailInboxToken}]`
+				}
+			: null
 	};
 };

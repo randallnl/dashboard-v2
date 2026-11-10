@@ -35,6 +35,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	const name = clean(form.get('name'), 120);
 	const email = clean(form.get('email'), 254).toLowerCase();
 	const town = clean(form.get('town'), 120);
+	const instagramHandle = clean(form.get('instagramHandle'), 120);
 	const story = clean(form.get('story'), 2_000);
 	const publicDisplayConsent = form.get('publicDisplayConsent') === 'on';
 	const calendarPublicationConsent = form.get('calendarPublicationConsent') === 'on';
@@ -68,12 +69,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		env.DB
 			.prepare(
 				`INSERT INTO calendar_campaign_submissions (
-					id, name, email, town, story, image_key, image_filename, image_content_type,
+					id, name, email, town, instagram_handle, story, image_key, image_filename, image_content_type,
 					public_display_consent, calendar_publication_consent, image_edit_consent, rules_accepted,
 					created_at, updated_at
-				) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 1, ?12, ?12)`
+				) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 1, ?13, ?13)`
 			)
-			.bind(id, name, email, town, story, imageKey, photo instanceof File ? photo.name : '', photo instanceof File ? photo.type : '', Number(publicDisplayConsent), Number(calendarPublicationConsent), Number(imageEditConsent), now),
+			.bind(id, name, email, town, instagramHandle, story, imageKey, photo instanceof File ? photo.name : '', photo instanceof File ? photo.type : '', Number(publicDisplayConsent), Number(calendarPublicationConsent), Number(imageEditConsent), now),
 		env.DB
 			.prepare('INSERT INTO calendar_campaign_giveaway_entries (id, submission_id, created_at) VALUES (?1, ?2, ?3)')
 			.bind(crypto.randomUUID(), id, now),

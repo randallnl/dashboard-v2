@@ -36,15 +36,22 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 	const repository = new SocialPostRepository(env!.DB);
 	const post = await repository.find(params.id);
 	if (!post) error(404, 'Social post not found.');
-	if (post.status !== 'draft') {
-		error(409, 'Only drafts can be deleted.');
+	if (post.status === 'published') {
+		error(409, 'Published posts cannot be deleted.');
 	}
-	if (!(await repository.deleteDraft(post.id))) {
-		error(409, 'This post is no longer a draft and cannot be deleted.');
+	if (!(await repository.deleteUnpublished(post.id))) {
+		error(409, 'This post is already published or has been deleted.');
 	}
-	const draftMediaKeys = post.assets
+	const postMediaKeys = post.assets
 		.filter((asset) => asset.storage === 'r2' && asset.objectKey.startsWith(`social/${post.id}/`))
 		.map((asset) => asset.objectKey);
-	await Promise.all(draftMediaKeys.map((objectKey) => env!.SOCIAL_MEDIA_ASSETS.delete(objectKey)));
-	return json({ message: 'Draft deleted.' });
+	await Promise.all(postMediaKeys.map((objectKey) => env!.SOCIAL_MEDIA_ASSETS.delete(objectKey)));
+	return json({
+		message:
+			post.status === 'scheduled'
+				? 'Queued post deleted.'
+				: post.status === 'review'
+					? 'In-review post deleted.'
+					: 'Draft deleted.'
+	});
 };

@@ -1,17 +1,12 @@
 <script lang="ts">
-	import CalendarPanel from '$lib/components/CalendarPanel.svelte';
 	import CalendarCampaignModeration from '$lib/components/CalendarCampaignModeration.svelte';
-	import AdminProjectsPanel from '$lib/components/AdminProjectsPanel.svelte';
+	import CoLabHub from '$lib/components/CoLabHub.svelte';
 	import ContentState from '$lib/components/ContentState.svelte';
-	import DocumentLibrary from '$lib/components/DocumentLibrary.svelte';
 	import MemberHistoryPanel from '$lib/components/MemberHistoryPanel.svelte';
 	import MemberPortalNavigation from '$lib/components/MemberPortalNavigation.svelte';
 	import NotificationCenter from '$lib/components/NotificationCenter.svelte';
-	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
 	import UpcomingMemberPanel from '$lib/components/UpcomingMemberPanel.svelte';
 	import ViewAsControl from '$lib/components/ViewAsControl.svelte';
-	import VotePanel from '$lib/components/VotePanel.svelte';
-	import WorkTradePanel from '$lib/components/WorkTradePanel.svelte';
 	import type {
 		Member,
 		MemberCapabilities,
@@ -59,36 +54,21 @@
 	const creativeGroundUrl = $derived(safeExternalUrl(member.creativeGroundUrl));
 	type DashboardView =
 		| 'overview'
-		| 'resources'
-		| 'documents'
-		| 'shifts'
-		| 'calendar'
-		| 'votes'
-		| 'work-trade'
+		| 'colab'
 		| 'history'
 		| 'profile'
 		| 'admin';
-	const dashboardViews: DashboardView[] = [
-		'overview',
-		'resources',
-		'documents',
-		'shifts',
-		'calendar',
-		'votes',
-		'work-trade',
-		'history',
-		'profile',
-		'admin'
-	];
+	const dashboardViews: DashboardView[] = ['overview', 'colab', 'history', 'profile', 'admin'];
 	const activeSection = $derived.by(() => {
 		const requested = page.url.searchParams.get('view');
-		if (!dashboardViews.includes(requested as DashboardView)) return 'overview';
-		if (requested === 'shifts' && capabilities.canViewCalendar && capabilities.canViewShifts) {
-			return 'calendar';
+		if (
+			['resources', 'documents', 'shifts', 'calendar', 'votes', 'work-trade'].includes(
+				requested ?? ''
+			)
+		) {
+			return 'colab';
 		}
-		if (requested === 'shifts' && !capabilities.canViewShifts) return 'overview';
-		if (requested === 'calendar' && !capabilities.canViewCalendar) return 'overview';
-		if (requested === 'votes' && !capabilities.canVote) return 'overview';
+		if (!dashboardViews.includes(requested as DashboardView)) return 'overview';
 		if (requested === 'admin' && (!viewerCapabilities.isAdmin || isViewingAs)) {
 			return 'overview';
 		}
@@ -177,82 +157,20 @@
 			/>
 		{/if}
 
-		{#if activeSection === 'resources'}<article
-				class="resources-card dashboard-top-resources"
-				id="resources"
-			>
-				<p class="eyebrow">Quick links</p>
-				<h2>Resources</h2>
-				<div class="resource-links">
-					{#if lockboxCode}
-						<div class="resource-detail">
-							<span>Studio lock-box code</span>
-							<code>{lockboxCode}</code>
-						</div>
-					{/if}
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-					<a href="https://portal.queerlective.com/login" target="_blank" rel="noreferrer">
-						<span>Manage CoLab member retail</span><span aria-hidden="true">↗</span>
-					</a>
-					{#if capabilities.canSubmitCommunityEvents}
-						<a href="https://wkf.ms/4aSHDGu" target="_blank" rel="noreferrer">
-							<span>Submit a community-led event</span><span aria-hidden="true">↗</span>
-						</a>
-					{/if}
-					<a href="https://wkf.ms/4sNxnqk" target="_blank" rel="noreferrer">
-						<span>Request materials or equipment</span><span aria-hidden="true">↗</span>
-					</a>
-					<a href="mailto:Randall@queerlective.com">
-						<span>Contact CoLab support</span><span aria-hidden="true">→</span>
-					</a>
-					{#if websiteUrl}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={websiteUrl} target="_blank" rel="noreferrer">
-							<span>Your website</span><span aria-hidden="true">↗</span>
-						</a>
-					{/if}
-					{#if creativeGroundUrl}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={creativeGroundUrl} target="_blank" rel="noreferrer">
-							<span>Your CreativeGround profile</span><span aria-hidden="true">↗</span>
-						</a>
-					{/if}
-				</div>
-			</article>{/if}
-
-		{#if activeSection === 'shifts' && capabilities.canViewShifts}
-			<ShiftPanel
-				isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
-				readOnly={isViewingAs}
+		{#if activeSection === 'colab'}
+			<CoLabHub
+				{capabilities}
+				{viewerCapabilities}
+				{isViewingAs}
+				{lockboxCode}
+				{websiteUrl}
+				{creativeGroundUrl}
 				{initialAvailableShifts}
 			/>
 		{/if}
 
-		{#if activeSection === 'calendar' && capabilities.canViewCalendar}
-			{#if capabilities.canViewShifts}
-				<ShiftPanel
-					isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
-					readOnly={isViewingAs}
-					{initialAvailableShifts}
-				/>
-			{/if}
-			<CalendarPanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
-		{/if}
-
-		{#if activeSection === 'votes' && capabilities.canVote}
-			<VotePanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
-		{/if}
-
-		{#if activeSection === 'work-trade'}
-			<WorkTradePanel isAdmin={viewerCapabilities.isAdmin && !isViewingAs} readOnly={isViewingAs} />
-		{/if}
-
 		{#if activeSection === 'history'}
 			<MemberHistoryPanel canViewOrders={capabilities.canViewOpenOrders} />
-		{/if}
-
-		{#if activeSection === 'documents'}
-			<DocumentLibrary />
 		{/if}
 
 		{#if activeSection === 'profile'}<section
@@ -301,7 +219,6 @@
 			</section>{/if}
 
 		{#if activeSection === 'admin' && viewerCapabilities.isAdmin && !isViewingAs}
-			<AdminProjectsPanel isAdmin />
 			<CalendarCampaignModeration />
 		{/if}
 	</main>

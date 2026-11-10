@@ -269,11 +269,10 @@
 </script>
 
 <section class="document-library" id="documents" aria-labelledby="documents-title">
-	<header class="document-library-hero">
+	<header class="workspace-page-heading">
 		<div>
 			<p class="eyebrow">Shared knowledge</p>
 			<h1 id="documents-title">CoLab documents</h1>
-			<p>Find policies, guides, templates, and shared resources without digging through Drive.</p>
 		</div>
 		{#if sync}<DataFreshness syncedAt={sync.completedAt} syncing={sync.status === 'running'} />{/if}
 	</header>

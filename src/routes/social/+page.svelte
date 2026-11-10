@@ -73,6 +73,7 @@
 	};
 
 	let posts = $state<SocialPost[]>([]);
+	let unavailablePostAssetIds = $state<string[]>([]);
 	let loading = $state(true);
 	let loadError = $state('');
 	let saving = $state(false);
@@ -211,6 +212,27 @@
 
 	function isVideo(asset: SocialPostAsset): boolean {
 		return asset.contentType.startsWith('video/') || /\.(mp4|mov)$/iu.test(asset.filename);
+	}
+
+	function postPreviewAsset(post: SocialPost): SocialPostAsset | undefined {
+		return post.assets.find((asset) => !unavailablePostAssetIds.includes(asset.id));
+	}
+
+	function markPostAssetUnavailable(assetId: string) {
+		if (!unavailablePostAssetIds.includes(assetId)) {
+			unavailablePostAssetIds = [...unavailablePostAssetIds, assetId];
+		}
+	}
+
+	function postMonogram(post: SocialPost): string {
+		return post.title.trim().charAt(0).toLocaleUpperCase() || '✦';
+	}
+
+	function postTimingLabel(post: SocialPost): string {
+		if (post.status === 'scheduled') return `Scheduled ${dateLabel(post.scheduledAt)}`;
+		if (post.status === 'published') return `Published ${dateLabel(post.publishedAt)}`;
+		if (post.status === 'review') return 'Awaiting team review';
+		return 'Not scheduled yet';
 	}
 
 	function libraryAssetUrl(asset: SocialLibraryAsset): string {
@@ -606,12 +628,22 @@
 		}
 	}
 
-	async function deleteDraft() {
+	function canDeletePost(post: SocialPost | null): post is SocialPost {
+		return Boolean(post && post.status !== 'published');
+	}
+
+	async function deleteUnpublishedPost() {
 		const post = selectedPost;
-		if (!post || post.status !== 'draft') return;
+		if (!canDeletePost(post)) return;
+		const isQueued = post.status === 'scheduled';
+		const deletionKind = isQueued
+			? 'queued post'
+			: post.status === 'review'
+				? 'in-review post'
+				: 'draft';
 		if (
 			!window.confirm(
-				`Delete “${post.title}”? This will permanently remove this draft and its uploads.`
+				`Delete “${post.title}”${isQueued ? ' from the scheduled queue' : ''}? This will permanently remove this ${deletionKind} and its uploads.`
 			)
 		) {
 			return;
@@ -722,11 +754,10 @@
 	</header>
 
 	<main class="social-main" id="main-content">
-		<section class="social-hero">
+		<section class="workspace-page-heading" aria-labelledby="social-page-title">
 			<div>
 				<p class="eyebrow">Team publishing desk</p>
-				<h1>Keep the schedule moving.</h1>
-				<p>See what is due, create a post from scratch, and give every draft a clear next step.</p>
+				<h1 id="social-page-title">Social</h1>
 			</div>
 			<button type="button" onclick={startIndependentPost}>+ New independent post</button>
 		</section>
@@ -1145,12 +1176,19 @@
 								onclick={copyToClipboard}
 								disabled={!copy.trim() || deleting}>Copy text</button
 							>
-							{#if selectedPost?.status === 'draft'}
+							{#if canDeletePost(selectedPost)}
 								<button
 									type="button"
 									class="danger-action"
-									onclick={() => void deleteDraft()}
-									disabled={saving || deleting}>{deleting ? 'Deleting…' : 'Delete draft'}</button
+									onclick={() => void deleteUnpublishedPost()}
+									disabled={saving || deleting}
+									>{deleting
+										? 'Deleting…'
+										: selectedPost.status === 'scheduled'
+											? 'Delete queued post'
+											: selectedPost.status === 'review'
+												? 'Delete in-review post'
+												: 'Delete draft'}</button
 								>
 							{/if}
 						</div>
@@ -1227,6 +1265,7 @@
 					{:else}
 						<div class="social-post-list">
 							{#each posts as post (post.id)}
+								{@const previewAsset = postPreviewAsset(post)}
 								<button
 									type="button"
 									class:selected={post.id === selectedId}
@@ -1234,34 +1273,44 @@
 									onclick={() => openPost(post)}
 								>
 									<div class="social-card-media">
-										{#if post.assets[0]}
-											{#if isVideo(post.assets[0])}
+										{#if previewAsset}
+											{#if isVideo(previewAsset)}
 												<span aria-label="Video attachment">▶</span>
 											{:else}
-												<img src={assetUrl(post.assets[0])} alt="" />
+												<img
+													src={assetUrl(previewAsset)}
+													alt={`${post.title} visual: ${previewAsset.filename}`}
+													onerror={() => markPostAssetUnavailable(previewAsset.id)}
+												/>
 											{/if}
-										{:else}<span aria-hidden="true">✦</span>{/if}
+										{:else}<span class="social-card-monogram" aria-hidden="true">{postMonogram(post)}</span>{/if}
+										{#if post.assets.length}
+											<span class="social-card-asset-count"
+												>{post.assets.length} visual{post.assets.length === 1 ? '' : 's'}</span
+											>
+										{/if}
 									</div>
-									<div>
-										<div class="social-card-title">
-											<strong>{post.title}</strong><span class={`social-status ${post.status}`}
-												>{postStatusLabel(post)}</span
+									<div class="social-card-content">
+										<div class="social-card-topline">
+											<span class={`social-status ${post.status}`}>{postStatusLabel(post)}</span>
+											<span class="social-card-channel-count"
+												>{post.channels.length} channel{post.channels.length === 1 ? '' : 's'}</span
 											>
 										</div>
-										<p>{post.copy}</p>
+										<strong class="social-card-title">{post.title}</strong>
+										<p class="social-card-copy">{post.copy}</p>
+										<div class="social-card-platforms" aria-label="Post channels">
+											{#each post.channels as channel (channel.platform)}
+												<span class={`social-platform-chip ${channel.platform}`}
+													>{platformLabel(channel.platform)}</span
+												>
+											{/each}
+										</div>
 										<div class="social-card-meta">
-											<span
-												>{post.channels
-													.map(
-														(channel) =>
-															platforms.find((platform) => platform.value === channel.platform)
-																?.label
-													)
-													.join(' · ')}</span
-											>
-											{#if post.scheduledAt}<time datetime={post.scheduledAt}
-													>{dateLabel(post.scheduledAt)}</time
-												>{/if}
+											<span>{postTimingLabel(post)}</span>
+											{#if post.projectSource}
+												<span class="social-card-project-context">Project-linked</span>
+											{/if}
 										</div>
 									</div>
 								</button>

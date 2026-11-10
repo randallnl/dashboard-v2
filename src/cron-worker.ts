@@ -7,6 +7,7 @@ import { syncShiftsFromMonday } from '$lib/server/shifts/sync';
 import { MemberRepository, ShiftSwitchRepository } from '$lib/server/db';
 import { sendShiftSwitchEmail } from '$lib/server/shifts/switch-email';
 import { resolveExpiredCommunityConsentVotes } from '$lib/server/votes/consent-resolution';
+import { syncQuickBooksFinanceSnapshotIfDue } from '$lib/server/quickbooks/finance-sync';
 
 type ScheduledSyncResults = [
 	Awaited<ReturnType<typeof syncShiftsFromMonday>>,
@@ -105,6 +106,15 @@ export async function runScheduledShiftSync(
 			);
 		}
 
+		let quickBooksSnapshot = { skipped: true, reason: 'Not attempted.' };
+		try {
+			quickBooksSnapshot = await syncQuickBooksFinanceSnapshotIfDue(env);
+		} catch (cause) {
+			const message = cause instanceof Error ? cause.message : 'Unknown error';
+			console.error(JSON.stringify({ event: 'quickbooks_finance_sync_failed', message }));
+			quickBooksSnapshot = { skipped: true, reason: `Failed: ${message}` };
+		}
+
 		const [shifts, events, members, givebutter, equipment, switchReminders] = syncResults;
 		console.log(
 			JSON.stringify({
@@ -134,6 +144,8 @@ export async function runScheduledShiftSync(
 				discordVotesEligible: discordVotes.eligible,
 				discordVotesPosted: discordVotes.posted,
 				discordVotesFailed: discordVotes.failed,
+				quickBooksSnapshotSkipped: quickBooksSnapshot.skipped,
+				quickBooksSnapshotReason: quickBooksSnapshot.reason,
 				switchReminders,
 				syncedAt: shifts.syncedAt > events.syncedAt ? shifts.syncedAt : events.syncedAt,
 				durationMs: Date.now() - startedAt

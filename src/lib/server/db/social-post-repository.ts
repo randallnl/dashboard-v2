@@ -200,9 +200,11 @@ export class SocialPostRepository {
 		return this.find(id);
 	}
 
-	async deleteDraft(id: string): Promise<boolean> {
+	async deleteUnpublished(id: string): Promise<boolean> {
 		const result = await this.db
-			.prepare("DELETE FROM social_posts WHERE id = ?1 AND status = 'draft'")
+			.prepare(
+				"DELETE FROM social_posts WHERE id = ?1 AND status IN ('draft', 'review', 'scheduled')"
+			)
 			.bind(id)
 			.run();
 		return Boolean(result.meta.changes);

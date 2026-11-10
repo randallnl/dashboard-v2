@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import AdminProjectsPanel from '$lib/components/AdminProjectsPanel.svelte';
 	import MemberPortalNavigation from '$lib/components/MemberPortalNavigation.svelte';
+	import ProjectRail from '$lib/components/WorkingOnItProjects.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -38,29 +39,39 @@
 	</header>
 
 	<main class="projects-main" id="main-content">
-		<section class="projects-hero" aria-labelledby="projects-page-title">
-			<div>
-				<p class="eyebrow">Project workspace</p>
-				<h1 id="projects-page-title">Projects, all in one place.</h1>
-				<p>Find a project, review its status, and open its workspace to keep the work moving.</p>
-			</div>
-			<a class="projects-dashboard-link" href={resolve('/')}>Return to dashboard</a>
-		</section>
+		<div class="projects-page-rails">
+			<ProjectRail kind="active" projects={data.workingOnItProjects} />
 
-		<section class="project-create-panel" aria-labelledby="project-create-title">
-			<div class="project-create-heading">
-				<div>
-					<p class="eyebrow">New project</p>
-					<h2 id="project-create-title">Create a project</h2>
-					<p>Use the project intake form to add a new project to the CoLab workspace.</p>
-				</div>
-				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-				<a class="project-create-action" href={projectCreationFormUrl} target="_blank" rel="noreferrer"
-					>Open project form ↗</a
-				>
-			</div>
-		</section>
+			<div class="projects-primary-rail">
+				<section class="workspace-page-heading" aria-labelledby="projects-page-title">
+					<div>
+						<p class="eyebrow">Project workspace</p>
+						<h1 id="projects-page-title">Projects</h1>
+					</div>
+					<a class="workspace-page-action" href={resolve('/')}>Dashboard</a>
+				</section>
 
-		<AdminProjectsPanel />
+				<section class="project-create-panel" aria-labelledby="project-create-title">
+					<div class="project-create-heading">
+						<div>
+							<p class="eyebrow">New project</p>
+							<h2 id="project-create-title">Create a project</h2>
+							<p>Use the project intake form to add a new project to the CoLab workspace.</p>
+						</div>
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a
+							class="project-create-action"
+							href={projectCreationFormUrl}
+							target="_blank"
+							rel="noreferrer">Open project form ↗</a
+						>
+					</div>
+				</section>
+
+				<AdminProjectsPanel />
+			</div>
+
+			<ProjectRail kind="priority" projects={data.highPriorityProjects} />
+		</div>
 	</main>
 </div>

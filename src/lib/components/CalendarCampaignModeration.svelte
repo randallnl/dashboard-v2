@@ -3,7 +3,7 @@
 
 	type Audit = { id: string; action: string; previous_status: string; new_status: string; note: string; actor_id: string; created_at: string };
 	type Submission = {
-		id: string; name: string; email: string; town: string; story: string; created_at: string; status: string;
+		id: string; name: string; email: string; town: string; instagram_handle: string; story: string; created_at: string; status: string;
 		public_display_consent: number; calendar_publication_consent: number; image_edit_consent: number; disqualification_reason: string; hasPhoto: boolean; audits: Audit[];
 	};
 
@@ -60,7 +60,7 @@
 	{:else if !submissions.length}<p class="moderation-empty">No submissions match this view.</p>
 	{:else}<div class="submission-list">{#each submissions as submission (submission.id)}
 		<article class="submission-card">
-			<div class="submission-head"><div><h3>{submission.name}</h3><p>{submission.email}{submission.town ? ` · ${submission.town}` : ''}</p></div><span class:pending={submission.status === 'pending'} class="status-pill">{submission.status.replace('_', ' ')}</span></div>
+			<div class="submission-head"><div><h3>{submission.name}</h3><p>{submission.email}{submission.town ? ` · ${submission.town}` : ''}{submission.instagram_handle ? ` · ${submission.instagram_handle}` : ''}</p></div><span class:pending={submission.status === 'pending'} class="status-pill">{submission.status.replace('_', ' ')}</span></div>
 			<p class="submitted-at">Submitted {date(submission.created_at)}</p>
 			<div class="submission-body">{#if submission.hasPhoto}<img src={`/api/admin/calendar-campaign/${submission.id}/image`} alt={`Submitted by ${submission.name}`} />{/if}<blockquote>“{submission.story}”</blockquote></div>
 			<div class="consents"><span class:off={!submission.public_display_consent}>Wall {submission.public_display_consent ? 'allowed' : 'not allowed'}</span><span class:off={!submission.calendar_publication_consent}>Calendar {submission.calendar_publication_consent ? 'allowed' : 'not allowed'}</span>{#if submission.hasPhoto}<span class:off={!submission.image_edit_consent}>Image editing {submission.image_edit_consent ? 'allowed' : 'not allowed'}</span>{/if}</div>

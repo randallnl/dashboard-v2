@@ -4,6 +4,7 @@
 	"main": "src/drive-sync-worker.ts",
 	"compatibility_date": "2026-11-03",
 	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -13,6 +14,10 @@
 	],
 	"triggers": {
 		"crons": ["*/15 * * * *"]
+	},
+	"vars": {
+		"FINANCE_STATEMENTS_FOLDER_ID": "1msdCi_bCx9jPRjLxezB2rtbcQFCTfJ3g",
+		"PROJECT_FILES_ROOT_FOLDER_ID": "1u2QhWgwADl3t0OM4oNRWSUoTRNZZMotw"
 	},
 	"observability": {
 		"enabled": true,

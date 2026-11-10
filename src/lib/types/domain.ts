@@ -109,6 +109,28 @@ export type ProjectEventRecord<T extends Record<string, unknown> = Record<string
 	syncedAt: string;
 };
 
+export type ProjectDriveFolder = {
+	source: ProjectEventSource;
+	projectId: string;
+	folderId: string;
+	folderName: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type ProjectDriveFile = {
+	id: string;
+	source: ProjectEventSource;
+	projectId: string;
+	folderId: string;
+	name: string;
+	mimeType: string;
+	url: string;
+	byteSize: number;
+	uploadedByMemberId: string;
+	uploadedAt: string;
+};
+
 export type UpcomingProjectAssignment = {
 	record: ProjectEventRecord;
 	roles: Array<'Host' | 'Attendee' | 'Volunteer'>;

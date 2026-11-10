@@ -1,6 +1,11 @@
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const SHORTCUT_MIME_TYPE = 'application/vnd.google-apps.shortcut';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.metadata.readonly';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+const MAX_STATEMENT_BYTES = 20 * 1024 * 1024;
+const ALLOWED_STATEMENT_TYPES = new Set(['application/pdf']);
+const ALLOWED_STATEMENT_EXTENSIONS = /\.pdf$/iu;
+const MAX_PROJECT_FILES = 10;
+const MAX_PROJECT_FILE_BYTES = 25 * 1024 * 1024;
 
 type ServiceAccountCredentials = {
 	client_email: string;
@@ -18,6 +23,15 @@ type DriveFile = {
 	webViewLink?: string;
 	size?: string;
 	shortcutDetails?: { targetId?: string };
+};
+
+type ProjectFolderFile = {
+	id: string;
+	name: string;
+	mimeType: string;
+	url: string;
+	byteSize: number;
+	createdAt: string;
 };
 
 type IndexedDriveFile = DriveFile & {
@@ -115,6 +129,321 @@ async function listChildren(token: string, folderId: string): Promise<DriveFile[
 	return files;
 }
 
+function safeFilename(name: string): string {
+	const cleaned = name
+		.replaceAll(/[\\/:*?"<>|\p{Cc}]/gu, '_')
+		.replaceAll(/\s+/gu, ' ')
+		.trim()
+		.slice(0, 180);
+	return cleaned || 'statement.bin';
+}
+
+function safeFolderName(name: string): string {
+	const cleaned = name
+		.replaceAll(/[\\/:*?"<>|\p{Cc}]/gu, '_')
+		.replaceAll(/\s+/gu, ' ')
+		.trim()
+		.slice(0, 180);
+	return cleaned || 'Untitled project';
+}
+
+function safeMimeType(value: string): string {
+	return /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/iu.test(value)
+		? value
+		: 'application/octet-stream';
+}
+
+async function uploadFileToDrive(
+	token: string,
+	folderId: string,
+	filename: string,
+	mimeType: string,
+	content: ArrayBuffer
+): Promise<{ id: string; url: string }> {
+	const boundary = `finance-statement-${crypto.randomUUID()}`;
+	const metadata = JSON.stringify({ name: filename, parents: [folderId] });
+	const body = new Blob([
+		`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
+		`--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`,
+		content,
+		`\r\n--${boundary}--\r\n`
+	]);
+	const response = await fetch(
+		'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink',
+		{
+			method: 'POST',
+			headers: {
+				authorization: `Bearer ${token}`,
+				'content-type': `multipart/related; boundary=${boundary}`
+			},
+			body
+		}
+	);
+	if (!response.ok) throw new Error(`Google Drive upload failed (${response.status})`);
+	const payload = (await response.json()) as { id?: string; webViewLink?: string };
+	if (!payload.id) throw new Error('Google Drive upload returned no file ID');
+	return {
+		id: payload.id,
+		url: payload.webViewLink || `https://drive.google.com/open?id=${encodeURIComponent(payload.id)}`
+	};
+}
+
+async function findDriveFile(token: string, fileId: string): Promise<DriveFile | null> {
+	const parameters = new URLSearchParams({
+		fields: 'id,name,mimeType,parents,webViewLink',
+		supportsAllDrives: 'true'
+	});
+	const response = await fetch(
+		`https://www.googleapis.com/drive/v3/files/${fileId}?${parameters}`,
+		{
+			headers: { authorization: `Bearer ${token}` }
+		}
+	);
+	if (response.status === 404) return null;
+	if (!response.ok) throw new Error(`Google Drive folder lookup failed (${response.status})`);
+	return (await response.json()) as DriveFile;
+}
+
+async function createDriveFolder(
+	token: string,
+	parentFolderId: string,
+	name: string
+): Promise<{ id: string; name: string; url: string }> {
+	const response = await fetch(
+		'https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,webViewLink',
+		{
+			method: 'POST',
+			headers: {
+				authorization: `Bearer ${token}`,
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({ name, mimeType: FOLDER_MIME_TYPE, parents: [parentFolderId] })
+		}
+	);
+	if (!response.ok) throw new Error(`Google Drive folder creation failed (${response.status})`);
+	const payload = (await response.json()) as { id?: string; name?: string; webViewLink?: string };
+	if (!payload.id || !payload.name)
+		throw new Error('Google Drive folder creation returned no folder');
+	return {
+		id: payload.id,
+		name: payload.name,
+		url: payload.webViewLink || `https://drive.google.com/open?id=${encodeURIComponent(payload.id)}`
+	};
+}
+
+async function projectFolder(
+	token: string,
+	rootFolderId: string,
+	knownFolderId: string,
+	projectTitle: string
+): Promise<{ id: string; name: string; url: string }> {
+	if (knownFolderId) {
+		const knownFolder = await findDriveFile(token, knownFolderId);
+		if (
+			knownFolder?.id &&
+			knownFolder.mimeType === FOLDER_MIME_TYPE &&
+			knownFolder.parents?.includes(rootFolderId)
+		) {
+			return {
+				id: knownFolder.id,
+				name: knownFolder.name,
+				url:
+					knownFolder.webViewLink ||
+					`https://drive.google.com/open?id=${encodeURIComponent(knownFolder.id)}`
+			};
+		}
+	}
+
+	const folderName = safeFolderName(projectTitle);
+	const existingFolder = (await listChildren(token, rootFolderId)).find(
+		(file) => file.mimeType === FOLDER_MIME_TYPE && file.name === folderName
+	);
+	if (existingFolder?.id) {
+		return {
+			id: existingFolder.id,
+			name: existingFolder.name,
+			url:
+				existingFolder.webViewLink ||
+				`https://drive.google.com/open?id=${encodeURIComponent(existingFolder.id)}`
+		};
+	}
+	return createDriveFolder(token, rootFolderId, folderName);
+}
+
+function driveFileUrl(file: DriveFile): string {
+	return file.webViewLink || `https://drive.google.com/open?id=${encodeURIComponent(file.id)}`;
+}
+
+async function projectFolderFiles(token: string, folderId: string): Promise<ProjectFolderFile[]> {
+	const files = await listChildren(token, folderId);
+	return files
+		.filter((file) => Boolean(file.id && file.name))
+		.map((file) => ({
+			id: file.id,
+			name: file.name,
+			mimeType: file.mimeType,
+			url: driveFileUrl(file),
+			byteSize: Number(file.size ?? 0),
+			createdAt: file.createdTime || file.modifiedTime || new Date().toISOString()
+		}));
+}
+
+async function receiveFinanceStatement(request: Request, env: DriveSyncEnv): Promise<Response> {
+	const form = await request.formData();
+	const month = typeof form.get('month') === 'string' ? String(form.get('month')).trim() : '';
+	const accountKey =
+		typeof form.get('accountKey') === 'string' ? String(form.get('accountKey')).trim() : '';
+	const statement = form.get('statement');
+	if (!/^\d{4}-(?:0[1-9]|1[0-2])$/u.test(month)) {
+		return Response.json({ message: 'A valid reconciliation month is required.' }, { status: 400 });
+	}
+	if (!['st-marys-bank', 'st-marys-credit-card', 'paypal', 'venmo'].includes(accountKey)) {
+		return Response.json({ message: 'A valid account is required.' }, { status: 400 });
+	}
+	if (!(statement instanceof File) || !statement.size) {
+		return Response.json({ message: 'A statement file is required.' }, { status: 400 });
+	}
+	if (statement.size > MAX_STATEMENT_BYTES) {
+		return Response.json({ message: 'Statements must be 20 MB or smaller.' }, { status: 413 });
+	}
+	if (
+		!ALLOWED_STATEMENT_TYPES.has(statement.type) &&
+		!ALLOWED_STATEMENT_EXTENSIONS.test(statement.name)
+	) {
+		return Response.json({ message: 'Only PDF statements are accepted.' }, { status: 400 });
+	}
+
+	try {
+		const credentials = JSON.parse(
+			env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON
+		) as ServiceAccountCredentials;
+		if (!credentials.client_email || !credentials.private_key) {
+			throw new Error('Service account JSON is missing client_email or private_key');
+		}
+		const filename = `${month}-${accountKey}-${safeFilename(statement.name)}`;
+		const file = await uploadFileToDrive(
+			await accessToken(credentials),
+			env.FINANCE_STATEMENTS_FOLDER_ID,
+			filename,
+			safeMimeType(statement.type),
+			await statement.arrayBuffer()
+		);
+		return Response.json({ file: { ...file, name: filename } });
+	} catch (cause) {
+		const message = cause instanceof Error ? cause.message : 'Unknown upload error';
+		console.error(JSON.stringify({ event: 'finance_statement_upload_failed', message }));
+		return Response.json(
+			{ message: 'Could not save the statement to Google Drive.' },
+			{ status: 502 }
+		);
+	}
+}
+
+async function receiveProjectFiles(request: Request, env: DriveSyncEnv): Promise<Response> {
+	const form = await request.formData();
+	const projectId =
+		typeof form.get('projectId') === 'string' ? String(form.get('projectId')).trim() : '';
+	const projectTitle =
+		typeof form.get('projectTitle') === 'string' ? String(form.get('projectTitle')).trim() : '';
+	const knownFolderId =
+		typeof form.get('folderId') === 'string' ? String(form.get('folderId')).trim() : '';
+	const files = form.getAll('files').filter((value): value is File => value instanceof File);
+	if (!/^\d+$/u.test(projectId) || !projectTitle) {
+		return Response.json({ message: 'A valid project is required.' }, { status: 400 });
+	}
+	if (!files.length || files.length > MAX_PROJECT_FILES) {
+		return Response.json(
+			{ message: `Choose between 1 and ${MAX_PROJECT_FILES} files.` },
+			{ status: 400 }
+		);
+	}
+	for (const file of files) {
+		if (!file.size)
+			return Response.json({ message: `${file.name || 'That file'} is empty.` }, { status: 400 });
+		if (file.size > MAX_PROJECT_FILE_BYTES) {
+			return Response.json({ message: `${file.name} must be 25 MB or smaller.` }, { status: 413 });
+		}
+	}
+
+	try {
+		const credentials = JSON.parse(
+			env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON
+		) as ServiceAccountCredentials;
+		if (!credentials.client_email || !credentials.private_key) {
+			throw new Error('Service account JSON is missing client_email or private_key');
+		}
+		const token = await accessToken(credentials);
+		const folder = await projectFolder(
+			token,
+			env.PROJECT_FILES_ROOT_FOLDER_ID,
+			knownFolderId,
+			projectTitle
+		);
+		const uploaded = [];
+		for (const file of files) {
+			const uploadedFile = await uploadFileToDrive(
+				token,
+				folder.id,
+				safeFilename(file.name),
+				safeMimeType(file.type),
+				await file.arrayBuffer()
+			);
+			uploaded.push({
+				...uploadedFile,
+				name: safeFilename(file.name),
+				mimeType: safeMimeType(file.type),
+				byteSize: file.size
+			});
+		}
+		return Response.json({ folder, files: uploaded });
+	} catch (cause) {
+		const message = cause instanceof Error ? cause.message : 'Unknown upload error';
+		console.error(JSON.stringify({ event: 'project_drive_upload_failed', projectId, message }));
+		return Response.json(
+			{ message: 'Could not save the files to the project Drive folder.' },
+			{ status: 502 }
+		);
+	}
+}
+
+async function receiveProjectFolder(request: Request, env: DriveSyncEnv): Promise<Response> {
+	const form = await request.formData();
+	const projectId =
+		typeof form.get('projectId') === 'string' ? String(form.get('projectId')).trim() : '';
+	const projectTitle =
+		typeof form.get('projectTitle') === 'string' ? String(form.get('projectTitle')).trim() : '';
+	const knownFolderId =
+		typeof form.get('folderId') === 'string' ? String(form.get('folderId')).trim() : '';
+	if (!/^\d+$/u.test(projectId) || !projectTitle) {
+		return Response.json({ message: 'A valid project is required.' }, { status: 400 });
+	}
+
+	try {
+		const credentials = JSON.parse(
+			env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON
+		) as ServiceAccountCredentials;
+		if (!credentials.client_email || !credentials.private_key) {
+			throw new Error('Service account JSON is missing client_email or private_key');
+		}
+		const token = await accessToken(credentials);
+		const folder = await projectFolder(
+			token,
+			env.PROJECT_FILES_ROOT_FOLDER_ID,
+			knownFolderId,
+			projectTitle
+		);
+		const files = await projectFolderFiles(token, folder.id);
+		return Response.json({ folder, files });
+	} catch (cause) {
+		const message = cause instanceof Error ? cause.message : 'Unknown folder error';
+		console.error(JSON.stringify({ event: 'project_drive_folder_failed', projectId, message }));
+		return Response.json(
+			{ message: 'Could not prepare the project Drive folder.' },
+			{ status: 502 }
+		);
+	}
+}
+
 async function indexFolderTree(token: string, rootFolderId: string): Promise<IndexedDriveFile[]> {
 	const rootChildren = await listChildren(token, rootFolderId);
 	const indexed: IndexedDriveFile[] = [];
@@ -157,6 +486,85 @@ async function indexFolderTree(token: string, rootFolderId: string): Promise<Ind
 		}
 	}
 	return indexed;
+}
+
+type StoredProjectFolder = {
+	source: 'project';
+	project_id: string;
+	folder_id: string;
+	folder_name: string;
+};
+
+async function synchronizeProjectFolderContents(
+	token: string,
+	env: DriveSyncEnv,
+	syncedAt: string
+): Promise<number> {
+	const result = await env.DB.prepare(
+		`SELECT source, project_id, folder_id, folder_name
+		 FROM project_drive_folders
+		 WHERE source = 'project'`
+	).all<StoredProjectFolder>();
+	let fileCount = 0;
+	for (const folder of result.results) {
+		try {
+			const files = await projectFolderFiles(token, folder.folder_id);
+			await env.DB.prepare(
+				`UPDATE project_drive_folders
+				 SET updated_at = ?3
+				 WHERE source = ?1 AND project_id = ?2`
+			)
+				.bind(folder.source, folder.project_id, syncedAt)
+				.run();
+			await env.DB.prepare(
+				`DELETE FROM project_drive_files
+				 WHERE source = ?1 AND project_id = ?2`
+			)
+				.bind(folder.source, folder.project_id)
+				.run();
+			for (let offset = 0; offset < files.length; offset += 75) {
+				const statements = files.slice(offset, offset + 75).map((file) =>
+					env.DB
+						.prepare(
+							`INSERT INTO project_drive_files (
+								id, source, project_id, folder_id, name, mime_type, web_view_url,
+								byte_size, uploaded_by_member_id, uploaded_at
+							) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, '', ?9)
+							ON CONFLICT(id) DO UPDATE SET
+								folder_id = excluded.folder_id,
+								name = excluded.name,
+								mime_type = excluded.mime_type,
+								web_view_url = excluded.web_view_url,
+								byte_size = excluded.byte_size,
+								uploaded_by_member_id = excluded.uploaded_by_member_id,
+								uploaded_at = excluded.uploaded_at`
+						)
+						.bind(
+							file.id,
+							folder.source,
+							folder.project_id,
+							folder.folder_id,
+							file.name,
+							file.mimeType,
+							file.url,
+							file.byteSize,
+							file.createdAt
+						)
+				);
+				await env.DB.batch(statements);
+			}
+			fileCount += files.length;
+		} catch (cause) {
+			console.warn(
+				JSON.stringify({
+					event: 'project_drive_folder_sync_failed',
+					projectId: folder.project_id,
+					message: cause instanceof Error ? cause.message : 'Unknown synchronization error'
+				})
+			);
+		}
+	}
+	return fileCount;
 }
 
 async function synchronize(env: DriveSyncEnv): Promise<{ count: number; syncedAt: string }> {
@@ -214,13 +622,14 @@ async function synchronize(env: DriveSyncEnv): Promise<{ count: number; syncedAt
 			);
 			await env.DB.batch(statements);
 		}
+		const projectFileCount = await synchronizeProjectFolderContents(token, env, syncedAt);
 		await env.DB.batch([
 			env.DB.prepare('DELETE FROM drive_documents WHERE sync_run_id <> ?').bind(syncRunId),
 			env.DB.prepare(
 				"UPDATE drive_sync_state SET status = 'complete', completed_at = ?, item_count = ?, error_message = '' WHERE id = 1"
 			).bind(syncedAt, files.length)
 		]);
-		return { count: files.length, syncedAt };
+		return { count: files.length + projectFileCount, syncedAt };
 	} catch (cause) {
 		const message = cause instanceof Error ? cause.message : 'Unknown synchronization error';
 		await env.DB.prepare(
@@ -247,6 +656,15 @@ async function health(env: DriveSyncEnv): Promise<Response> {
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
+		if (request.method === 'POST' && new URL(request.url).pathname === '/finance-statements') {
+			return receiveFinanceStatement(request, env);
+		}
+		if (request.method === 'POST' && new URL(request.url).pathname === '/project-files') {
+			return receiveProjectFiles(request, env);
+		}
+		if (request.method === 'POST' && new URL(request.url).pathname === '/project-folder') {
+			return receiveProjectFolder(request, env);
+		}
 		if (request.method !== 'GET') return new Response('Method not allowed', { status: 405 });
 		const state = await env.DB.prepare('SELECT status FROM drive_sync_state WHERE id = 1').first<{
 			status: string;

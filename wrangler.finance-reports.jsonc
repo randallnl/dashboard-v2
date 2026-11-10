@@ -1,0 +1,22 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "finance-report-ingest",
+	"main": "src/finance-report-ingest-worker.ts",
+	"compatibility_date": "2026-11-09",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "queerlective-dashboard",
+			"database_id": "fd34016a-db11-4ee7-8103-73f149118172"
+		}
+	],
+	"vars": {
+		"FINANCE_REPORTS_INBOX_EMAIL": "finance-reports@nhsolidarityecosystem.com"
+	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+}

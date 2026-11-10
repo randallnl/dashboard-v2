@@ -4,7 +4,12 @@
 	import ItemComments from '$lib/components/ItemComments.svelte';
 	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
 	import ProjectDashboardHeader from '$lib/components/ProjectDashboardHeader.svelte';
-	import type { EventAttachment, ProjectTask } from '$lib/types/domain';
+	import type {
+		EventAttachment,
+		ProjectDriveFile,
+		ProjectDriveFolder,
+		ProjectTask
+	} from '$lib/types/domain';
 	import { onDestroy, onMount } from 'svelte';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -12,6 +17,14 @@
 	let { data }: { data: PageData } = $props();
 	type MemberOption = { id: string; label: string };
 	type Attendee = (typeof data.attendees)[number];
+	type UpdatedProjectRecord = {
+		title: string;
+		dateValue: string;
+		endDateValue: string;
+		status: string;
+		location: string;
+		record: Record<string, unknown>;
+	};
 
 	let host = $state(untrack(() => data.host));
 	let hostContact = $state(untrack(() => data.hostContact));
@@ -32,6 +45,9 @@
 	let recordStatus = $state(untrack(() => data.record.status));
 	let recordLocation = $state(untrack(() => data.record.location));
 	let recordFields = $state(untrack(() => ({ ...data.record.record })));
+	let statusDraft = $state(untrack(() => recordStatus));
+	let savingStatus = $state(false);
+	let statusMessage = $state('');
 	let editTitle = $state(untrack(() => recordTitle));
 	let editDate = $state(untrack(() => recordDate));
 	let editEndDate = $state(untrack(() => recordEndDate));
@@ -50,6 +66,17 @@
 	let uploadingPhotos = $state(false);
 	let photoMessage = $state('');
 	let photoUploadFailed = $state(false);
+	let projectDriveFolder = $state<ProjectDriveFolder | null>(
+		untrack(() => data.projectDriveFolder)
+	);
+	let projectDriveFiles = $state<ProjectDriveFile[]>(untrack(() => data.projectDriveFiles));
+	let selectedProjectFiles = $state<File[]>([]);
+	let projectFileInput = $state<HTMLInputElement>();
+	let uploadingProjectFiles = $state(false);
+	let preparingProjectDriveFolder = $state(false);
+	let projectFileMessage = $state('');
+	let projectFileUploadFailed = $state(false);
+	let projectEmailForwardingMessage = $state('');
 	const sections = [
 		{ id: 'overview', label: 'Overview' },
 		{ id: 'files', label: 'Files & links' },
@@ -70,20 +97,16 @@
 	const attachments = $derived(
 		Array.isArray(recordFields.attachments) ? (recordFields.attachments as EventAttachment[]) : []
 	);
-	const heroImage = $derived.by(() => {
-		const posterUrl = safeUrl(recordFields.posterUrl);
-		if (posterUrl) return posterUrl;
-		const posterAttachment = attachments.find(
-			(attachment) =>
-				attachment.isImage &&
-				safeUrl(attachment.url) &&
-				/(?:poster|flyer|cover)/iu.test(attachment.name)
-		);
-		if (posterAttachment) return safeUrl(posterAttachment.url);
-		return safeUrl(
-			attachments.find((attachment) => attachment.isImage && safeUrl(attachment.url))?.url
-		);
-	});
+	const projectDriveFolderUrl = $derived(
+		projectDriveFolder
+			? `https://drive.google.com/drive/folders/${encodeURIComponent(projectDriveFolder.folderId)}`
+			: ''
+	);
+	const projectEmailMailto = $derived(
+		data.projectEmailForwarding
+			? `mailto:${data.projectEmailForwarding.address}?subject=${encodeURIComponent(`${data.projectEmailForwarding.subjectTag} Project email — ${recordTitle}`)}`
+			: ''
+	);
 	let tasks = $state(
 		untrack(() => (Array.isArray(recordFields.tasks) ? (recordFields.tasks as ProjectTask[]) : []))
 	);
@@ -99,6 +122,16 @@
 	let savingQuickLink = $state(false);
 	let quickLinkMessage = $state('');
 	const quickLinkUrl = $derived(safeUrl(recordFields.registrationUrl));
+	const projectStatusOptions = $derived(
+		[
+			...new Map(
+				[...data.projectStatusOptions, recordStatus]
+					.map((status) => status.trim())
+					.filter(Boolean)
+					.map((status) => [status.toLocaleLowerCase('en-US'), status] as const)
+			).values()
+		].sort((left, right) => left.localeCompare(right))
+	);
 	const milestone = $derived.by(() => {
 		const today = new Date().toISOString().slice(0, 10);
 		const nextTask = tasks
@@ -212,6 +245,96 @@
 		}
 	}
 
+	function selectProjectFiles(event: Event) {
+		const selected = Array.from((event.currentTarget as HTMLInputElement).files ?? []);
+		selectedProjectFiles = selected.slice(0, 10);
+		projectFileUploadFailed = false;
+		projectFileMessage = selected.length
+			? selected.length > 10
+				? 'Only the first 10 files are ready to upload.'
+				: `${selected.length} ${selected.length === 1 ? 'file is' : 'files are'} ready to upload.`
+			: '';
+	}
+
+	function clearSelectedProjectFiles() {
+		selectedProjectFiles = [];
+		if (projectFileInput) projectFileInput.value = '';
+	}
+
+	async function uploadProjectFiles() {
+		if (!selectedProjectFiles.length || uploadingProjectFiles) return;
+		uploadingProjectFiles = true;
+		projectFileMessage = 'Creating the project folder and saving files to Drive…';
+		projectFileUploadFailed = false;
+		try {
+			const body = new FormData();
+			body.set('projectId', data.record.id);
+			selectedProjectFiles.forEach((file) => body.append('files', file, file.name));
+			const response = await fetch('/api/projects/files', { method: 'POST', body });
+			const result = (await response.json()) as {
+				folder?: ProjectDriveFolder;
+				files?: ProjectDriveFile[];
+				message?: string;
+			};
+			if (!response.ok || !result.folder || !result.files) {
+				throw new Error(result.message || 'Could not save the files to Google Drive.');
+			}
+			projectDriveFolder = result.folder;
+			projectDriveFiles = result.files;
+			clearSelectedProjectFiles();
+			projectFileMessage = result.message || 'Files saved to the project Drive folder.';
+		} catch (cause) {
+			projectFileUploadFailed = true;
+			projectFileMessage =
+				cause instanceof Error ? cause.message : 'Could not save the files to Google Drive.';
+		} finally {
+			uploadingProjectFiles = false;
+		}
+	}
+
+	async function prepareProjectDriveFolder() {
+		if (preparingProjectDriveFolder) return;
+		preparingProjectDriveFolder = true;
+		projectFileUploadFailed = false;
+		projectFileMessage = projectDriveFolder
+			? 'Refreshing files from the project Drive folder…'
+			: 'Creating the project Drive folder…';
+		try {
+			const body = new FormData();
+			body.set('projectId', data.record.id);
+			const response = await fetch('/api/projects/folder', { method: 'POST', body });
+			const result = (await response.json()) as {
+				folder?: ProjectDriveFolder;
+				files?: ProjectDriveFile[];
+				message?: string;
+			};
+			if (!response.ok || !result.folder || !result.files) {
+				throw new Error(result.message || 'Could not prepare the project Drive folder.');
+			}
+			projectDriveFolder = result.folder;
+			projectDriveFiles = result.files;
+			projectFileMessage = result.message || 'Project Drive folder is ready.';
+		} catch (cause) {
+			projectFileUploadFailed = true;
+			projectFileMessage =
+				cause instanceof Error ? cause.message : 'Could not prepare the project Drive folder.';
+		} finally {
+			preparingProjectDriveFolder = false;
+		}
+	}
+
+	async function copyProjectEmailAddress() {
+		if (!data.projectEmailForwarding) return;
+		try {
+			await navigator.clipboard.writeText(
+				`To: ${data.projectEmailForwarding.address}\nSubject: ${data.projectEmailForwarding.subjectTag} `
+			);
+			projectEmailForwardingMessage = 'Forwarding address and subject tag copied.';
+		} catch {
+			projectEmailForwardingMessage = 'Select and copy the project email address above.';
+		}
+	}
+
 	function togglePin(url: string) {
 		pinnedUrls = pinnedUrls.includes(url)
 			? pinnedUrls.filter((candidate) => candidate !== url)
@@ -312,6 +435,23 @@
 					dateStyle: 'medium',
 					timeStyle: 'short'
 				}).format(parsed);
+	}
+
+	function fileSizeLabel(byteSize: number): string {
+		if (byteSize < 1024) return `${byteSize} B`;
+		if (byteSize < 1024 * 1024) return `${Math.round(byteSize / 1024)} KB`;
+		return `${(byteSize / (1024 * 1024)).toFixed(1)} MB`;
+	}
+
+	function driveFileTypeLabel(mimeType: string): string {
+		const types: Record<string, string> = {
+			'application/vnd.google-apps.document': 'Google Doc',
+			'application/vnd.google-apps.spreadsheet': 'Google Sheet',
+			'application/vnd.google-apps.presentation': 'Google Slides',
+			'application/vnd.google-apps.folder': 'Google Drive folder',
+			'application/pdf': 'PDF'
+		};
+		return types[mimeType] || (mimeType.startsWith('image/') ? 'Image' : 'File');
 	}
 
 	async function addAttendee() {
@@ -474,32 +614,69 @@
 					description: editDescription
 				})
 			});
-			const result = (await response.json()) as {
-				record?: {
-					title: string;
-					dateValue: string;
-					endDateValue: string;
-					status: string;
-					location: string;
-					record: Record<string, unknown>;
-				};
-				message?: string;
-			};
+			const result = (await response.json()) as { record?: UpdatedProjectRecord; message?: string };
 			if (!response.ok || !result.record) {
 				throw new Error(result.message || 'Could not save changes.');
 			}
-			recordTitle = result.record.title;
-			recordDate = result.record.dateValue;
-			recordEndDate = result.record.endDateValue;
-			recordStatus = result.record.status;
-			recordLocation = result.record.location;
-			recordFields = { ...recordFields, ...result.record.record };
+			applySavedProjectRecord(result.record);
 			editMessage = result.message || 'Changes saved.';
 			editingDetails = false;
 		} catch (cause) {
 			editMessage = cause instanceof Error ? cause.message : 'Could not save changes.';
 		} finally {
 			savingDetails = false;
+		}
+	}
+
+	function applySavedProjectRecord(record: UpdatedProjectRecord) {
+		recordTitle = record.title;
+		recordDate = record.dateValue;
+		recordEndDate = record.endDateValue;
+		recordStatus = record.status;
+		recordLocation = record.location;
+		recordFields = { ...recordFields, ...record.record };
+		editTitle = record.title;
+		editDate = record.dateValue;
+		editEndDate = record.endDateValue;
+		editStatus = record.status;
+		editLocation = record.location;
+		editDescription =
+			typeof record.record.description === 'string' ? record.record.description : '';
+		statusDraft = record.status;
+	}
+
+	async function saveStatus() {
+		if (statusDraft === recordStatus || savingStatus) return;
+		const statusLabel = statusDraft.trim() || 'Not set';
+		if (!confirmMonday(`Change this project's status to “${statusLabel}”?`)) return;
+		savingStatus = true;
+		statusMessage = '';
+		try {
+			const response = await fetch('/api/admin/events/update', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					source: data.record.source,
+					eventId: data.record.id,
+					title: recordTitle,
+					dateValue: recordDate,
+					endDateValue: recordEndDate,
+					status: statusDraft.trim(),
+					location: recordLocation,
+					description: field('description')
+				})
+			});
+			const result = (await response.json()) as { record?: UpdatedProjectRecord; message?: string };
+			if (!response.ok || !result.record) {
+				throw new Error(result.message || 'Could not change the project status.');
+			}
+			applySavedProjectRecord(result.record);
+			statusMessage = result.message || 'Status updated in Monday.';
+		} catch (cause) {
+			statusMessage =
+				cause instanceof Error ? cause.message : 'Could not change the project status.';
+		} finally {
+			savingStatus = false;
 		}
 	}
 
@@ -634,41 +811,42 @@
 
 <main class="item-dashboard" id="main-content">
 	<a href={data.canEdit ? resolve('/projects') : resolve('/?view=calendar')}>← Back to dashboard</a>
-	<header
-		class:has-hero-image={Boolean(heroImage)}
-		style:background-image={heroImage
-			? `linear-gradient(90deg, rgba(18, 30, 25, 0.88) 0%, rgba(18, 30, 25, 0.7) 52%, rgba(18, 30, 25, 0.3) 100%), url("${safeUrl(heroImage)}")`
-			: undefined}
-	>
-		<div>
-			<p class="eyebrow">{data.record.source} dashboard</p>
-			<h1>{recordTitle}</h1>
-			<p>{recordDate}</p>
-			{#if data.canEdit}
-				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				<a
-					class="project-social-action"
-					href={resolve('/social') +
-						`?source=${data.record.source}&id=${encodeURIComponent(data.record.id)}`}
-					>Create social draft →</a
-				>
-				<!-- eslint-enable svelte/no-navigation-without-resolve -->
-				{#if data.record.source === 'project'}
-					<button
-						type="button"
-						class:included={quickLinkIncluded}
-						class="project-quick-link-action"
-						onclick={toggleQuickLink}
-						disabled={savingQuickLink}
-					>
-						{savingQuickLink
-							? 'Saving…'
-							: quickLinkIncluded
-								? 'Remove from Queerlective links'
-								: 'Add to Queerlective links'}
-					</button>
+	<header class="item-dashboard-heading">
+		<div class="item-dashboard-heading-content">
+			<div class="item-dashboard-hero-top">
+				<div>
+					<p class="eyebrow">{data.record.source} dashboard</p>
+					<h1>{recordTitle}</h1>
+					<p class="item-dashboard-date">{recordDate}</p>
+				</div>
+				{#if data.canEdit}
+					<div class="project-hero-actions">
+						<!-- eslint-disable svelte/no-navigation-without-resolve -->
+						<a
+							class="project-social-action"
+							href={resolve('/social') +
+								`?source=${data.record.source}&id=${encodeURIComponent(data.record.id)}`}
+							>Create social draft →</a
+						>
+						<!-- eslint-enable svelte/no-navigation-without-resolve -->
+						{#if data.record.source === 'project'}
+							<button
+								type="button"
+								class:included={quickLinkIncluded}
+								class="project-quick-link-action"
+								onclick={toggleQuickLink}
+								disabled={savingQuickLink}
+							>
+								{savingQuickLink
+									? 'Saving…'
+									: quickLinkIncluded
+										? 'Remove from Queerlective links'
+										: 'Add to Queerlective links'}
+							</button>
+						{/if}
+					</div>
 				{/if}
-			{/if}
+			</div>
 			{#if quickLinkMessage}<p class="project-quick-link-message" role="status">
 					{quickLinkMessage}
 				</p>{/if}
@@ -693,6 +871,29 @@
 					<span class="project-pill pill-priority">Priority · {field('priority')}</span>
 				{/if}
 			</div>
+			{#if data.canEdit && data.record.source === 'project'}
+				<form
+					class="project-status-editor"
+					onsubmit={(event) => {
+						event.preventDefault();
+						void saveStatus();
+					}}
+				>
+					<label>
+						<span>Project status</span>
+						<select bind:value={statusDraft} disabled={savingStatus}>
+							<option value="">Not set</option>
+							{#each projectStatusOptions as status (status)}
+								<option value={status}>{status}</option>
+							{/each}
+						</select>
+					</label>
+					<button type="submit" disabled={savingStatus || statusDraft === recordStatus}>
+						{savingStatus ? 'Saving…' : 'Update status'}
+					</button>
+				</form>
+				{#if statusMessage}<p class="project-status-message" role="status">{statusMessage}</p>{/if}
+			{/if}
 		</div>
 	</header>
 
@@ -848,7 +1049,7 @@
 				</div>
 				<div>
 					<dt>Files</dt>
-					<dd>{attachments.length} attachments</dd>
+					<dd>{attachments.length + projectDriveFiles.length} files</dd>
 				</div>
 				{#if tasks.length}
 					<div>
@@ -868,6 +1069,135 @@
 			</div>
 			<span class="status-pill">{pinnedUrls.length} pinned</span>
 		</div>
+		{#if data.projectEmailForwarding}
+			<section class="project-email-forwarding" aria-labelledby="project-email-forwarding-title">
+				<div>
+					<p class="eyebrow">Email to project</p>
+					<h3 id="project-email-forwarding-title">Forward email into this project</h3>
+				</div>
+				<p>
+					Forward messages to <code>{data.projectEmailForwarding.address}</code> and include
+					<code>{data.projectEmailForwarding.subjectTag}</code> in the subject. The email body becomes
+					a project comment and any file attachments are saved to this project’s shared Drive folder.
+				</p>
+				<div class="project-email-forwarding-actions">
+					{#if projectEmailMailto}<a href={projectEmailMailto}>Start an email</a>{/if}
+					<button type="button" onclick={() => void copyProjectEmailAddress()}>Copy address</button>
+				</div>
+				<small>Keep this project-specific subject tag within the project team.</small>
+				{#if projectEmailForwardingMessage}<p role="status">{projectEmailForwardingMessage}</p>{/if}
+			</section>
+		{/if}
+		{#if data.canEdit && data.record.source === 'project'}
+			<section class="project-drive-workspace" aria-labelledby="project-drive-workspace-title">
+				<div>
+					<p class="eyebrow">Google Drive workspace</p>
+					<h3 id="project-drive-workspace-title">
+						{projectDriveFolder ? projectDriveFolder.folderName : 'Create a shared project folder'}
+					</h3>
+					<p>
+						{#if projectDriveFolder}
+							Create Google Docs in the folder or add files there directly. This workspace refreshes from Drive every 15 minutes.
+						{:else}
+							Create a shared folder now so you can open it and start a Google Doc before uploading any files.
+						{/if}
+					</p>
+				</div>
+				<div class="project-drive-workspace-actions">
+					{#if projectDriveFolderUrl}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={projectDriveFolderUrl} target="_blank" rel="noreferrer">Open folder ↗</a>
+						<button
+							type="button"
+							class="secondary-action"
+							onclick={() => void prepareProjectDriveFolder()}
+							disabled={preparingProjectDriveFolder}
+						>{preparingProjectDriveFolder ? 'Refreshing…' : 'Refresh Drive files'}</button>
+					{:else}
+						<button
+							type="button"
+							onclick={() => void prepareProjectDriveFolder()}
+							disabled={preparingProjectDriveFolder}
+						>{preparingProjectDriveFolder ? 'Creating…' : 'Create Google Drive folder'}</button>
+					{/if}
+				</div>
+				{#if projectFileMessage}<p
+						class:error={projectFileUploadFailed}
+						role={projectFileUploadFailed ? 'alert' : 'status'}
+					>
+						{projectFileMessage}
+					</p>{/if}
+			</section>
+			<form
+				class="project-file-upload"
+				onsubmit={(event) => {
+					event.preventDefault();
+					void uploadProjectFiles();
+				}}
+			>
+				<div>
+					<label for="project-file-input">Add project files</label>
+					<small>
+						Files save to this project's shared Drive folder · up to 25 MB each · 10 files at a time
+					</small>
+				</div>
+				<input
+					bind:this={projectFileInput}
+					id="project-file-input"
+					type="file"
+					name="files"
+					multiple
+					disabled={uploadingProjectFiles}
+					onchange={selectProjectFiles}
+				/>
+				{#if selectedProjectFiles.length}
+					<ul class="project-file-selection" aria-label="Files ready to upload">
+						{#each selectedProjectFiles as file (`${file.name}-${file.size}-${file.lastModified}`)}
+							<li><span>{file.name}</span><small>{fileSizeLabel(file.size)}</small></li>
+						{/each}
+					</ul>
+					<div class="project-photo-actions">
+						<button type="submit" disabled={uploadingProjectFiles}>
+							{uploadingProjectFiles
+								? 'Saving to Drive…'
+								: `Upload ${selectedProjectFiles.length === 1 ? 'file' : 'files'}`}
+						</button>
+						<button
+							type="button"
+							class="secondary-action"
+							onclick={clearSelectedProjectFiles}
+							disabled={uploadingProjectFiles}>Cancel</button
+						>
+					</div>
+				{/if}
+			</form>
+		{/if}
+		{#if projectDriveFolder}
+			<section class="project-drive-files" aria-labelledby="project-drive-files-title">
+				<div class="project-drive-files-heading">
+					<div>
+						<p class="eyebrow">Project Drive</p>
+						<h3 id="project-drive-files-title">Shared project files</h3>
+					</div>
+					{#if projectDriveFolderUrl}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={projectDriveFolderUrl} target="_blank" rel="noreferrer">Open folder ↗</a>
+					{/if}
+				</div>
+				<div class="project-drive-file-list">
+					{#each projectDriveFiles as file (file.id)}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+						<a href={file.url} target="_blank" rel="noreferrer">
+							<strong>{file.name}</strong>
+							<span>{driveFileTypeLabel(file.mimeType)} · Added {dateTimeLabel(file.uploadedAt)}</span>
+						</a>
+					{/each}
+				</div>
+				{#if !projectDriveFiles.length}
+					<p class="project-drive-empty">No files yet. Open the folder to create a Google Doc.</p>
+				{/if}
+			</section>
+		{/if}
 		{#if data.canEdit && data.record.source === 'project'}
 			<form
 				class="project-photo-upload"

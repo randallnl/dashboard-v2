@@ -4,18 +4,14 @@
 
 	export type MemberPortalView =
 		| 'overview'
-		| 'resources'
-		| 'documents'
-		| 'shifts'
-		| 'calendar'
-		| 'votes'
-		| 'work-trade'
+		| 'colab'
 		| 'history'
 		| 'profile'
 		| 'admin'
 		| 'projects'
 		| 'project'
-		| 'social';
+		| 'social'
+		| 'operations';
 
 	let {
 		active,
@@ -32,14 +28,12 @@
 	let moreMenuOpen = $state(false);
 	const projectsActive = $derived(active === 'projects' || active === 'project');
 	const primaryMobileView = $derived(
-		active === 'overview' ||
-		active === 'resources' ||
-		active === 'calendar' ||
-		active === 'shifts' ||
-		(!capabilities.canViewCalendar && !capabilities.canViewShifts && active === 'history')
+		active === 'overview' || active === 'colab' || active === 'history'
 	);
 
-	function dashboardHref(view: Exclude<MemberPortalView, 'projects' | 'project' | 'social'>): string {
+	function dashboardHref(
+		view: Exclude<MemberPortalView, 'projects' | 'project' | 'social' | 'operations'>
+	): string {
 		return view === 'overview' ? resolve('/') : `${resolve('/')}?view=${view}`;
 	}
 
@@ -54,23 +48,13 @@
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
 <nav aria-label="Member navigation">
 	<a class:nav-active={active === 'overview'} href={dashboardHref('overview')}>Overview</a>
-	{#if capabilities.canViewShifts && !capabilities.canViewCalendar}
-		<a class:nav-active={active === 'shifts'} href={dashboardHref('shifts')}>Shifts</a>
-	{/if}
-	{#if capabilities.canViewCalendar}
-		<a class:nav-active={active === 'calendar'} href={dashboardHref('calendar')}>Schedule</a>
-	{/if}
-	{#if capabilities.canVote}
-		<a class:nav-active={active === 'votes'} href={dashboardHref('votes')}>Votes</a>
-	{/if}
-	<a class:nav-active={active === 'work-trade'} href={dashboardHref('work-trade')}>Work trade</a>
+	<a class:nav-active={active === 'colab'} href={dashboardHref('colab')}>CoLab</a>
 	<a class:nav-active={active === 'history'} href={dashboardHref('history')}>History</a>
-	<a class:nav-active={active === 'resources'} href={dashboardHref('resources')}>Resources</a>
-	<a class:nav-active={active === 'documents'} href={dashboardHref('documents')}>Documents</a>
 	<a class:nav-active={active === 'profile'} href={dashboardHref('profile')}>Profile</a>
 	{#if viewerCapabilities.canManageProjects && !isViewingAs}
 		<a class:nav-active={projectsActive} href={resolve('/projects')}>Projects</a>
 		{#if viewerCapabilities.isAdmin}
+			<a class:nav-active={active === 'operations'} href={resolve('/operations')}>Operations</a>
 			<a class:nav-active={active === 'admin'} href={dashboardHref('admin')}>Admin</a>
 		{/if}
 		<a class:nav-active={active === 'social'} href={resolve('/social')}>Social</a>
@@ -79,14 +63,8 @@
 
 <nav class="mobile-nav dashboard-mobile-nav" aria-label="Mobile member navigation">
 	<a class:active={active === 'overview'} href={dashboardHref('overview')}>Overview</a>
-	{#if capabilities.canViewCalendar}
-		<a class:active={active === 'calendar'} href={dashboardHref('calendar')}>Schedule</a>
-	{:else if capabilities.canViewShifts}
-		<a class:active={active === 'shifts'} href={dashboardHref('shifts')}>Shifts</a>
-	{:else}
-		<a class:active={active === 'history'} href={dashboardHref('history')}>History</a>
-	{/if}
-	<a class:active={active === 'resources'} href={dashboardHref('resources')}>Resources</a>
+	<a class:active={active === 'colab'} href={dashboardHref('colab')}>CoLab</a>
+	<a class:active={active === 'history'} href={dashboardHref('history')}>History</a>
 	<button
 		type="button"
 		class:active={moreMenuOpen || !primaryMobileView}
@@ -112,20 +90,11 @@
 			<button type="button" class="text-button" onclick={closeMobileMenu}>Close</button>
 		</div>
 		<nav aria-label="More dashboard sections">
-			{#if capabilities.canViewShifts && !capabilities.canViewCalendar}
-				<a href={dashboardHref('shifts')} onclick={closeMobileMenu}>Shifts</a>
-			{/if}
-			{#if capabilities.canVote}
-				<a href={dashboardHref('votes')} onclick={closeMobileMenu}>Community votes</a>
-			{/if}
-			<a href={dashboardHref('work-trade')} onclick={closeMobileMenu}>Work-trade discount</a>
-			<a href={dashboardHref('history')} onclick={closeMobileMenu}>History and payments</a>
-			<a href={dashboardHref('resources')} onclick={closeMobileMenu}>Resources</a>
-			<a href={dashboardHref('documents')} onclick={closeMobileMenu}>CoLab documents</a>
 			<a href={dashboardHref('profile')} onclick={closeMobileMenu}>Profile</a>
 			{#if viewerCapabilities.canManageProjects && !isViewingAs}
 				<a href={resolve('/projects')} onclick={closeMobileMenu}>Projects</a>
 				{#if viewerCapabilities.isAdmin}
+					<a href={resolve('/operations')} onclick={closeMobileMenu}>Operations</a>
 					<a href={dashboardHref('admin')} onclick={closeMobileMenu}>Admin</a>
 				{/if}
 				<a href={resolve('/social')} onclick={closeMobileMenu}>Social content</a>

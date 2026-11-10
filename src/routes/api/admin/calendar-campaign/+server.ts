@@ -9,6 +9,7 @@ type SubmissionRow = {
 	name: string;
 	email: string;
 	town: string;
+	instagram_handle: string;
 	story: string;
 	image_key: string;
 	created_at: string;
@@ -46,7 +47,7 @@ export const GET: RequestHandler = async ({ locals, platform, url }) => {
 		bindings.push(`%${search}%`);
 	}
 	const results = await env.DB
-		.prepare(`SELECT id, name, email, town, story, image_key, created_at, status, public_display_consent, calendar_publication_consent, image_edit_consent, disqualification_reason FROM calendar_campaign_submissions WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT 100`)
+		.prepare(`SELECT id, name, email, town, instagram_handle, story, image_key, created_at, status, public_display_consent, calendar_publication_consent, image_edit_consent, disqualification_reason FROM calendar_campaign_submissions WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT 100`)
 		.bind(...bindings)
 		.all<SubmissionRow>();
 	const ids = results.results.map((submission) => submission.id);

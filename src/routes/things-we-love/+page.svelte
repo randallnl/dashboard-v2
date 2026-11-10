@@ -71,11 +71,12 @@
 		<p class="drawer-intro">Stories can be short. Photos are welcome, not required. We’ll moderate the community wall before anything appears publicly.</p>
 		<form bind:this={form} onsubmit={submit} enctype="multipart/form-data">
 			<div class="fields two"><label>Your name<input name="name" autocomplete="name" required maxlength="120" /></label><label>Email for giveaway and follow-up<input name="email" type="email" autocomplete="email" required maxlength="254" /></label></div>
+			<label>Instagram handle <input name="instagramHandle" autocomplete="off" maxlength="120" placeholder="@yourhandle (optional)" /></label>
 			<label>Your New Hampshire town <input name="town" maxlength="120" placeholder="e.g., Keene, Littleton, Manchester" /></label>
 			<label>Your love note <textarea name="story" required maxlength="2000" rows="6" placeholder="I love New Hampshire because…"></textarea></label>
 			<label class="photo">Add a photo (optional) <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" /><small>JPG, PNG, or WebP · up to 10 MB</small></label>
 			<fieldset><legend>Permissions</legend>
-				<label class="check"><input name="publicDisplayConsent" type="checkbox" /> You may share my story and photo on the moderated public community wall.</label>
+				<label class="check"><input name="publicDisplayConsent" type="checkbox" /> You may share my story and photo on the moderated public community wall and/or Queerlective social media to promote this project.</label>
 				<label class="check"><input name="calendarPublicationConsent" type="checkbox" /> You may consider my story and photo for the 2027 calendar, if selected.</label>
 				<label class="check"><input name="imageEditConsent" type="checkbox" /> If I submit a photo, I allow cropping, resizing, and text overlays for public display or calendar production.</label>
 				<label class="check required"><input name="rulesAccepted" type="checkbox" required /> I have read and accept the <a href={`${campaignBase}/rules`}>official giveaway rules</a>.</label>
