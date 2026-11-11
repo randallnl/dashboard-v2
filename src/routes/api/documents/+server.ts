@@ -1,3 +1,4 @@
+import { COLAB_DOCUMENT_ROOT, OPERATIONS_DOCUMENT_ROOT } from '$lib/drive-libraries';
 import {
 	loadMemberContext,
 	requireAdmin,
@@ -8,7 +9,16 @@ import type { DriveDocumentVisibility } from '$lib/types/drive';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-const ROOT_FOLDER_ID = '1wEEDbh0PmGiPkdS6S_LfLZeIcQtOSIEm';
+function libraryRoot(url: URL, context: Awaited<ReturnType<typeof loadMemberContext>>) {
+	const library = url.searchParams.get('library');
+	if (library && library !== 'colab' && library !== 'operations') error(400, 'Invalid library');
+	if (library === 'operations') {
+		requireAdmin(context);
+		requireWritableMemberView(context);
+		return OPERATIONS_DOCUMENT_ROOT;
+	}
+	return COLAB_DOCUMENT_ROOT;
+}
 
 function allowedVisibility(context: Awaited<ReturnType<typeof loadMemberContext>>) {
 	const allowed: DriveDocumentVisibility[] = ['member'];
@@ -17,18 +27,19 @@ function allowedVisibility(context: Awaited<ReturnType<typeof loadMemberContext>
 	return allowed;
 }
 
-export const GET: RequestHandler = async ({ locals, platform }) => {
+export const GET: RequestHandler = async ({ locals, platform, url }) => {
 	const env = platform?.env;
 	const context = await loadMemberContext({ session: locals.session, env });
 	const allowed = allowedVisibility(context);
-	const repository = new DriveDocumentRepository(env!.DB);
+	const rootFolderId = libraryRoot(url, context);
+	const repository = new DriveDocumentRepository(env!.DB, rootFolderId);
 	const [documents, sync, personalization] = await Promise.all([
 		repository.list(allowed),
 		repository.syncState(),
 		repository.personalization(context.member.id)
 	]);
 	return json({
-		rootFolderId: ROOT_FOLDER_ID,
+		rootFolderId,
 		documents,
 		sync,
 		canCurate: context.viewerCapabilities.isAdmin && !context.isViewingAs,
@@ -36,7 +47,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 	});
 };
 
-export const POST: RequestHandler = async ({ locals, platform, request }) => {
+export const POST: RequestHandler = async ({ locals, platform, request, url }) => {
 	const env = platform?.env;
 	const context = await loadMemberContext({ session: locals.session, env });
 	requireWritableMemberView(context);
@@ -53,7 +64,8 @@ export const POST: RequestHandler = async ({ locals, platform, request }) => {
 	if (!documentId) error(400, 'Document required');
 	if (body?.action !== 'favorite' && body?.action !== 'view' && body?.action !== 'annotate')
 		error(400, 'Invalid action');
-	const repository = new DriveDocumentRepository(env!.DB);
+	const rootFolderId = libraryRoot(url, context);
+	const repository = new DriveDocumentRepository(env!.DB, rootFolderId);
 	if (!(await repository.isVisible(documentId, allowedVisibility(context))))
 		error(404, 'Document not found');
 	const now = new Date().toISOString();

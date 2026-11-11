@@ -1,0 +1,2 @@
+export const COLAB_DOCUMENT_ROOT = '1wEEDbh0PmGiPkdS6S_LfLZeIcQtOSIEm';
+export const OPERATIONS_DOCUMENT_ROOT = '0AMizrW601jg2Uk9PVA';

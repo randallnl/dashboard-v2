@@ -5,6 +5,12 @@
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
+	let {
+		library = 'colab',
+		title = 'CoLab documents'
+	}: { library?: 'colab' | 'operations'; title?: string } = $props();
+	const endpoint = $derived(`/api/documents?library=${library}`);
+
 	type DocumentsResponse = {
 		rootFolderId: string;
 		documents: DriveDocument[];
@@ -52,7 +58,7 @@
 		loading = true;
 		errorMessage = '';
 		try {
-			const response = await fetch('/api/documents');
+			const response = await fetch(endpoint);
 			if (!response.ok) throw new Error('The document library could not be loaded.');
 			const payload = (await response.json()) as DocumentsResponse;
 			documents = payload.documents;
@@ -206,7 +212,7 @@
 	}
 
 	async function saveInteraction(body: Record<string, unknown>) {
-		const response = await fetch('/api/documents', {
+		const response = await fetch(endpoint, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body)
@@ -272,7 +278,7 @@
 	<header class="workspace-page-heading">
 		<div>
 			<p class="eyebrow">Shared knowledge</p>
-			<h1 id="documents-title">CoLab documents</h1>
+			<h1 id="documents-title">{title}</h1>
 		</div>
 		{#if sync}<DataFreshness syncedAt={sync.completedAt} syncing={sync.status === 'running'} />{/if}
 	</header>
@@ -353,7 +359,7 @@
 			>
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a
-				href="https://drive.google.com/drive/folders/1wEEDbh0PmGiPkdS6S_LfLZeIcQtOSIEm"
+				href={`https://drive.google.com/drive/folders/${rootFolderId}`}
 				target="_blank"
 				rel="noreferrer">Open Drive ↗</a
 			>
@@ -381,7 +387,7 @@
 						<p class="eyebrow">Start here</p>
 						<h2 id="featured-documents-title">Featured documents</h2>
 					</div>
-					<span>Important resources selected by the CoLab team</span>
+					<span>Important resources selected by the team</span>
 				</div>
 				<div class="document-featured-grid">
 					{#each featuredDocuments as document (document.id)}

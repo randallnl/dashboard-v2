@@ -1,3 +1,5 @@
+import { OPERATIONS_DOCUMENT_ROOT } from './lib/drive-libraries';
+
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const SHORTCUT_MIME_TYPE = 'application/vnd.google-apps.shortcut';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
@@ -36,6 +38,7 @@ type ProjectFolderFile = {
 
 type IndexedDriveFile = DriveFile & {
 	parentId: string;
+	libraryRootId: string;
 	rootSectionId: string;
 	visibility: 'member' | 'colab' | 'admin';
 };
@@ -444,7 +447,11 @@ async function receiveProjectFolder(request: Request, env: DriveSyncEnv): Promis
 	}
 }
 
-async function indexFolderTree(token: string, rootFolderId: string): Promise<IndexedDriveFile[]> {
+export async function indexFolderTree(
+	token: string,
+	rootFolderId: string,
+	adminOnly = false
+): Promise<IndexedDriveFile[]> {
 	const rootChildren = await listChildren(token, rootFolderId);
 	const indexed: IndexedDriveFile[] = [];
 	const folders: Array<{
@@ -454,10 +461,15 @@ async function indexFolderTree(token: string, rootFolderId: string): Promise<Ind
 	}> = [];
 
 	for (const file of rootChildren) {
-		const visibility = file.mimeType === FOLDER_MIME_TYPE ? sectionVisibility(file.name) : 'colab';
+		const visibility = adminOnly
+			? 'admin'
+			: file.mimeType === FOLDER_MIME_TYPE
+				? sectionVisibility(file.name)
+				: 'colab';
 		indexed.push({
 			...file,
 			parentId: rootFolderId,
+			libraryRootId: rootFolderId,
 			rootSectionId: file.id,
 			visibility
 		});
@@ -473,6 +485,7 @@ async function indexFolderTree(token: string, rootFolderId: string): Promise<Ind
 			indexed.push({
 				...file,
 				parentId: folder.id,
+				libraryRootId: rootFolderId,
 				rootSectionId: folder.rootSectionId,
 				visibility: folder.visibility
 			});
@@ -524,9 +537,8 @@ async function synchronizeProjectFolderContents(
 				.run();
 			for (let offset = 0; offset < files.length; offset += 75) {
 				const statements = files.slice(offset, offset + 75).map((file) =>
-					env.DB
-						.prepare(
-							`INSERT INTO project_drive_files (
+					env.DB.prepare(
+						`INSERT INTO project_drive_files (
 								id, source, project_id, folder_id, name, mime_type, web_view_url,
 								byte_size, uploaded_by_member_id, uploaded_at
 							) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, '', ?9)
@@ -538,18 +550,17 @@ async function synchronizeProjectFolderContents(
 								byte_size = excluded.byte_size,
 								uploaded_by_member_id = excluded.uploaded_by_member_id,
 								uploaded_at = excluded.uploaded_at`
-						)
-						.bind(
-							file.id,
-							folder.source,
-							folder.project_id,
-							folder.folder_id,
-							file.name,
-							file.mimeType,
-							file.url,
-							file.byteSize,
-							file.createdAt
-						)
+					).bind(
+						file.id,
+						folder.source,
+						folder.project_id,
+						folder.folder_id,
+						file.name,
+						file.mimeType,
+						file.url,
+						file.byteSize,
+						file.createdAt
+					)
 				);
 				await env.DB.batch(statements);
 			}
@@ -582,7 +593,10 @@ async function synchronize(env: DriveSyncEnv): Promise<{ count: number; syncedAt
 			throw new Error('Service account JSON is missing client_email or private_key');
 		}
 		const token = await accessToken(credentials);
-		const files = await indexFolderTree(token, env.GOOGLE_DRIVE_ROOT_FOLDER_ID);
+		const files = [
+			...(await indexFolderTree(token, env.GOOGLE_DRIVE_ROOT_FOLDER_ID)),
+			...(await indexFolderTree(token, OPERATIONS_DOCUMENT_ROOT, true))
+		];
 		const syncRunId = crypto.randomUUID();
 		const syncedAt = new Date().toISOString();
 		for (let offset = 0; offset < files.length; offset += 75) {
@@ -591,8 +605,8 @@ async function synchronize(env: DriveSyncEnv): Promise<{ count: number; syncedAt
 					`INSERT INTO drive_documents (
 						id, parent_id, root_section_id, name, mime_type, web_view_url, created_at,
 						modified_at, byte_size, is_folder, is_shortcut, shortcut_target_id,
-						visibility, sync_run_id, synced_at
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+						visibility, sync_run_id, synced_at, library_root_id
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 					ON CONFLICT(id) DO UPDATE SET
 						parent_id = excluded.parent_id, root_section_id = excluded.root_section_id,
 						name = excluded.name, mime_type = excluded.mime_type,
@@ -601,7 +615,7 @@ async function synchronize(env: DriveSyncEnv): Promise<{ count: number; syncedAt
 						is_folder = excluded.is_folder, is_shortcut = excluded.is_shortcut,
 						shortcut_target_id = excluded.shortcut_target_id,
 						visibility = excluded.visibility, sync_run_id = excluded.sync_run_id,
-						synced_at = excluded.synced_at`
+						synced_at = excluded.synced_at, library_root_id = excluded.library_root_id`
 				).bind(
 					file.id,
 					file.parentId,
@@ -617,7 +631,8 @@ async function synchronize(env: DriveSyncEnv): Promise<{ count: number; syncedAt
 					file.shortcutDetails?.targetId ?? '',
 					file.visibility,
 					syncRunId,
-					syncedAt
+					syncedAt,
+					file.libraryRootId
 				)
 			);
 			await env.DB.batch(statements);

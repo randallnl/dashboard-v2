@@ -165,3 +165,17 @@ Capture:
 - actions taken and smoke-test results
 
 Do not include raw tokens, email addresses, or secret values.
+
+## Operations document library
+
+`/operations?tab=documents` uses the shared document browser for Drive root
+`0AMizrW601jg2Uk9PVA`. The API requires an administrator outside member-view mode.
+Operations metadata, favorites, and recent views are scoped separately from CoLab.
+Every indexed Operations folder and file is admin-only, regardless of folder name.
+Drive previews still require the viewer's Google account to have file access.
+
+Release migration `0036_operations_document_library.sql` before deploying the app
+and Drive sync worker. The existing Drive service account needs read access to the
+new shared drive. The scheduled sync indexes both libraries every 15 minutes;
+verify that it completes and that the Operations tab lists the migrated governance
+and program folders. No Drive sharing permissions are changed by the library.

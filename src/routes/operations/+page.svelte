@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import DocumentLibrary from '$lib/components/DocumentLibrary.svelte';
 	import FinanceReconciliationPanel from '$lib/components/FinanceReconciliationPanel.svelte';
 	import FinanceReportSnapshot from '$lib/components/FinanceReportSnapshot.svelte';
 	import ShopifyMarketSalesPanel from '$lib/components/ShopifyMarketSalesPanel.svelte';
@@ -7,11 +9,15 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	const documentsActive = $derived(page.url.searchParams.get('tab') === 'documents');
 </script>
 
 <svelte:head>
 	<title>Operations · CoLab</title>
-	<meta name="description" content="CoLab operations tools and monthly financial reconciliation." />
+	<meta
+		name="description"
+		content="CoLab operations tools, financial reconciliation, and shared documents."
+	/>
 </svelte:head>
 
 <div class="operations-workspace">
@@ -44,11 +50,24 @@
 		</section>
 
 		<nav class="operations-subnav" aria-label="Operations sections">
-			<a class="active" href={resolve('/operations')}>Finance</a>
+			<a
+				class:active={!documentsActive}
+				aria-current={!documentsActive ? 'page' : undefined}
+				href={resolve('/operations')}>Finance</a
+			>
+			<a
+				class:active={documentsActive}
+				aria-current={documentsActive ? 'page' : undefined}
+				href={resolve('/operations?tab=documents')}>Documents</a
+			>
 		</nav>
 
-		<FinanceReportSnapshot />
-		<ShopifyMarketSalesPanel />
-		<FinanceReconciliationPanel />
+		{#if documentsActive}
+			<DocumentLibrary library="operations" title="Operations documents" />
+		{:else}
+			<FinanceReportSnapshot />
+			<ShopifyMarketSalesPanel />
+			<FinanceReconciliationPanel />
+		{/if}
 	</main>
 </div>

@@ -1,3 +1,4 @@
+import { COLAB_DOCUMENT_ROOT } from '$lib/drive-libraries';
 import type { DriveDocument, DriveDocumentVisibility, DriveSyncState } from '$lib/types/drive';
 import type { Database } from './types';
 
@@ -46,7 +47,10 @@ function mapDocument(row: DriveDocumentRow): DriveDocument {
 }
 
 export class DriveDocumentRepository {
-	constructor(private readonly db: Database) {}
+	constructor(
+		private readonly db: Database,
+		private readonly libraryRootId: string = COLAB_DOCUMENT_ROOT
+	) {}
 
 	async list(allowed: DriveDocumentVisibility[]): Promise<DriveDocument[]> {
 		if (!allowed.length) return [];
@@ -60,10 +64,10 @@ export class DriveDocumentRepository {
 					COALESCE(annotation.is_featured, 0) AS is_featured
 				 FROM drive_documents document
 				 LEFT JOIN drive_document_annotations annotation ON annotation.document_id = document.id
-				 WHERE document.visibility IN (${placeholders})
+				 WHERE document.library_root_id = ? AND document.visibility IN (${placeholders})
 				 ORDER BY document.is_folder DESC, document.name COLLATE NOCASE`
 			)
-			.bind(...allowed)
+			.bind(this.libraryRootId, ...allowed)
 			.all<DriveDocumentRow>();
 		return result.results.map(mapDocument);
 	}
@@ -98,10 +102,10 @@ export class DriveDocumentRepository {
 				`SELECT interaction.document_id, interaction.is_favorite, interaction.last_viewed_at
 				 FROM drive_document_interactions interaction
 				 INNER JOIN drive_documents document ON document.id = interaction.document_id
-				 WHERE interaction.member_id = ?
+				 WHERE interaction.member_id = ? AND document.library_root_id = ?
 				 ORDER BY interaction.last_viewed_at DESC`
 			)
-			.bind(memberId)
+			.bind(memberId, this.libraryRootId)
 			.all<{ document_id: string; is_favorite: number; last_viewed_at: string }>();
 		return {
 			favoriteIds: result.results
@@ -119,9 +123,9 @@ export class DriveDocumentRepository {
 		const placeholders = allowed.map(() => '?').join(', ');
 		const row = await this.db
 			.prepare(
-				`SELECT id FROM drive_documents WHERE id = ? AND is_folder = 0 AND visibility IN (${placeholders})`
+				`SELECT id FROM drive_documents WHERE id = ? AND library_root_id = ? AND is_folder = 0 AND visibility IN (${placeholders})`
 			)
-			.bind(documentId, ...allowed)
+			.bind(documentId, this.libraryRootId, ...allowed)
 			.first<{ id: string }>();
 		return Boolean(row);
 	}
