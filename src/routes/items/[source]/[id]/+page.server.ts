@@ -5,6 +5,7 @@ import {
 	MemberRepository,
 	ProjectEventRepository,
 	ProjectDriveRepository,
+	ProjectEmailLinkRepository,
 	QuickLinkRepository,
 	VolunteerRepository
 } from '$lib/server/db';
@@ -12,6 +13,13 @@ import { attendeeEmails } from '$lib/server/monday/events';
 import type { ProjectEventSource } from '$lib/types/domain';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+
+const PROJECT_EMAIL_INBOX = 'projects@nhsolidarityecosystem.com';
+
+function projectEmailAddress(token: string): string {
+	const [localPart, domain] = PROJECT_EMAIL_INBOX.split('@');
+	return `${localPart}+${token}@${domain}`;
+}
 
 async function projectEmailToken(db: D1Database, projectId: string): Promise<string> {
 	const existing = await db
@@ -82,7 +90,8 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		participants,
 		projectRecords,
 		projectDriveFolder,
-		projectDriveFiles
+		projectDriveFiles,
+		projectEmailLinks
 	] = await Promise.all([
 		host?.memberId ? memberRepository.findById(host.memberId) : Promise.resolve(null),
 		memberRepository.search('', 100),
@@ -92,7 +101,8 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 			? new ProjectEventRepository(db).list({ source: 'project', includeAdminOnly: true })
 			: Promise.resolve([]),
 		source === 'project' ? driveRepository.findFolder(source, record.id) : Promise.resolve(null),
-		source === 'project' ? driveRepository.listFiles(source, record.id) : Promise.resolve([])
+		source === 'project' ? driveRepository.listFiles(source, record.id) : Promise.resolve([]),
+		source === 'project' ? new ProjectEmailLinkRepository(db).list(record.id) : Promise.resolve([])
 	]);
 	const projectStatusOptions = [
 		...new Map(
@@ -179,10 +189,10 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		projectStatusOptions,
 		projectDriveFolder,
 		projectDriveFiles,
+		projectEmailLinks,
 		projectEmailForwarding: projectEmailInboxToken
 			? {
-					address: 'projects@nhsolidarityecosystem.com',
-					subjectTag: `[project:${projectEmailInboxToken}]`
+					address: projectEmailAddress(projectEmailInboxToken)
 				}
 			: null
 	};

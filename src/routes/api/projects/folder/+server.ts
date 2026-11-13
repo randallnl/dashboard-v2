@@ -1,5 +1,6 @@
 import { loadMemberContext, requireProjectManager } from '$lib/server/auth/member-context';
-import { ProjectDriveRepository, ProjectEventRepository } from '$lib/server/db';
+import { CommentRepository, ProjectDriveRepository, ProjectEventRepository } from '$lib/server/db';
+import { recordProjectDriveUploadActivity } from '$lib/server/project-drive/activity';
 import type { ProjectDriveFile } from '$lib/types/domain';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -37,6 +38,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 	const driveRepository = new ProjectDriveRepository(env!.DB);
 	const knownFolder = await driveRepository.findFolder('project', projectId);
+	const knownFiles = await driveRepository.listFiles('project', projectId);
 	const driveForm = new FormData();
 	driveForm.set('projectId', projectId);
 	driveForm.set('projectTitle', project.title);
@@ -71,6 +73,17 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		>,
 		now
 	});
+	const knownFileIds = new Set(knownFiles.map((file) => file.id));
+	const newlyObservedFiles = drivePayload.files.filter((file) => !knownFileIds.has(file.id));
+	for (let offset = 0; offset < newlyObservedFiles.length; offset += 10) {
+		await recordProjectDriveUploadActivity(new CommentRepository(env!.DB), {
+			source: 'project',
+			projectId,
+			files: newlyObservedFiles.slice(offset, offset + 10),
+			origin: 'drive',
+			now
+		});
+	}
 
 	return json({
 		folder: {

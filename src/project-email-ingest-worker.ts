@@ -1,11 +1,15 @@
 import PostalMime, { type Attachment } from 'postal-mime';
+import { CommentRepository } from '$lib/server/db/comment-repository';
 import { ProjectDriveRepository } from '$lib/server/db/project-drive-repository';
+import { ProjectEmailLinkRepository } from '$lib/server/db/project-email-link-repository';
+import { recordProjectDriveUploadActivity } from '$lib/server/project-drive/activity';
 import { ProjectEventRepository } from '$lib/server/db/project-repository';
 
 const MAX_ATTACHMENTS = 10;
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const MAX_COMMENT_LENGTH = 2_000;
 const MAX_ERROR_LENGTH = 500;
+const MAX_EMAIL_LINKS = 25;
 
 type IngestRow = {
 	status: 'processing' | 'complete' | 'failed';
@@ -25,6 +29,19 @@ type DriveUploadResponse = {
 	folder: { id: string; name: string };
 	files: DriveFile[];
 	message?: string;
+};
+
+type DriveShortcutResponse = {
+	folder: { id: string; name: string };
+	files: Array<DriveFile & { targetId: string }>;
+	skipped?: number;
+	message?: string;
+};
+
+type EmailLink = {
+	url: string;
+	label: string;
+	driveFileId: string;
 };
 
 function encodeBase64Url(value: ArrayBuffer): string {
@@ -59,12 +76,22 @@ function ordinaryAttachments(attachments: Attachment[]): Attachment[] {
 	);
 }
 
-function inboxTokenFrom(message: ForwardableEmailMessage, inbox: string): string {
+export function inboxTokenFrom(
+	message: Pick<ForwardableEmailMessage, 'to' | 'headers'>,
+	inbox: string
+): string {
 	const recipient = message.to.trim().toLocaleLowerCase('en-US');
 	const configuredInbox = inbox.trim().toLocaleLowerCase('en-US');
-	if (recipient !== configuredInbox) return '';
-	const token =
-		message.headers.get('subject')?.match(/\[project\s*:\s*([a-f0-9-]{16,})\]/iu)?.[1] ?? '';
+	const [recipientLocal, recipientDomain] = recipient.split('@');
+	const [inboxLocal, inboxDomain] = configuredInbox.split('@');
+	if (!recipientLocal || !recipientDomain || !inboxLocal || recipientDomain !== inboxDomain)
+		return '';
+
+	const token = recipientLocal.startsWith(`${inboxLocal}+`)
+		? recipientLocal.slice(inboxLocal.length + 1)
+		: recipientLocal === inboxLocal
+			? (message.headers.get('subject')?.match(/\[project\s*:\s*([a-f0-9-]{16,})\]/iu)?.[1] ?? '')
+			: '';
 	return /^[a-f0-9-]{16,}$/u.test(token) ? token : '';
 }
 
@@ -73,6 +100,67 @@ function plainText(value: string): string {
 		.replaceAll(/\r\n?/gu, '\n')
 		.replaceAll(/\n{3,}/gu, '\n\n')
 		.trim();
+}
+
+function normalHttpUrl(value: string): string {
+	const trimmed = value
+		.trim()
+		.replaceAll('&amp;', '&')
+		.replace(/[)\],.;:!?]+$/gu, '');
+	try {
+		const url = new URL(trimmed);
+		return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+	} catch {
+		return '';
+	}
+}
+
+export function googleDriveFileId(value: string): string {
+	try {
+		const url = new URL(value);
+		const host = url.hostname.toLocaleLowerCase('en-US');
+		let candidate = '';
+		if (host === 'docs.google.com') {
+			candidate =
+				url.pathname.match(
+					/^\/(?:document|spreadsheets|presentation|drawings)\/d\/([^/]+)/iu
+				)?.[1] ?? '';
+		}
+		if (host === 'drive.google.com' || host === 'www.drive.google.com') {
+			candidate =
+				url.pathname.match(/^\/file\/d\/([^/]+)/iu)?.[1] ?? url.searchParams.get('id') ?? '';
+		}
+		return /^[A-Za-z0-9_-]{10,}$/u.test(candidate) ? candidate : '';
+	} catch {
+		return '';
+	}
+}
+
+function linkLabel(url: string, driveFileId: string): string {
+	if (driveFileId) return 'Google Drive document';
+	const parsed = new URL(url);
+	const host = parsed.hostname.replace(/^www\./u, '');
+	const finalPath = parsed.pathname.split('/').filter(Boolean).at(-1) ?? '';
+	if (!finalPath || finalPath.length > 38) return host;
+	try {
+		return `${host} · ${decodeURIComponent(finalPath).replace(/[-_]+/gu, ' ')}`;
+	} catch {
+		return `${host} · ${finalPath.replace(/[-_]+/gu, ' ')}`;
+	}
+}
+
+export function emailLinksFrom(...bodies: string[]): EmailLink[] {
+	const links = new Map<string, EmailLink>();
+	for (const body of bodies) {
+		for (const match of body.matchAll(/\bhttps?:\/\/[^\s<>"']+/giu)) {
+			const url = normalHttpUrl(match[0]);
+			if (!url || links.has(url)) continue;
+			const driveFileId = googleDriveFileId(url);
+			links.set(url, { url, label: linkLabel(url, driveFileId), driveFileId });
+			if (links.size >= MAX_EMAIL_LINKS) return [...links.values()];
+		}
+	}
+	return [...links.values()];
 }
 
 function emailComment(input: {
@@ -121,15 +209,39 @@ async function uploadAttachments(input: {
 	return payload;
 }
 
+async function createDriveShortcuts(input: {
+	env: ProjectEmailEnv;
+	projectId: string;
+	projectTitle: string;
+	knownFolderId: string;
+	targetIds: string[];
+}): Promise<DriveShortcutResponse> {
+	const response = await input.env.PROJECT_DRIVE.fetch(
+		new Request('https://finance-drive.internal/project-shortcuts', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				projectId: input.projectId,
+				projectTitle: input.projectTitle,
+				folderId: input.knownFolderId,
+				targetIds: input.targetIds
+			})
+		})
+	);
+	const payload = (await response.json().catch(() => null)) as DriveShortcutResponse | null;
+	if (!response.ok || !payload?.folder?.id || !Array.isArray(payload.files)) {
+		throw new Error(payload?.message || 'The project Drive folder could not link the documents');
+	}
+	return payload;
+}
+
 async function processProjectEmail(
 	message: ForwardableEmailMessage,
 	env: ProjectEmailEnv
 ): Promise<void> {
 	const inboxToken = inboxTokenFrom(message, env.PROJECT_INBOX_EMAIL);
 	if (!inboxToken) {
-		message.setReject(
-			'Use the project forwarding address and subject tag shown in the CoLab dashboard.'
-		);
+		message.setReject('Use the project-specific forwarding address shown in the CoLab dashboard.');
 		return;
 	}
 
@@ -167,6 +279,7 @@ async function processProjectEmail(
 	const sourceMessageId = message.headers.get('message-id')?.trim() || (await digest(raw));
 	const subject = parsed.subject?.trim() || '(no subject)';
 	const sender = message.from.trim() || 'unknown sender';
+	const emailLinks = emailLinksFrom(parsed.text || '', parsed.html || '');
 	const commentId = `email:${projectId}:${sourceMessageId}`;
 	const now = new Date().toISOString();
 	await env.DB.prepare(
@@ -206,6 +319,14 @@ async function processProjectEmail(
 			)
 			.run();
 
+		await new ProjectEmailLinkRepository(env.DB).record({
+			projectId,
+			sourceMessageId,
+			sourceSubject: subject,
+			links: emailLinks.map(({ url, label }) => ({ url, label })),
+			now
+		});
+
 		const uploadedFileCount = await env.DB.prepare(
 			`SELECT count(*) AS count
 			 FROM project_email_ingest_files
@@ -234,6 +355,14 @@ async function processProjectEmail(
 				uploadedByMemberId: `email:${sender.toLocaleLowerCase('en-US')}`,
 				now
 			});
+			await recordProjectDriveUploadActivity(new CommentRepository(env.DB), {
+				source: 'project',
+				projectId,
+				files: upload.files,
+				origin: 'email',
+				actor: sender,
+				now
+			});
 			await env.DB.batch(
 				upload.files.map((file) =>
 					env.DB.prepare(
@@ -243,6 +372,62 @@ async function processProjectEmail(
 					).bind(sourceMessageId, projectId, file.id, file.name, file.mimeType, file.byteSize)
 				)
 			);
+		}
+
+		const driveDocumentIds = [
+			...new Set(emailLinks.map((link) => link.driveFileId).filter(Boolean))
+		];
+		if (driveDocumentIds.length) {
+			const existingShortcuts = await env.DB.prepare(
+				`SELECT target_file_id
+				 FROM project_email_ingest_shortcuts
+				 WHERE source_message_id = ?1 AND project_id = ?2`
+			)
+				.bind(sourceMessageId, projectId)
+				.all<{ target_file_id: string }>();
+			const previouslyLinked = new Set(
+				existingShortcuts.results.map((shortcut) => shortcut.target_file_id)
+			);
+			const newDriveDocumentIds = driveDocumentIds.filter((id) => !previouslyLinked.has(id));
+			if (newDriveDocumentIds.length) {
+				const driveRepository = new ProjectDriveRepository(env.DB);
+				const knownFolder = await driveRepository.findFolder('project', projectId);
+				const shortcuts = await createDriveShortcuts({
+					env,
+					projectId,
+					projectTitle: project.title,
+					knownFolderId: knownFolder?.folderId ?? '',
+					targetIds: newDriveDocumentIds
+				});
+				if (shortcuts.files.length) {
+					await driveRepository.recordUpload({
+						source: 'project',
+						projectId,
+						folder: { folderId: shortcuts.folder.id, folderName: shortcuts.folder.name },
+						files: shortcuts.files,
+						uploadedByMemberId: `email:${sender.toLocaleLowerCase('en-US')}`,
+						now
+					});
+					await recordProjectDriveUploadActivity(new CommentRepository(env.DB), {
+						source: 'project',
+						projectId,
+						files: shortcuts.files,
+						origin: 'email',
+						actor: sender,
+						now,
+						kind: 'shortcuts'
+					});
+					await env.DB.batch(
+						shortcuts.files.map((file) =>
+							env.DB.prepare(
+								`INSERT OR IGNORE INTO project_email_ingest_shortcuts (
+									source_message_id, project_id, target_file_id, drive_shortcut_id
+								) VALUES (?1, ?2, ?3, ?4)`
+							).bind(sourceMessageId, projectId, file.targetId, file.id)
+						)
+					);
+				}
+			}
 		}
 
 		await env.DB.prepare(

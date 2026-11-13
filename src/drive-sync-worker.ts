@@ -1,4 +1,6 @@
 import { OPERATIONS_DOCUMENT_ROOT } from './lib/drive-libraries';
+import { CommentRepository } from './lib/server/db/comment-repository';
+import { recordProjectDriveUploadActivity } from './lib/server/project-drive/activity';
 
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const SHORTCUT_MIME_TYPE = 'application/vnd.google-apps.shortcut';
@@ -8,6 +10,8 @@ const ALLOWED_STATEMENT_TYPES = new Set(['application/pdf']);
 const ALLOWED_STATEMENT_EXTENSIONS = /\.pdf$/iu;
 const MAX_PROJECT_FILES = 10;
 const MAX_PROJECT_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_PROJECT_SHORTCUTS = 25;
+const MAX_RECEIPT_BYTES = 25 * 1024 * 1024;
 
 type ServiceAccountCredentials = {
 	client_email: string;
@@ -191,6 +195,36 @@ async function uploadFileToDrive(
 	};
 }
 
+async function createDriveShortcut(
+	token: string,
+	folderId: string,
+	target: Pick<DriveFile, 'id' | 'name'>
+): Promise<{ id: string; url: string }> {
+	const response = await fetch(
+		'https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,webViewLink',
+		{
+			method: 'POST',
+			headers: {
+				authorization: `Bearer ${token}`,
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({
+				name: target.name,
+				mimeType: SHORTCUT_MIME_TYPE,
+				parents: [folderId],
+				shortcutDetails: { targetId: target.id }
+			})
+		}
+	);
+	if (!response.ok) throw new Error(`Google Drive shortcut creation failed (${response.status})`);
+	const payload = (await response.json()) as { id?: string; webViewLink?: string };
+	if (!payload.id) throw new Error('Google Drive shortcut creation returned no file ID');
+	return {
+		id: payload.id,
+		url: payload.webViewLink || `https://drive.google.com/open?id=${encodeURIComponent(payload.id)}`
+	};
+}
+
 async function findDriveFile(token: string, fileId: string): Promise<DriveFile | null> {
 	const parameters = new URLSearchParams({
 		fields: 'id,name,mimeType,parents,webViewLink',
@@ -342,6 +376,46 @@ async function receiveFinanceStatement(request: Request, env: DriveSyncEnv): Pro
 	}
 }
 
+async function receiveReceiptAttachment(request: Request, env: DriveSyncEnv): Promise<Response> {
+	const form = await request.formData();
+	const folderId =
+		typeof form.get('folderId') === 'string' ? String(form.get('folderId')).trim() : '';
+	const receipt = form.get('receipt');
+	if (!/^[A-Za-z0-9_-]{10,}$/u.test(folderId)) {
+		return Response.json({ message: 'A valid receipt folder is required.' }, { status: 400 });
+	}
+	if (!(receipt instanceof File) || !receipt.size) {
+		return Response.json({ message: 'A receipt attachment is required.' }, { status: 400 });
+	}
+	if (receipt.size > MAX_RECEIPT_BYTES) {
+		return Response.json({ message: 'Receipts must be 25 MB or smaller.' }, { status: 413 });
+	}
+
+	try {
+		const credentials = JSON.parse(
+			env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON
+		) as ServiceAccountCredentials;
+		if (!credentials.client_email || !credentials.private_key) {
+			throw new Error('Service account JSON is missing client_email or private_key');
+		}
+		const file = await uploadFileToDrive(
+			await accessToken(credentials),
+			folderId,
+			safeFilename(receipt.name),
+			safeMimeType(receipt.type),
+			await receipt.arrayBuffer()
+		);
+		return Response.json({ file });
+	} catch (cause) {
+		const message = cause instanceof Error ? cause.message : 'Unknown upload error';
+		console.error(JSON.stringify({ event: 'receipt_attachment_upload_failed', message }));
+		return Response.json(
+			{ message: 'Could not save the receipt to Google Drive.' },
+			{ status: 502 }
+		);
+	}
+}
+
 async function receiveProjectFiles(request: Request, env: DriveSyncEnv): Promise<Response> {
 	const form = await request.formData();
 	const projectId =
@@ -404,6 +478,94 @@ async function receiveProjectFiles(request: Request, env: DriveSyncEnv): Promise
 		console.error(JSON.stringify({ event: 'project_drive_upload_failed', projectId, message }));
 		return Response.json(
 			{ message: 'Could not save the files to the project Drive folder.' },
+			{ status: 502 }
+		);
+	}
+}
+
+async function receiveProjectShortcuts(request: Request, env: DriveSyncEnv): Promise<Response> {
+	const payload = (await request.json().catch(() => null)) as {
+		projectId?: unknown;
+		projectTitle?: unknown;
+		folderId?: unknown;
+		targetIds?: unknown;
+	} | null;
+	const projectId = typeof payload?.projectId === 'string' ? payload.projectId.trim() : '';
+	const projectTitle = typeof payload?.projectTitle === 'string' ? payload.projectTitle.trim() : '';
+	const knownFolderId = typeof payload?.folderId === 'string' ? payload.folderId.trim() : '';
+	const targetIds = [
+		...new Set(
+			(Array.isArray(payload?.targetIds) ? payload.targetIds : [])
+				.filter((value): value is string => typeof value === 'string')
+				.map((value) => value.trim())
+				.filter((value) => /^[A-Za-z0-9_-]{10,}$/u.test(value))
+		)
+	].slice(0, MAX_PROJECT_SHORTCUTS);
+	if (!/^\d+$/u.test(projectId) || !projectTitle) {
+		return Response.json({ message: 'A valid project is required.' }, { status: 400 });
+	}
+	if (!targetIds.length) {
+		return Response.json({ message: 'Choose at least one Drive document.' }, { status: 400 });
+	}
+
+	try {
+		const credentials = JSON.parse(
+			env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON
+		) as ServiceAccountCredentials;
+		if (!credentials.client_email || !credentials.private_key) {
+			throw new Error('Service account JSON is missing client_email or private_key');
+		}
+		const token = await accessToken(credentials);
+		const folder = await projectFolder(
+			token,
+			env.PROJECT_FILES_ROOT_FOLDER_ID,
+			knownFolderId,
+			projectTitle
+		);
+		const now = new Date().toISOString();
+		const files: Array<ProjectFolderFile & { targetId: string }> = [];
+		let skipped = 0;
+		for (const targetId of targetIds) {
+			try {
+				const target = await findDriveFile(token, targetId);
+				if (
+					!target?.id ||
+					!target.name ||
+					target.mimeType === FOLDER_MIME_TYPE ||
+					target.mimeType === SHORTCUT_MIME_TYPE ||
+					target.parents?.includes(folder.id)
+				) {
+					skipped += 1;
+					continue;
+				}
+				const shortcut = await createDriveShortcut(token, folder.id, target);
+				files.push({
+					id: shortcut.id,
+					targetId,
+					name: target.name,
+					mimeType: SHORTCUT_MIME_TYPE,
+					url: shortcut.url,
+					byteSize: 0,
+					createdAt: now
+				});
+			} catch (cause) {
+				skipped += 1;
+				console.warn(
+					JSON.stringify({
+						event: 'project_drive_shortcut_skipped',
+						projectId,
+						targetId,
+						message: cause instanceof Error ? cause.message : 'Unknown Drive shortcut error'
+					})
+				);
+			}
+		}
+		return Response.json({ folder, files, skipped });
+	} catch (cause) {
+		const message = cause instanceof Error ? cause.message : 'Unknown Drive shortcut error';
+		console.error(JSON.stringify({ event: 'project_drive_shortcut_failed', projectId, message }));
+		return Response.json(
+			{ message: 'Could not prepare the project Drive folder for linked documents.' },
 			{ status: 502 }
 		);
 	}
@@ -522,6 +684,13 @@ async function synchronizeProjectFolderContents(
 	for (const folder of result.results) {
 		try {
 			const files = await projectFolderFiles(token, folder.folder_id);
+			const storedFiles = await env.DB.prepare(
+				`SELECT id FROM project_drive_files WHERE source = ?1 AND project_id = ?2`
+			)
+				.bind(folder.source, folder.project_id)
+				.all<{ id: string }>();
+			const storedFileIds = new Set(storedFiles.results.map((file) => file.id));
+			const newlyObservedFiles = files.filter((file) => !storedFileIds.has(file.id));
 			await env.DB.prepare(
 				`UPDATE project_drive_folders
 				 SET updated_at = ?3
@@ -563,6 +732,15 @@ async function synchronizeProjectFolderContents(
 					)
 				);
 				await env.DB.batch(statements);
+			}
+			for (let offset = 0; offset < newlyObservedFiles.length; offset += 10) {
+				await recordProjectDriveUploadActivity(new CommentRepository(env.DB), {
+					source: 'project',
+					projectId: folder.project_id,
+					files: newlyObservedFiles.slice(offset, offset + 10),
+					origin: 'drive',
+					now: syncedAt
+				});
 			}
 			fileCount += files.length;
 		} catch (cause) {
@@ -671,11 +849,17 @@ async function health(env: DriveSyncEnv): Promise<Response> {
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
+		if (request.method === 'POST' && new URL(request.url).pathname === '/receipt-attachments') {
+			return receiveReceiptAttachment(request, env);
+		}
 		if (request.method === 'POST' && new URL(request.url).pathname === '/finance-statements') {
 			return receiveFinanceStatement(request, env);
 		}
 		if (request.method === 'POST' && new URL(request.url).pathname === '/project-files') {
 			return receiveProjectFiles(request, env);
+		}
+		if (request.method === 'POST' && new URL(request.url).pathname === '/project-shortcuts') {
+			return receiveProjectShortcuts(request, env);
 		}
 		if (request.method === 'POST' && new URL(request.url).pathname === '/project-folder') {
 			return receiveProjectFolder(request, env);

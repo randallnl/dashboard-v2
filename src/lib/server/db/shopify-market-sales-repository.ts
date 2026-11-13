@@ -92,13 +92,14 @@ export class ShopifyMarketSalesRepository {
 			.prepare(
 				`INSERT INTO shopify_market_sales (
 					source_message_id, sale_date, total_sales, cash_sales, card_sales, other_sales,
-					source_subject, source_received_at, created_at, updated_at
-				) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8, ?8)
+					source_subject, source_received_at, archived_at, created_at, updated_at
+				) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?8, ?8)
 				ON CONFLICT(source_message_id) DO UPDATE SET
 					sale_date = excluded.sale_date, total_sales = excluded.total_sales,
 					cash_sales = excluded.cash_sales, card_sales = excluded.card_sales,
 					other_sales = excluded.other_sales, source_subject = excluded.source_subject,
-					source_received_at = excluded.source_received_at, updated_at = excluded.updated_at`
+					source_received_at = excluded.source_received_at,
+					archived_at = excluded.archived_at, updated_at = excluded.updated_at`
 			)
 			.bind(
 				input.sourceMessageId,
@@ -108,7 +109,8 @@ export class ShopifyMarketSalesRepository {
 				amount(input.cardSales),
 				amount(input.otherSales),
 				input.sourceSubject,
-				input.sourceReceivedAt
+				input.sourceReceivedAt,
+				''
 			)
 			.run();
 	}
@@ -133,14 +135,15 @@ export class ShopifyMarketSalesRepository {
 			.run();
 	}
 
-	async list(limit = 90): Promise<ShopifyMarketSale[]> {
+	async list(limit = 7): Promise<ShopifyMarketSale[]> {
 		const rows = await this.db
 			.prepare(
 				`SELECT id, sale_date, total_sales, cash_sales, card_sales, other_sales, project_source,
 					project_id, project_title, cash_deposited_at, cash_deposited_by, source_subject,
-					source_received_at FROM shopify_market_sales ORDER BY sale_date DESC, id DESC LIMIT ?1`
+					source_received_at FROM shopify_market_sales
+					ORDER BY sale_date DESC, id DESC LIMIT ?1`
 			)
-			.bind(Math.min(Math.max(limit, 1), 180))
+			.bind(Math.min(Math.max(limit, 1), 7))
 			.all<SaleRow>();
 		return rows.results.map(saleFromRow);
 	}

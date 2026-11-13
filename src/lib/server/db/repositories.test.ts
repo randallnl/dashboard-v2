@@ -143,6 +143,36 @@ describe('CommentRepository', () => {
 			'2026-07-27T14:00:00.000Z'
 		);
 	});
+
+	it('creates a system comment only once when an external upload is reprocessed', async () => {
+		const mock = createDatabaseMock({ changes: 1 });
+		const repository = new CommentRepository(mock.db);
+
+		await expect(
+			repository.createIfAbsent({
+				id: 'drive-upload:dashboard:project:project-1:file-1',
+				source: 'project',
+				eventId: 'project-1',
+				memberId: 'system:drive:dashboard',
+				authorLabel: 'Project Drive',
+				body: '1 file was added to the project Drive folder by Alex.',
+				mentionLabels: [],
+				createdAt: '2026-11-13T15:00:00.000Z'
+			})
+		).resolves.toBe(true);
+
+		expect(mock.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT OR IGNORE'));
+		expect(mock.bind).toHaveBeenCalledWith(
+			'drive-upload:dashboard:project:project-1:file-1',
+			'project',
+			'project-1',
+			'system:drive:dashboard',
+			'Project Drive',
+			'1 file was added to the project Drive folder by Alex.',
+			'[]',
+			'2026-11-13T15:00:00.000Z'
+		);
+	});
 });
 
 describe('CalendarSubscriptionRepository', () => {

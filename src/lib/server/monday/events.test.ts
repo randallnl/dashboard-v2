@@ -8,14 +8,16 @@ describe('Monday event mapping', () => {
 			{
 				id: 'event-1',
 				name: 'Internal planning',
+				created_at: '2026-07-24T14:30:00.000Z',
 				column_values: [
 					{ id: 'date_mkns6cak', text: 'Jul 30', value: '{"date":"2026-07-30"}' },
-					{ id: 'dropdown_mknqezw8', text: 'Staff Office', value: null }
+					{ id: 'text_mm17ts1g', text: 'Staff Office', value: null }
 				]
 			},
 			'2026-07-26T16:00:00.000Z'
 		);
 		expect(event.adminOnly).toBe(true);
+		expect(event.record.creationLog).toBe('2026-07-24T14:30:00.000Z');
 	});
 
 	it('allows approved CoLab locations and preserves multi-day dates', () => {
@@ -26,7 +28,7 @@ describe('Monday event mapping', () => {
 				column_values: [
 					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-07-30"}' },
 					{ id: 'date_mm171v9p', text: '', value: '{"date":"2026-08-02"}' },
-					{ id: 'dropdown_mknqezw8', text: 'Community Room', value: null },
+					{ id: 'text_mm17ts1g', text: 'Community Room', value: null },
 					{ id: 'text_mm5myb9c', text: 'campaign-42', value: null }
 				]
 			},
@@ -43,6 +45,42 @@ describe('Monday event mapping', () => {
 		});
 	});
 
+	it('includes undated projects in a project-only synchronization', async () => {
+		const request = vi.fn().mockResolvedValue({
+			boards: [
+				{
+					items_page: {
+						cursor: null,
+						items: [
+							{
+								id: 'ongoing-project',
+								name: 'Partner check-in',
+								column_values: [
+									{ id: 'status', text: 'Ongoing', value: null },
+									{ id: 'text_mm17ts1g', text: 'CoLab', value: null }
+								]
+							}
+						]
+					}
+				}
+			]
+		});
+		const directory = new EventDirectory({ request } as unknown as MondayClient);
+
+		await expect(directory.listProjects()).resolves.toEqual([
+			expect.objectContaining({
+				id: 'ongoing-project',
+				title: 'Partner check-in',
+				status: 'Ongoing',
+				dateValue: ''
+			})
+		]);
+		expect(request).toHaveBeenCalledWith(
+			expect.stringContaining('query EventBoard'),
+			expect.objectContaining({ boardId: '8390893779' })
+		);
+	});
+
 	it('maps attendee emails from the project dropdown', () => {
 		const event = mapProjectEvent(
 			{
@@ -50,7 +88,7 @@ describe('Monday event mapping', () => {
 				name: 'Volunteer project',
 				column_values: [
 					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-08-01"}' },
-					{ id: 'dropdown_mknqezw8', text: 'CoLab', value: null },
+					{ id: 'text_mm17ts1g', text: 'CoLab', value: null },
 					{
 						id: 'dropdown_mm17a53k',
 						text: 'one@example.com, two@example.com',
@@ -72,7 +110,7 @@ describe('Monday event mapping', () => {
 				name: 'Updated project',
 				column_values: [
 					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-08-01"}' },
-					{ id: 'dropdown_mknqezw8', text: 'CoLab', value: null }
+					{ id: 'text_mm17ts1g', text: 'CoLab', value: null }
 				],
 				updates: [
 					{
@@ -109,7 +147,7 @@ describe('Monday event mapping', () => {
 				name: 'Field trip',
 				column_values: [
 					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-08-08"}' },
-					{ id: 'dropdown_mknqezw8', text: 'CoLab', value: null }
+					{ id: 'text_mm17ts1g', text: 'CoLab', value: null }
 				],
 				subitems: [
 					{
@@ -156,7 +194,7 @@ describe('Monday event mapping', () => {
 				name: 'Poster event',
 				column_values: [
 					{ id: 'date_mkns6cak', text: '', value: '{"date":"2026-08-01"}' },
-					{ id: 'dropdown_mknqezw8', text: 'CoLab', value: null },
+					{ id: 'text_mm17ts1g', text: 'CoLab', value: null },
 					{
 						id: 'file_mknscbex',
 						text: 'poster.jpg',
@@ -229,6 +267,27 @@ describe('Monday event mapping', () => {
 				boardId: '8390893779',
 				itemId: 'event-1',
 				columnValues: expect.stringContaining('"name":"Updated studio night"')
+			})
+		);
+	});
+
+	it('clears optional project dates in Monday when they are removed', async () => {
+		const request = vi.fn().mockResolvedValue({ change_multiple_column_values: { id: 'event-1' } });
+		const directory = new EventDirectory({ request } as unknown as MondayClient);
+
+		await directory.update('project', 'event-1', {
+			title: 'Ongoing program',
+			dateValue: '',
+			endDateValue: '',
+			status: 'Ongoing',
+			location: 'CoLab',
+			description: 'No fixed dates.'
+		});
+
+		expect(request).toHaveBeenCalledWith(
+			expect.stringContaining('change_multiple_column_values'),
+			expect.objectContaining({
+			columnValues: expect.stringContaining('"date_mkns6cak":{}')
 			})
 		);
 	});

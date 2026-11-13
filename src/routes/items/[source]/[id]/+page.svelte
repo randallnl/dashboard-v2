@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import DataFreshness from '$lib/components/DataFreshness.svelte';
+	import CollapsibleCommentText from '$lib/components/CollapsibleCommentText.svelte';
 	import ItemComments from '$lib/components/ItemComments.svelte';
 	import MemberPredictivePicker from '$lib/components/MemberPredictivePicker.svelte';
 	import ProjectDashboardHeader from '$lib/components/ProjectDashboardHeader.svelte';
@@ -8,9 +9,10 @@
 		EventAttachment,
 		ProjectDriveFile,
 		ProjectDriveFolder,
+		ProjectEmailLink,
 		ProjectTask
 	} from '$lib/types/domain';
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -59,13 +61,15 @@
 	let savingDetails = $state(false);
 	let editMessage = $state('');
 	let editingDetails = $state(false);
+	let editingDates = $state(false);
+	let dateStartDraft = $state(untrack(() => recordDate));
+	let dateEndDraft = $state(untrack(() => recordEndDate));
+	let savingDates = $state(false);
+	let dateMessage = $state('');
 	let pinnedUrls = $state<string[]>([]);
-	let selectedPhotos = $state<File[]>([]);
-	let photoPreviews = $state<Array<{ name: string; url: string }>>([]);
-	let photoInput = $state<HTMLInputElement>();
-	let uploadingPhotos = $state(false);
-	let photoMessage = $state('');
-	let photoUploadFailed = $state(false);
+	let projectEmailLinks = $state<ProjectEmailLink[]>(untrack(() => data.projectEmailLinks));
+	let removingProjectEmailLink = $state('');
+	let projectEmailLinkMessage = $state('');
 	let projectDriveFolder = $state<ProjectDriveFolder | null>(
 		untrack(() => data.projectDriveFolder)
 	);
@@ -97,6 +101,29 @@
 	const attachments = $derived(
 		Array.isArray(recordFields.attachments) ? (recordFields.attachments as EventAttachment[]) : []
 	);
+	const projectHeaderPhotos = $derived.by(() => {
+		const photos = [
+			...attachments
+				.filter((attachment) => attachment.isImage && Boolean(safeUrl(attachment.url)))
+				.map((attachment) => ({
+					name: attachment.name,
+					url: safeUrl(attachment.url),
+					thumbnailUrl: safeUrl(attachment.url)
+				})),
+			...projectDriveFiles
+				.filter((file) => file.mimeType.startsWith('image/') && Boolean(safeUrl(file.url)))
+				.map((file) => ({
+					name: file.name,
+					url: safeUrl(file.url),
+					thumbnailUrl: `https://drive.google.com/thumbnail?id=${encodeURIComponent(file.id)}&sz=w160-h160`
+				}))
+		];
+		return [...new Map(photos.map((photo) => [photo.url, photo])).values()];
+	});
+	const visibleProjectHeaderPhotos = $derived(projectHeaderPhotos.slice(0, 4));
+	const additionalProjectHeaderPhotos = $derived(
+		Math.max(0, projectHeaderPhotos.length - visibleProjectHeaderPhotos.length)
+	);
 	const projectDriveFolderUrl = $derived(
 		projectDriveFolder
 			? `https://drive.google.com/drive/folders/${encodeURIComponent(projectDriveFolder.folderId)}`
@@ -104,7 +131,7 @@
 	);
 	const projectEmailMailto = $derived(
 		data.projectEmailForwarding
-			? `mailto:${data.projectEmailForwarding.address}?subject=${encodeURIComponent(`${data.projectEmailForwarding.subjectTag} Project email — ${recordTitle}`)}`
+			? `mailto:${data.projectEmailForwarding.address}?subject=${encodeURIComponent(`Project email — ${recordTitle}`)}`
 			: ''
 	);
 	let tasks = $state(
@@ -190,61 +217,6 @@
 		}
 	});
 
-	onDestroy(() => photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url)));
-
-	function selectPhotos(event: Event) {
-		photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
-		const files = Array.from((event.currentTarget as HTMLInputElement).files ?? []).slice(0, 6);
-		selectedPhotos = files;
-		photoPreviews = files.map((file) => ({ name: file.name, url: URL.createObjectURL(file) }));
-		photoMessage = files.length
-			? `${files.length} ${files.length === 1 ? 'photo' : 'photos'} ready to upload.`
-			: '';
-		photoUploadFailed = false;
-	}
-
-	function clearSelectedPhotos() {
-		photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
-		selectedPhotos = [];
-		photoPreviews = [];
-		if (photoInput) photoInput.value = '';
-	}
-
-	async function uploadPhotos() {
-		if (!selectedPhotos.length || uploadingPhotos) return;
-		if (!confirmMonday(`Upload ${selectedPhotos.length === 1 ? 'this photo' : 'these photos'}?`))
-			return;
-		uploadingPhotos = true;
-		photoMessage = 'Uploading photos to Monday…';
-		photoUploadFailed = false;
-		try {
-			const body = new FormData();
-			body.append('projectId', data.record.id);
-			selectedPhotos.forEach((photo) => body.append('photos', photo, photo.name));
-			const response = await fetch('/api/projects/photos', { method: 'POST', body });
-			const result = (await response.json()) as {
-				attachments?: EventAttachment[];
-				posterUrl?: string;
-				message?: string;
-			};
-			if (!response.ok || !result.attachments) {
-				throw new Error(result.message || 'Could not upload the photos.');
-			}
-			recordFields = {
-				...recordFields,
-				attachments: result.attachments,
-				posterUrl: result.posterUrl || recordFields.posterUrl
-			};
-			clearSelectedPhotos();
-			photoMessage = result.message || 'Photos uploaded and confirmed by Monday.';
-		} catch (cause) {
-			photoUploadFailed = true;
-			photoMessage = cause instanceof Error ? cause.message : 'Could not upload the photos.';
-		} finally {
-			uploadingPhotos = false;
-		}
-	}
-
 	function selectProjectFiles(event: Event) {
 		const selected = Array.from((event.currentTarget as HTMLInputElement).files ?? []);
 		selectedProjectFiles = selected.slice(0, 10);
@@ -281,6 +253,11 @@
 			}
 			projectDriveFolder = result.folder;
 			projectDriveFiles = result.files;
+			window.dispatchEvent(
+				new CustomEvent('project-drive-files-added', {
+					detail: { source: 'project', eventId: data.record.id }
+				})
+			);
 			clearSelectedProjectFiles();
 			projectFileMessage = result.message || 'Files saved to the project Drive folder.';
 		} catch (cause) {
@@ -326,10 +303,8 @@
 	async function copyProjectEmailAddress() {
 		if (!data.projectEmailForwarding) return;
 		try {
-			await navigator.clipboard.writeText(
-				`To: ${data.projectEmailForwarding.address}\nSubject: ${data.projectEmailForwarding.subjectTag} `
-			);
-			projectEmailForwardingMessage = 'Forwarding address and subject tag copied.';
+			await navigator.clipboard.writeText(data.projectEmailForwarding.address);
+			projectEmailForwardingMessage = 'Project email address copied.';
 		} catch {
 			projectEmailForwardingMessage = 'Select and copy the project email address above.';
 		}
@@ -343,6 +318,35 @@
 			`project-pins:${data.record.source}:${data.record.id}`,
 			JSON.stringify(pinnedUrls)
 		);
+	}
+
+	async function removeProjectEmailLink(link: ProjectEmailLink) {
+		if (removingProjectEmailLink) return;
+		removingProjectEmailLink = link.url;
+		projectEmailLinkMessage = '';
+		try {
+			const response = await fetch('/api/projects/email-links', {
+				method: 'DELETE',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ projectId: data.record.id, url: link.url })
+			});
+			const result = (await response.json()) as { removed?: boolean; message?: string };
+			if (!response.ok) throw new Error(result.message || 'Could not remove this email link.');
+			projectEmailLinks = projectEmailLinks.filter((candidate) => candidate.url !== link.url);
+			if (pinnedUrls.includes(link.url)) {
+				pinnedUrls = pinnedUrls.filter((candidate) => candidate !== link.url);
+				localStorage.setItem(
+					`project-pins:${data.record.source}:${data.record.id}`,
+					JSON.stringify(pinnedUrls)
+				);
+			}
+			projectEmailLinkMessage = result.message || 'Email link removed.';
+		} catch (cause) {
+			projectEmailLinkMessage =
+				cause instanceof Error ? cause.message : 'Could not remove this email link.';
+		} finally {
+			removingProjectEmailLink = '';
+		}
 	}
 
 	function confirmMonday(action: string, updatesMonday = true): boolean {
@@ -448,6 +452,7 @@
 			'application/vnd.google-apps.document': 'Google Doc',
 			'application/vnd.google-apps.spreadsheet': 'Google Sheet',
 			'application/vnd.google-apps.presentation': 'Google Slides',
+			'application/vnd.google-apps.shortcut': 'Google Drive shortcut',
 			'application/vnd.google-apps.folder': 'Google Drive folder',
 			'application/pdf': 'PDF'
 		};
@@ -628,6 +633,61 @@
 		}
 	}
 
+	function toggleDateEditing() {
+		if (editingDates) {
+			dateStartDraft = recordDate;
+			dateEndDraft = recordEndDate;
+		}
+		dateMessage = '';
+		editingDates = !editingDates;
+	}
+
+	async function saveDates() {
+		const itemLabel = data.record.source === 'project' ? 'project' : 'event';
+		if (data.record.source === 'community' && !dateStartDraft) {
+			dateMessage = 'An event date is required.';
+			return;
+		}
+		if (dateEndDraft && !dateStartDraft) {
+			dateMessage = 'Add a start date before setting an end date.';
+			return;
+		}
+		if (dateEndDraft && dateEndDraft < dateStartDraft) {
+			dateMessage = 'The end date cannot be before the start date.';
+			return;
+		}
+		if (!confirmMonday(`Save ${itemLabel} dates?`)) return;
+		savingDates = true;
+		dateMessage = '';
+		try {
+			const response = await fetch('/api/admin/events/update', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					source: data.record.source,
+					eventId: data.record.id,
+					title: recordTitle,
+					dateValue: dateStartDraft,
+					endDateValue: dateEndDraft,
+					status: recordStatus,
+					location: recordLocation,
+					description: field('description')
+				})
+			});
+			const result = (await response.json()) as { record?: UpdatedProjectRecord; message?: string };
+			if (!response.ok || !result.record) {
+				throw new Error(result.message || 'Could not save dates.');
+			}
+			applySavedProjectRecord(result.record);
+			dateMessage = result.message || 'Dates saved in Monday.';
+			editingDates = false;
+		} catch (cause) {
+			dateMessage = cause instanceof Error ? cause.message : 'Could not save dates.';
+		} finally {
+			savingDates = false;
+		}
+	}
+
 	function applySavedProjectRecord(record: UpdatedProjectRecord) {
 		recordTitle = record.title;
 		recordDate = record.dateValue;
@@ -638,6 +698,8 @@
 		editTitle = record.title;
 		editDate = record.dateValue;
 		editEndDate = record.endDateValue;
+		dateStartDraft = record.dateValue;
+		dateEndDraft = record.endDateValue;
 		editStatus = record.status;
 		editLocation = record.location;
 		editDescription =
@@ -811,107 +873,6 @@
 
 <main class="item-dashboard" id="main-content">
 	<a href={data.canEdit ? resolve('/projects') : resolve('/?view=calendar')}>← Back to dashboard</a>
-	<header class="item-dashboard-heading">
-		<div class="item-dashboard-heading-content">
-			<div class="item-dashboard-hero-top">
-				<div>
-					<p class="eyebrow">{data.record.source} dashboard</p>
-					<h1>{recordTitle}</h1>
-					<p class="item-dashboard-date">{recordDate}</p>
-				</div>
-				{#if data.canEdit}
-					<div class="project-hero-actions">
-						<!-- eslint-disable svelte/no-navigation-without-resolve -->
-						<a
-							class="project-social-action"
-							href={resolve('/social') +
-								`?source=${data.record.source}&id=${encodeURIComponent(data.record.id)}`}
-							>Create social draft →</a
-						>
-						<!-- eslint-enable svelte/no-navigation-without-resolve -->
-						{#if data.record.source === 'project'}
-							<button
-								type="button"
-								class:included={quickLinkIncluded}
-								class="project-quick-link-action"
-								onclick={toggleQuickLink}
-								disabled={savingQuickLink}
-							>
-								{savingQuickLink
-									? 'Saving…'
-									: quickLinkIncluded
-										? 'Remove from Queerlective links'
-										: 'Add to Queerlective links'}
-							</button>
-						{/if}
-					</div>
-				{/if}
-			</div>
-			{#if quickLinkMessage}<p class="project-quick-link-message" role="status">
-					{quickLinkMessage}
-				</p>{/if}
-			<div class="project-pills item-dashboard-pills" aria-label="Project attributes">
-				{#if recordStatus}
-					<span class="project-pill pill-status">Status · {recordStatus}</span>
-				{/if}
-				{#if field('goal') || field('category')}
-					<span class="project-pill pill-goal">
-						Goal · {field('goal') || field('category')}
-					</span>
-				{/if}
-				{#if recordLocation}
-					<span class="project-pill pill-location">Location · {recordLocation}</span>
-				{/if}
-				{#if field('strategicGoal')}
-					<span class="project-pill pill-strategic">
-						Strategic goal · {field('strategicGoal')}
-					</span>
-				{/if}
-				{#if field('priority')}
-					<span class="project-pill pill-priority">Priority · {field('priority')}</span>
-				{/if}
-			</div>
-			{#if data.canEdit && data.record.source === 'project'}
-				<form
-					class="project-status-editor"
-					onsubmit={(event) => {
-						event.preventDefault();
-						void saveStatus();
-					}}
-				>
-					<label>
-						<span>Project status</span>
-						<select bind:value={statusDraft} disabled={savingStatus}>
-							<option value="">Not set</option>
-							{#each projectStatusOptions as status (status)}
-								<option value={status}>{status}</option>
-							{/each}
-						</select>
-					</label>
-					<button type="submit" disabled={savingStatus || statusDraft === recordStatus}>
-						{savingStatus ? 'Saving…' : 'Update status'}
-					</button>
-				</form>
-				{#if statusMessage}<p class="project-status-message" role="status">{statusMessage}</p>{/if}
-			{/if}
-		</div>
-	</header>
-
-	{#if milestone}
-		<section class="next-milestone" aria-labelledby="next-milestone-title">
-			<div>
-				<p class="eyebrow">{milestone.explicit ? 'Next milestone' : 'Next project date'}</p>
-				<h2 id="next-milestone-title">{milestone.label}</h2>
-			</div>
-			<strong>{dateTimeLabel(milestone.value)}</strong>
-		</section>
-	{/if}
-
-	<nav class="workspace-tabs" aria-label="Project workspace">
-		{#each sections as section (section.id)}
-			<a href={`#workspace-${section.id}`}>{section.label}</a>
-		{/each}
-	</nav>
 
 	<div
 		class="project-detail-rails"
@@ -921,23 +882,29 @@
 		{#if data.projectEmailForwarding || (data.canEdit && data.record.source === 'project')}
 			<aside class="project-detail-rail project-detail-tools" aria-label="Project tools">
 				{#if data.projectEmailForwarding}
-					<section class="project-email-forwarding" aria-labelledby="project-email-forwarding-title">
+					<section
+						class="project-email-forwarding"
+						aria-labelledby="project-email-forwarding-title"
+					>
 						<div>
 							<p class="eyebrow">Email to project</p>
 							<h3 id="project-email-forwarding-title">Forward email into this project</h3>
 						</div>
 						<p>
-							Forward messages to <code>{data.projectEmailForwarding.address}</code> and include
-							<code>{data.projectEmailForwarding.subjectTag}</code> in the subject. The email body
-							becomes a project comment and any file attachments are saved to this project’s
-							shared Drive folder.
+							Forward messages to <code>{data.projectEmailForwarding.address}</code>. Use any
+							subject—the email body becomes a project comment and any file attachments are saved to
+							this project’s shared Drive folder.
 						</p>
 						<div class="project-email-forwarding-actions">
 							{#if projectEmailMailto}<a href={projectEmailMailto}>Start an email</a>{/if}
-							<button type="button" onclick={() => void copyProjectEmailAddress()}>Copy address</button>
+							<button type="button" onclick={() => void copyProjectEmailAddress()}
+								>Copy address</button
+							>
 						</div>
-						<small>Keep this project-specific subject tag within the project team.</small>
-						{#if projectEmailForwardingMessage}<p role="status">{projectEmailForwardingMessage}</p>{/if}
+						<small>Keep this project-specific address within the project team.</small>
+						{#if projectEmailForwardingMessage}<p role="status">
+								{projectEmailForwardingMessage}
+							</p>{/if}
 					</section>
 				{/if}
 				{#if data.canEdit && data.record.source === 'project'}
@@ -945,13 +912,17 @@
 						<div>
 							<p class="eyebrow">Google Drive workspace</p>
 							<h3 id="project-drive-workspace-title">
-								{projectDriveFolder ? projectDriveFolder.folderName : 'Create a shared project folder'}
+								{projectDriveFolder
+									? projectDriveFolder.folderName
+									: 'Create a shared project folder'}
 							</h3>
 							<p>
 								{#if projectDriveFolder}
-									Create Google Docs in the folder or add files there directly. This workspace refreshes from Drive every 15 minutes.
+									Create Google Docs in the folder or add files there directly. This workspace
+									refreshes from Drive every 15 minutes.
 								{:else}
-									Create a shared folder now so you can open it and start a Google Doc before uploading any files.
+									Create a shared folder now so you can open it and start a Google Doc before
+									uploading any files.
 								{/if}
 							</p>
 						</div>
@@ -964,13 +935,17 @@
 									class="secondary-action"
 									onclick={() => void prepareProjectDriveFolder()}
 									disabled={preparingProjectDriveFolder}
-								>{preparingProjectDriveFolder ? 'Refreshing…' : 'Refresh Drive files'}</button>
+									>{preparingProjectDriveFolder ? 'Refreshing…' : 'Refresh Drive files'}</button
+								>
 							{:else}
 								<button
 									type="button"
 									onclick={() => void prepareProjectDriveFolder()}
 									disabled={preparingProjectDriveFolder}
-								>{preparingProjectDriveFolder ? 'Creating…' : 'Create Google Drive folder'}</button>
+									>{preparingProjectDriveFolder
+										? 'Creating…'
+										: 'Create Google Drive folder'}</button
+								>
 							{/if}
 						</div>
 						{#if projectFileMessage}<p
@@ -985,606 +960,794 @@
 		{/if}
 
 		<div class="project-detail-main">
-
-	<section class="item-dashboard-grid workspace-panel" id="workspace-overview">
-		<article class:editing={editingDetails} class="inline-project-details">
-			<div class="inline-editor-heading">
-				<div>
-					<p class="eyebrow">Project details</p>
-					<h2>Overview</h2>
-				</div>
-				{#if data.canEdit}
-					<button type="button" onclick={() => (editingDetails = !editingDetails)}>
-						{editingDetails ? 'Cancel' : 'Edit'}
-					</button>
-				{/if}
-			</div>
-			{#if editingDetails}
-				<form
-					class="inline-project-form"
-					onsubmit={(event) => {
-						event.preventDefault();
-						void saveDetails();
-					}}
-				>
-					<label><span>Title</span><input bind:value={editTitle} maxlength="255" required /></label>
-					<div>
-						<label
-							><span>Start date</span><input bind:value={editDate} type="date" required /></label
-						>
-						{#if data.record.source === 'project'}
-							<label><span>End date</span><input bind:value={editEndDate} type="date" /></label>
-						{/if}
-					</div>
-					<div>
-						<label><span>Status</span><input bind:value={editStatus} /></label>
-						{#if data.record.source === 'project'}
-							<label><span>Location</span><input bind:value={editLocation} /></label>
-						{/if}
-					</div>
-					<label>
-						<span>Description</span>
-						<textarea bind:value={editDescription} rows="5" maxlength="10000"></textarea>
-					</label>
-					<div class="inline-editor-actions">
-						<button type="submit" disabled={savingDetails}>
-							{savingDetails ? 'Saving to Monday…' : 'Save changes'}
-						</button>
-						<button type="button" onclick={() => (editingDetails = false)}>Cancel</button>
-					</div>
-				</form>
-			{:else}
-				<dl class="event-extra-fields">
-					<div>
-						<dt>Host</dt>
-						<dd>{host?.hostLabel || data.record.owner || 'Not assigned'}</dd>
-					</div>
-					{#each entries as [key, value] (key)}
-						{#if !safeUrl(value)}
-							<div class:description-field={key === 'description'}>
-								<dt>{label(key)}</dt>
-								<dd class:rich-description={key === 'description'}>
-									{#if key === 'description'}
-										{#each descriptionParts(value) as part, index (index)}
-											{#if part.url}
-												<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-												<a href={part.url} target="_blank" rel="noreferrer"
-													>{part.text}<span aria-hidden="true"> ↗</span></a
-												>
-											{:else}{part.text}{/if}
-										{/each}
-									{:else}
-										{String(value)}
+			<header class="item-dashboard-heading">
+				<div class="item-dashboard-heading-content">
+					<div class="item-dashboard-hero-top">
+						<div class="project-hero-summary">
+							<p class="eyebrow">{data.record.source} dashboard</p>
+							<h1>{recordTitle}</h1>
+							<p class="item-dashboard-date">{recordDate}</p>
+							{#if visibleProjectHeaderPhotos.length}
+								<div
+									class="project-header-photos"
+									aria-label={`${projectHeaderPhotos.length} project photo${projectHeaderPhotos.length === 1 ? '' : 's'}`}
+								>
+									{#each visibleProjectHeaderPhotos as photo (photo.url)}
+										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+										<a
+											class="project-header-photo"
+											href={photo.url}
+											target="_blank"
+											rel="noreferrer"
+											title={`Open ${photo.name}`}
+										>
+											<img src={photo.thumbnailUrl} alt={photo.name} />
+										</a>
+									{/each}
+									{#if additionalProjectHeaderPhotos}
+										<a
+											class="project-header-photo-more"
+											href="#workspace-files"
+											aria-label={`View ${additionalProjectHeaderPhotos} more project photos`}
+										>
+											+{additionalProjectHeaderPhotos}
+										</a>
 									{/if}
-								</dd>
+								</div>
+							{/if}
+						</div>
+						{#if data.canEdit}
+							<div class="project-hero-actions">
+								<!-- eslint-disable svelte/no-navigation-without-resolve -->
+								<a
+									class="project-social-action"
+									href={resolve('/social') +
+										`?source=${data.record.source}&id=${encodeURIComponent(data.record.id)}`}
+									>Create social draft →</a
+								>
+								<!-- eslint-enable svelte/no-navigation-without-resolve -->
+								{#if data.record.source === 'project'}
+									<button
+										type="button"
+										class:included={quickLinkIncluded}
+										class="project-quick-link-action"
+										onclick={toggleQuickLink}
+										disabled={savingQuickLink}
+									>
+										{savingQuickLink
+											? 'Saving…'
+											: quickLinkIncluded
+												? 'Remove from Queerlective links'
+												: 'Add to Queerlective links'}
+									</button>
+								{/if}
 							</div>
 						{/if}
-					{/each}
-				</dl>
-				{#if tasks.length}
-					<div class="overview-task-preview">
+					</div>
+					{#if quickLinkMessage}<p class="project-quick-link-message" role="status">
+							{quickLinkMessage}
+						</p>{/if}
+					<div class="project-pills item-dashboard-pills" aria-label="Project attributes">
+						{#if recordStatus}
+							<span class="project-pill pill-status">Status · {recordStatus}</span>
+						{/if}
+						{#if field('goal') || field('category')}
+							<span class="project-pill pill-goal">
+								Goal · {field('goal') || field('category')}
+							</span>
+						{/if}
+						{#if recordLocation}
+							<span class="project-pill pill-location">Location · {recordLocation}</span>
+						{/if}
+						{#if field('strategicGoal')}
+							<span class="project-pill pill-strategic">
+								Strategic goal · {field('strategicGoal')}
+							</span>
+						{/if}
+						{#if field('priority')}
+							<span class="project-pill pill-priority">Priority · {field('priority')}</span>
+						{/if}
+					</div>
+					{#if data.canEdit && data.record.source === 'project'}
+						<form
+							class="project-status-editor"
+							onsubmit={(event) => {
+								event.preventDefault();
+								void saveStatus();
+							}}
+						>
+							<label>
+								<span>Project status</span>
+								<select bind:value={statusDraft} disabled={savingStatus}>
+									<option value="">Not set</option>
+									{#each projectStatusOptions as status (status)}
+										<option value={status}>{status}</option>
+									{/each}
+								</select>
+							</label>
+							<button type="submit" disabled={savingStatus || statusDraft === recordStatus}>
+								{savingStatus ? 'Saving…' : 'Update status'}
+							</button>
+						</form>
+						{#if statusMessage}<p class="project-status-message" role="status">
+								{statusMessage}
+							</p>{/if}
+					{/if}
+				</div>
+			</header>
+
+			{#if milestone}
+				<section class="next-milestone" aria-labelledby="next-milestone-title">
+					<div>
+						<p class="eyebrow">{milestone.explicit ? 'Next milestone' : 'Next project date'}</p>
+						<h2 id="next-milestone-title">{milestone.label}</h2>
+					</div>
+					<strong>{dateTimeLabel(milestone.value)}</strong>
+				</section>
+			{/if}
+
+			<nav class="workspace-tabs" aria-label="Project workspace">
+				{#each sections as section (section.id)}
+					<a href={`#workspace-${section.id}`}>{section.label}</a>
+				{/each}
+			</nav>
+
+			<section class="item-dashboard-grid workspace-panel" id="workspace-overview">
+				<article class:editing={editingDetails} class="inline-project-details">
+					<div class="inline-editor-heading">
 						<div>
-							<h3>Tasks</h3>
-							<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
+							<p class="eyebrow">Project details</p>
+							<h2>Overview</h2>
 						</div>
-						{#each [...tasks].filter((task) => !task.completed).slice(0, 4) as task (task.id)}
-							<article>
-								<span class="task-check" aria-hidden="true"></span>
+						{#if data.canEdit}
+							<button type="button" onclick={() => (editingDetails = !editingDetails)}>
+								{editingDetails ? 'Cancel' : 'Edit'}
+							</button>
+						{/if}
+					</div>
+					{#if editingDetails}
+						<form
+							class="inline-project-form"
+							onsubmit={(event) => {
+								event.preventDefault();
+								void saveDetails();
+							}}
+						>
+							<label
+								><span>Title</span><input bind:value={editTitle} maxlength="255" required /></label
+							>
+							<div>
+								<label
+									><span>Start date</span><input
+										bind:value={editDate}
+										type="date"
+										required={data.record.source === 'community'}
+									/></label
+								>
+								{#if data.record.source === 'project'}
+									<label><span>End date</span><input bind:value={editEndDate} type="date" /></label>
+								{/if}
+							</div>
+							<div>
+								<label><span>Status</span><input bind:value={editStatus} /></label>
+								{#if data.record.source === 'project'}
+									<label><span>Location</span><input bind:value={editLocation} /></label>
+								{/if}
+							</div>
+							<label>
+								<span>Description</span>
+								<textarea bind:value={editDescription} rows="5" maxlength="10000"></textarea>
+							</label>
+							<div class="inline-editor-actions">
+								<button type="submit" disabled={savingDetails}>
+									{savingDetails ? 'Saving to Monday…' : 'Save changes'}
+								</button>
+								<button type="button" onclick={() => (editingDetails = false)}>Cancel</button>
+							</div>
+						</form>
+					{:else}
+						<dl class="event-extra-fields">
+							<div>
+								<dt>Host</dt>
+								<dd>{host?.hostLabel || data.record.owner || 'Not assigned'}</dd>
+							</div>
+							{#if recordLocation}
+								<div>
+									<dt>Location</dt>
+									<dd>{recordLocation}</dd>
+								</div>
+							{/if}
+							{#each entries as [key, value] (key)}
+								{#if !safeUrl(value)}
+									<div class:description-field={key === 'description'}>
+										<dt>{label(key)}</dt>
+										<dd class:rich-description={key === 'description'}>
+											{#if key === 'description'}
+												{#each descriptionParts(value) as part, index (index)}
+													{#if part.url}
+														<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+														<a href={part.url} target="_blank" rel="noreferrer"
+															>{part.text}<span aria-hidden="true"> ↗</span></a
+														>
+													{:else}{part.text}{/if}
+												{/each}
+											{:else}
+												{String(value)}
+											{/if}
+										</dd>
+									</div>
+								{/if}
+							{/each}
+						</dl>
+						{#if tasks.length}
+							<div class="overview-task-preview">
+								<div>
+									<h3>Tasks</h3>
+									<span
+										>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span
+									>
+								</div>
+								{#each [...tasks].filter((task) => !task.completed).slice(0, 4) as task (task.id)}
+									<article>
+										<span class="task-check" aria-hidden="true"></span>
+										<div>
+											<strong>{task.title}</strong>
+											<small>
+												{task.dueDate
+													? `Due ${dateTimeLabel(task.dueDate)}`
+													: task.status || 'No due date'}
+											</small>
+											{#if task.comments?.length}
+												<div class="overview-task-comment">
+													<strong>{task.comments.at(-1)?.author}:</strong>
+													<CollapsibleCommentText text={task.comments.at(-1)?.body ?? ''} />
+												</div>
+											{/if}
+											{#if data.canEdit}
+												<button
+													class="task-complete-action"
+													type="button"
+													disabled={Boolean(completingTask)}
+													onclick={() => completeTask(task)}
+												>
+													{completingTask === task.id ? 'Completing…' : 'Mark complete'}
+												</button>
+											{/if}
+										</div>
+									</article>
+								{/each}
+								<a class="workspace-action" href="#workspace-schedule">View all tasks</a>
+							</div>
+						{/if}
+					{/if}
+					{#if editMessage}<p role="status">{editMessage}</p>{/if}
+				</article>
+				<article>
+					<div class="inline-editor-heading">
+						<h2>At a glance</h2>
+						{#if data.canEdit}
+							<button type="button" onclick={toggleDateEditing}>
+								{editingDates ? 'Cancel dates' : 'Edit dates'}
+							</button>
+						{/if}
+					</div>
+					{#if editingDates}
+						<form
+							class="inline-project-form project-dates-editor"
+							onsubmit={(event) => {
+								event.preventDefault();
+								void saveDates();
+							}}
+						>
+							<div>
+								<label>
+									<span>{data.record.source === 'project' ? 'Start date' : 'Event date'}</span>
+									<input
+										bind:value={dateStartDraft}
+										type="date"
+										required={data.record.source === 'community'}
+									/>
+								</label>
+								{#if data.record.source === 'project'}
+									<label
+										><span>End date (optional)</span><input
+											bind:value={dateEndDraft}
+											type="date"
+										/></label
+									>
+								{/if}
+							</div>
+							<p class="date-editor-note">
+								{data.record.source === 'project'
+									? 'Leave both dates blank for an ongoing project without a fixed schedule.'
+									: 'This date is used on the community calendar.'}
+							</p>
+							<div class="inline-editor-actions">
+								<button type="submit" disabled={savingDates}>
+									{savingDates ? 'Saving to Monday…' : 'Save dates'}
+								</button>
+								<button type="button" onclick={toggleDateEditing} disabled={savingDates}
+									>Cancel</button
+								>
+							</div>
+						</form>
+					{:else}
+						<dl class="event-extra-fields">
+							<div>
+								<dt>{data.record.source === 'project' ? 'Starts' : 'Date'}</dt>
+								<dd>{recordDate ? dateTimeLabel(recordDate) : 'Not scheduled'}</dd>
+							</div>
+							{#if recordEndDate}
+								<div>
+									<dt>Ends</dt>
+									<dd>{dateTimeLabel(recordEndDate)}</dd>
+								</div>
+							{/if}
+							<div>
+								<dt>People</dt>
+								<dd>{attendees.length} attendees or volunteers</dd>
+							</div>
+							<div>
+								<dt>Files</dt>
+								<dd>{attachments.length + projectDriveFiles.length} files</dd>
+							</div>
+							{#if tasks.length}
+								<div>
+									<dt>Tasks</dt>
+									<dd>
+										{tasks.filter((task) => task.completed).length} of {tasks.length} completed
+									</dd>
+								</div>
+							{/if}
+						</dl>
+					{/if}
+					{#if dateMessage}<p class="project-date-message" role="status">{dateMessage}</p>{/if}
+				</article>
+			</section>
+
+			<section class="workspace-panel workspace-card" id="workspace-files">
+				<div class="card-heading">
+					<div>
+						<p class="eyebrow">Shared resources</p>
+						<h2>Files and links</h2>
+					</div>
+					<span class="status-pill">{pinnedUrls.length} pinned</span>
+				</div>
+				{#if data.canEdit && data.record.source === 'project'}
+					<form
+						class="project-file-upload"
+						onsubmit={(event) => {
+							event.preventDefault();
+							void uploadProjectFiles();
+						}}
+					>
+						<div>
+							<label for="project-file-input">Add files</label>
+							<small>
+								Images, documents, and other files save to this project's shared Drive folder · up
+								to 25 MB each · 10 files at a time
+							</small>
+						</div>
+						<input
+							bind:this={projectFileInput}
+							id="project-file-input"
+							type="file"
+							name="files"
+							multiple
+							disabled={uploadingProjectFiles}
+							onchange={selectProjectFiles}
+						/>
+						{#if selectedProjectFiles.length}
+							<ul class="project-file-selection" aria-label="Files ready to upload">
+								{#each selectedProjectFiles as file (`${file.name}-${file.size}-${file.lastModified}`)}
+									<li><span>{file.name}</span><small>{fileSizeLabel(file.size)}</small></li>
+								{/each}
+							</ul>
+							<div class="project-file-actions">
+								<button type="submit" disabled={uploadingProjectFiles}>
+									{uploadingProjectFiles
+										? 'Saving to Drive…'
+										: `Upload ${selectedProjectFiles.length === 1 ? 'file' : 'files'}`}
+								</button>
+								<button
+									type="button"
+									class="secondary-action"
+									onclick={clearSelectedProjectFiles}
+									disabled={uploadingProjectFiles}>Cancel</button
+								>
+							</div>
+						{/if}
+					</form>
+				{/if}
+				{#if projectDriveFolder}
+					<section class="project-drive-files" aria-labelledby="project-drive-files-title">
+						<div class="project-drive-files-heading">
+							<div>
+								<p class="eyebrow">Project Drive</p>
+								<h3 id="project-drive-files-title">Shared project files</h3>
+							</div>
+							{#if projectDriveFolderUrl}
+								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+								<a href={projectDriveFolderUrl} target="_blank" rel="noreferrer">Open folder ↗</a>
+							{/if}
+						</div>
+						<div class="project-drive-file-grid">
+							{#each projectDriveFiles as file (file.id)}
+								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+								<a class="project-drive-file-card" href={file.url} target="_blank" rel="noreferrer">
+									<span class="project-drive-file-type">{driveFileTypeLabel(file.mimeType)}</span>
+									<strong>{file.name}</strong>
+									<span class="project-drive-file-meta"
+										>Added {dateTimeLabel(file.uploadedAt)} ↗</span
+									>
+								</a>
+							{/each}
+						</div>
+						{#if !projectDriveFiles.length}
+							<p class="project-drive-empty">
+								No files yet. Open the folder to create a Google Doc.
+							</p>
+						{/if}
+					</section>
+				{/if}
+				<div class="item-previews">
+					{#each attachments as attachment (`${attachment.name}-${attachment.url}`)}
+						<div class:pinned-resource={pinnedUrls.includes(attachment.url)} class="resource-tile">
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer">
+								{#if attachment.isImage}<img
+										src={safeUrl(attachment.url)}
+										alt={attachment.name}
+									/>{/if}
+								<strong>{attachment.name}</strong>
+								<span>{new URL(safeUrl(attachment.url)).hostname} ↗</span>
+							</a>
+							<button type="button" onclick={() => togglePin(attachment.url)}>
+								{pinnedUrls.includes(attachment.url) ? 'Unpin' : 'Pin'}
+							</button>
+						</div>
+					{/each}
+					{#each projectEmailLinks as emailLink (emailLink.url)}
+						<div
+							class:pinned-resource={pinnedUrls.includes(emailLink.url)}
+							class="resource-tile email-link-resource"
+						>
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={safeUrl(emailLink.url)} target="_blank" rel="noreferrer">
+								<strong>{emailLink.label}</strong>
+								<span>Email link · {emailLink.sourceSubject || 'Forwarded message'} ↗</span>
+							</a>
+							{#if data.canEdit && data.record.source === 'project'}
+								<button
+									type="button"
+									onclick={() => void removeProjectEmailLink(emailLink)}
+									disabled={removingProjectEmailLink === emailLink.url}
+								>
+									{removingProjectEmailLink === emailLink.url ? 'Removing…' : 'Remove'}
+								</button>
+							{/if}
+						</div>
+					{/each}
+					<!-- eslint-disable svelte/no-navigation-without-resolve -->
+					{#each entries.filter(([, value]) => safeUrl(value)) as [key, value] (key)}
+						<div class:pinned-resource={pinnedUrls.includes(value)} class="resource-tile">
+							<a href={safeUrl(value)} target="_blank" rel="noreferrer">
+								{#if imageUrl(value)}<img src={imageUrl(value)} alt="" />{/if}
+								<strong>{label(key)}</strong>
+								<span>{new URL(safeUrl(value)).hostname} ↗</span>
+							</a>
+							<button type="button" onclick={() => togglePin(value)}>
+								{pinnedUrls.includes(value) ? 'Unpin' : 'Pin'}
+							</button>
+						</div>
+					{/each}
+					<!-- eslint-enable svelte/no-navigation-without-resolve -->
+				</div>
+				{#if projectEmailLinkMessage}<p class="project-email-link-message" role="status">
+						{projectEmailLinkMessage}
+					</p>{/if}
+			</section>
+
+			<section class="workspace-panel workspace-card" id="workspace-schedule">
+				<p class="eyebrow">Schedule</p>
+				<h2>Project timeline</h2>
+				<ol class="project-timeline">
+					<li><span>Start</span><strong>{dateTimeLabel(recordDate)}</strong></li>
+					{#if field('deadline')}<li>
+							<span>Deadline</span><strong>{dateTimeLabel(field('deadline'))}</strong>
+						</li>{/if}
+					{#if recordEndDate}<li>
+							<span>End</span><strong>{dateTimeLabel(recordEndDate)}</strong>
+						</li>{/if}
+				</ol>
+				<div class="project-task-heading">
+					<h3>Project tasks</h3>
+					<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
+				</div>
+				{#if data.canEdit && data.record.source === 'project'}
+					<form
+						class="task-create-form"
+						onsubmit={(event) => {
+							event.preventDefault();
+							void createTask();
+						}}
+					>
+						<label class="task-title-field"
+							><span>New task</span><input
+								bind:value={newTaskTitle}
+								required
+								maxlength="255"
+								placeholder="What needs to be done?"
+							/></label
+						>
+						<details class="task-create-options">
+							<summary>Details</summary>
+							<div>
+								<label
+									><span>Status</span><input
+										bind:value={newTaskStatus}
+										placeholder="Not started"
+									/></label
+								>
+								<label><span>Due date</span><input bind:value={newTaskDueDate} type="date" /></label
+								>
+							</div>
+						</details>
+						<button type="submit" disabled={creatingTask}>
+							{creatingTask ? 'Adding…' : 'Add task'}
+						</button>
+						<small>Saved to Monday</small>
+					</form>
+				{/if}
+				{#if taskMessage}<p class="task-message" role="status">{taskMessage}</p>{/if}
+				{#if tasks.length}
+					<div class="project-task-list">
+						{#each [...tasks].sort( (left, right) => (left.dueDate || '9999').localeCompare(right.dueDate || '9999') ) as task (task.id)}
+							<article class:completed={task.completed}>
+								<span class="task-check" aria-hidden="true">{task.completed ? '✓' : ''}</span>
 								<div>
 									<strong>{task.title}</strong>
-									<small>
-										{task.dueDate
-											? `Due ${dateTimeLabel(task.dueDate)}`
-											: task.status || 'No due date'}
-									</small>
-									{#if task.comments?.length}
-										<p class="overview-task-comment">
-											<strong>{task.comments.at(-1)?.author}:</strong>
-											{task.comments.at(-1)?.body}
-										</p>
+									<div class="task-meta">
+										{#if task.status}<span>{task.status}</span>{/if}
+										{#if task.owner}<span>{task.owner}</span>{/if}
+										{#if task.dueDate}<time datetime={task.dueDate}
+												>Due {dateTimeLabel(task.dueDate)}</time
+											>{/if}
+										{#if task.completionDate}<time datetime={task.completionDate}
+												>Completed {dateTimeLabel(task.completionDate)}</time
+											>{/if}
+									</div>
+									{#if task.attachments.length}
+										<div class="task-files">
+											{#each task.attachments as attachment (`${task.id}-${attachment.url}`)}
+												<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+												<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer"
+													>{attachment.name} ↗</a
+												>
+											{/each}
+										</div>
 									{/if}
-									{#if data.canEdit}
-										<button
-											class="task-complete-action"
-											type="button"
-											disabled={Boolean(completingTask)}
-											onclick={() => completeTask(task)}
-										>
-											{completingTask === task.id ? 'Completing…' : 'Mark complete'}
-										</button>
-									{/if}
+									<div class="task-comments">
+										{#if data.canEdit && !task.completed}
+											<button
+												class="task-complete-action"
+												type="button"
+												disabled={Boolean(completingTask)}
+												onclick={() => completeTask(task)}
+											>
+												{completingTask === task.id ? 'Completing in Monday…' : 'Mark complete'}
+											</button>
+										{/if}
+										{#if task.comments?.length}
+											<ul>
+												{#each task.comments.slice(-4) as comment (comment.id)}
+													<li>
+														<div>
+															<strong>{comment.author}</strong><time datetime={comment.createdAt}
+																>{dateTimeLabel(comment.createdAt)}</time
+															>
+														</div>
+														<CollapsibleCommentText text={comment.body} />
+													</li>
+												{/each}
+											</ul>
+										{/if}
+										{#if data.canEdit}
+											<form
+												onsubmit={(event) => {
+													event.preventDefault();
+													void postTaskComment(task);
+												}}
+											>
+												<label>
+													<span>Comment on this task</span>
+													<textarea
+														bind:value={taskCommentBodies[task.id]}
+														rows="2"
+														maxlength="5000"></textarea>
+												</label>
+												<button
+													type="submit"
+													disabled={postingTaskComment === task.id ||
+														!taskCommentBodies[task.id]?.trim()}
+												>
+													{postingTaskComment === task.id ? 'Posting to Monday…' : 'Post comment'}
+												</button>
+											</form>
+										{/if}
+									</div>
 								</div>
 							</article>
 						{/each}
-						<a class="workspace-action" href="#workspace-schedule">View all tasks</a>
 					</div>
 				{/if}
-			{/if}
-			{#if editMessage}<p role="status">{editMessage}</p>{/if}
-		</article>
-		<article>
-			<h2>At a glance</h2>
-			<dl class="event-extra-fields">
-				<div>
-					<dt>Starts</dt>
-					<dd>{dateTimeLabel(recordDate)}</dd>
-				</div>
-				{#if recordEndDate}
-					<div>
-						<dt>Ends</dt>
-						<dd>{dateTimeLabel(recordEndDate)}</dd>
-					</div>
-				{/if}
-				<div>
-					<dt>People</dt>
-					<dd>{attendees.length} attendees or volunteers</dd>
-				</div>
-				<div>
-					<dt>Files</dt>
-					<dd>{attachments.length + projectDriveFiles.length} files</dd>
-				</div>
-				{#if tasks.length}
-					<div>
-						<dt>Tasks</dt>
-						<dd>{tasks.filter((task) => task.completed).length} of {tasks.length} completed</dd>
-					</div>
-				{/if}
-			</dl>
-		</article>
-	</section>
-
-	<section class="workspace-panel workspace-card" id="workspace-files">
-		<div class="card-heading">
-			<div>
-				<p class="eyebrow">Shared resources</p>
-				<h2>Files and links</h2>
-			</div>
-			<span class="status-pill">{pinnedUrls.length} pinned</span>
-		</div>
-		{#if data.canEdit && data.record.source === 'project'}
-			<form
-				class="project-file-upload"
-				onsubmit={(event) => {
-					event.preventDefault();
-					void uploadProjectFiles();
-				}}
-			>
-				<div>
-					<label for="project-file-input">Add project files</label>
-					<small>
-						Files save to this project's shared Drive folder · up to 25 MB each · 10 files at a time
-					</small>
-				</div>
-				<input
-					bind:this={projectFileInput}
-					id="project-file-input"
-					type="file"
-					name="files"
-					multiple
-					disabled={uploadingProjectFiles}
-					onchange={selectProjectFiles}
-				/>
-				{#if selectedProjectFiles.length}
-					<ul class="project-file-selection" aria-label="Files ready to upload">
-						{#each selectedProjectFiles as file (`${file.name}-${file.size}-${file.lastModified}`)}
-							<li><span>{file.name}</span><small>{fileSizeLabel(file.size)}</small></li>
-						{/each}
-					</ul>
-					<div class="project-photo-actions">
-						<button type="submit" disabled={uploadingProjectFiles}>
-							{uploadingProjectFiles
-								? 'Saving to Drive…'
-								: `Upload ${selectedProjectFiles.length === 1 ? 'file' : 'files'}`}
-						</button>
-						<button
-							type="button"
-							class="secondary-action"
-							onclick={clearSelectedProjectFiles}
-							disabled={uploadingProjectFiles}>Cancel</button
-						>
-					</div>
-				{/if}
-			</form>
-		{/if}
-		{#if projectDriveFolder}
-			<section class="project-drive-files" aria-labelledby="project-drive-files-title">
-				<div class="project-drive-files-heading">
-					<div>
-						<p class="eyebrow">Project Drive</p>
-						<h3 id="project-drive-files-title">Shared project files</h3>
-					</div>
-					{#if projectDriveFolderUrl}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={projectDriveFolderUrl} target="_blank" rel="noreferrer">Open folder ↗</a>
-					{/if}
-				</div>
-				<div class="project-drive-file-list">
-					{#each projectDriveFiles as file (file.id)}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={file.url} target="_blank" rel="noreferrer">
-							<strong>{file.name}</strong>
-							<span>{driveFileTypeLabel(file.mimeType)} · Added {dateTimeLabel(file.uploadedAt)}</span>
-						</a>
-					{/each}
-				</div>
-				{#if !projectDriveFiles.length}
-					<p class="project-drive-empty">No files yet. Open the folder to create a Google Doc.</p>
+				{#if field('calendarUrl')}
+					<!-- eslint-disable svelte/no-navigation-without-resolve -->
+					<a
+						class="workspace-action"
+						href={safeUrl(field('calendarUrl'))}
+						target="_blank"
+						rel="noreferrer">Open shared calendar ↗</a
+					>
+					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				{/if}
 			</section>
-		{/if}
-		{#if data.canEdit && data.record.source === 'project'}
-			<form
-				class="project-photo-upload"
-				onsubmit={(event) => {
-					event.preventDefault();
-					uploadPhotos();
-				}}
-			>
-				<div>
-					<label for="project-photo-input">Add project photos</label>
-					<small>JPG, PNG, or GIF · up to 10 MB each · 6 photos at a time</small>
-				</div>
-				<input
-					bind:this={photoInput}
-					id="project-photo-input"
-					type="file"
-					name="photos"
-					accept="image/jpeg,image/png,image/gif,.jpg,.jpeg,.png,.gif"
-					multiple
-					disabled={uploadingPhotos}
-					onchange={selectPhotos}
-				/>
-				{#if photoPreviews.length}
-					<div class="project-photo-previews" aria-label="Selected photo previews">
-						{#each photoPreviews as preview (preview.url)}
-							<figure>
-								<img src={preview.url} alt="" />
-								<figcaption>{preview.name}</figcaption>
-							</figure>
-						{/each}
-					</div>
-					<div class="project-photo-actions">
-						<button type="submit" disabled={uploadingPhotos}>
-							{uploadingPhotos
-								? 'Uploading…'
-								: `Upload ${selectedPhotos.length === 1 ? 'photo' : 'photos'}`}
-						</button>
-						<button
-							type="button"
-							class="secondary-action"
-							onclick={clearSelectedPhotos}
-							disabled={uploadingPhotos}>Cancel</button
-						>
-					</div>
-				{/if}
-				{#if photoMessage}<p
-						class:error={photoUploadFailed}
-						role={photoUploadFailed ? 'alert' : 'status'}
-					>
-						{photoMessage}
-					</p>{/if}
-			</form>
-		{/if}
-		<div class="item-previews">
-			{#each attachments as attachment (`${attachment.name}-${attachment.url}`)}
-				<div class:pinned-resource={pinnedUrls.includes(attachment.url)} class="resource-tile">
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-					<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer">
-						{#if attachment.isImage}<img src={safeUrl(attachment.url)} alt={attachment.name} />{/if}
-						<strong>{attachment.name}</strong>
-						<span>{new URL(safeUrl(attachment.url)).hostname} ↗</span>
-					</a>
-					<button type="button" onclick={() => togglePin(attachment.url)}>
-						{pinnedUrls.includes(attachment.url) ? 'Unpin' : 'Pin'}
-					</button>
-				</div>
-			{/each}
-			<!-- eslint-disable svelte/no-navigation-without-resolve -->
-			{#each entries.filter(([, value]) => safeUrl(value)) as [key, value] (key)}
-				<div class:pinned-resource={pinnedUrls.includes(value)} class="resource-tile">
-					<a href={safeUrl(value)} target="_blank" rel="noreferrer">
-						{#if imageUrl(value)}<img src={imageUrl(value)} alt="" />{/if}
-						<strong>{label(key)}</strong>
-						<span>{new URL(safeUrl(value)).hostname} ↗</span>
-					</a>
-					<button type="button" onclick={() => togglePin(value)}>
-						{pinnedUrls.includes(value) ? 'Unpin' : 'Pin'}
-					</button>
-				</div>
-			{/each}
-			<!-- eslint-enable svelte/no-navigation-without-resolve -->
-		</div>
-	</section>
 
-	<section class="workspace-panel workspace-card" id="workspace-schedule">
-		<p class="eyebrow">Schedule</p>
-		<h2>Project timeline</h2>
-		<ol class="project-timeline">
-			<li><span>Start</span><strong>{dateTimeLabel(recordDate)}</strong></li>
-			{#if field('deadline')}<li>
-					<span>Deadline</span><strong>{dateTimeLabel(field('deadline'))}</strong>
-				</li>{/if}
-			{#if recordEndDate}<li>
-					<span>End</span><strong>{dateTimeLabel(recordEndDate)}</strong>
-				</li>{/if}
-		</ol>
-		<div class="project-task-heading">
-			<h3>Project tasks</h3>
-			<span>{tasks.filter((task) => task.completed).length}/{tasks.length} complete</span>
-		</div>
-		{#if data.canEdit && data.record.source === 'project'}
-			<form
-				class="task-create-form"
-				onsubmit={(event) => {
-					event.preventDefault();
-					void createTask();
-				}}
-			>
-				<label class="task-title-field"
-					><span>New task</span><input
-						bind:value={newTaskTitle}
-						required
-						maxlength="255"
-						placeholder="What needs to be done?"
-					/></label
-				>
-				<details class="task-create-options">
-					<summary>Details</summary>
-					<div>
-						<label
-							><span>Status</span><input
-								bind:value={newTaskStatus}
-								placeholder="Not started"
-							/></label
-						>
-						<label><span>Due date</span><input bind:value={newTaskDueDate} type="date" /></label>
-					</div>
-				</details>
-				<button type="submit" disabled={creatingTask}>
-					{creatingTask ? 'Adding…' : 'Add task'}
-				</button>
-				<small>Saved to Monday</small>
-			</form>
-		{/if}
-		{#if taskMessage}<p class="task-message" role="status">{taskMessage}</p>{/if}
-		{#if tasks.length}
-			<div class="project-task-list">
-				{#each [...tasks].sort( (left, right) => (left.dueDate || '9999').localeCompare(right.dueDate || '9999') ) as task (task.id)}
-					<article class:completed={task.completed}>
-						<span class="task-check" aria-hidden="true">{task.completed ? '✓' : ''}</span>
+			{#if data.isAdmin && typeof recordFields.campaignId === 'string' && recordFields.campaignId}
+				<section class="signup-roster">
+					<div class="card-heading">
 						<div>
-							<strong>{task.title}</strong>
-							<div class="task-meta">
-								{#if task.status}<span>{task.status}</span>{/if}
-								{#if task.owner}<span>{task.owner}</span>{/if}
-								{#if task.dueDate}<time datetime={task.dueDate}
-										>Due {dateTimeLabel(task.dueDate)}</time
-									>{/if}
-								{#if task.completionDate}<time datetime={task.completionDate}
-										>Completed {dateTimeLabel(task.completionDate)}</time
-									>{/if}
+							<p class="eyebrow">Givebutter campaign {recordFields.campaignId}</p>
+							<h2>Signups</h2>
+						</div>
+						<span class="status-pill">{data.signups.length} registered</span>
+					</div>
+					{#if data.signups.length}
+						<div class="signup-table-wrap">
+							<table>
+								<thead>
+									<tr>
+										<th scope="col">Donor</th>
+										<th scope="col">Email</th>
+										<th scope="col">Event</th>
+										<th scope="col">Ticket type</th>
+										<th scope="col">Transaction date</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each data.signups as signup (signup.id)}
+										<tr>
+											<td>{signup.donorName || 'Name not provided'}</td>
+											<td><a href={`mailto:${signup.donorEmail}`}>{signup.donorEmail}</a></td>
+											<td>{signup.eventTitle || recordTitle}</td>
+											<td>{signup.ticketType || 'Not specified'}</td>
+											<td>
+												<time datetime={signup.transactionDate}>
+													{dateTimeLabel(signup.transactionDate)}
+												</time>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{:else}
+						<p>No Givebutter signups have synchronized for this campaign yet.</p>
+					{/if}
+				</section>
+			{/if}
+
+			<div
+				class:people-editor-grid={data.record.source === 'project'}
+				class="workspace-panel"
+				id="workspace-people"
+			>
+				<section class="host-editor">
+					<div class="people-editor-heading">
+						<div>
+							<p class="eyebrow">Host</p>
+							<h2>{host?.hostLabel || data.record.owner || 'Not assigned'}</h2>
+						</div>
+						{#if hostContact}
+							<div class="host-contact-actions">
+								{#if hostContact.email}<a href={`mailto:${hostContact.email}`}>Email</a>{/if}
+								{#if hostContact.phone}<a href={`tel:${hostContact.phone}`}>Call</a>{/if}
 							</div>
-							{#if task.attachments.length}
-								<div class="task-files">
-									{#each task.attachments as attachment (`${task.id}-${attachment.url}`)}
-										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-										<a href={safeUrl(attachment.url)} target="_blank" rel="noreferrer"
-											>{attachment.name} ↗</a
-										>
+						{/if}
+					</div>
+					{#if data.canEdit}<div>
+							<MemberPredictivePicker
+								id="event-host-member"
+								placeholder="Type @ to change host"
+								includeSelf={true}
+								bind:selection={hostSelection}
+								disabled={savingHost}
+							/>
+							<button type="button" onclick={saveHost} disabled={savingHost}>
+								{savingHost ? 'Saving…' : 'Assign'}
+							</button>
+						</div>{/if}
+					{#if hostMessage}<p role="status">{hostMessage}</p>{/if}
+				</section>
+
+				{#if data.record.source === 'project' || data.record.source === 'community'}
+					<section class="attendee-editor">
+						<div class="people-editor-heading">
+							<div>
+								<p class="eyebrow">Attendees and volunteers</p>
+								<h2>{attendees.length} assigned</h2>
+							</div>
+							{#if attendees.length}
+								<div class="attendee-list" aria-label="Current attendees">
+									{#each attendees as attendee (attendee.email)}
+										<span title={attendee.email}>
+											{attendee.name}
+											{#if attendee.role === 'volunteer'}<small>Volunteer</small>{/if}
+										</span>
 									{/each}
 								</div>
 							{/if}
-							<div class="task-comments">
-								{#if data.canEdit && !task.completed}
-									<button
-										class="task-complete-action"
-										type="button"
-										disabled={Boolean(completingTask)}
-										onclick={() => completeTask(task)}
+						</div>
+						{#if !data.readOnly && !hasJoined}
+							<div class="project-self-join">
+								<div>
+									<strong
+										>Want this {data.record.source === 'project' ? 'project' : 'event'} on your schedule?</strong
 									>
-										{completingTask === task.id ? 'Completing in Monday…' : 'Mark complete'}
-									</button>
-								{/if}
-								{#if task.comments?.length}
-									<ul>
-										{#each task.comments.slice(-4) as comment (comment.id)}
-											<li>
-												<div>
-													<strong>{comment.author}</strong><time datetime={comment.createdAt}
-														>{dateTimeLabel(comment.createdAt)}</time
-													>
-												</div>
-												<p>{comment.body}</p>
-											</li>
-										{/each}
-									</ul>
-								{/if}
-								{#if data.canEdit}
-									<form
-										onsubmit={(event) => {
-											event.preventDefault();
-											void postTaskComment(task);
-										}}
-									>
-										<label>
-											<span>Comment on this task</span>
-											<textarea bind:value={taskCommentBodies[task.id]} rows="2" maxlength="5000"
-											></textarea>
-										</label>
-										<button
-											type="submit"
-											disabled={postingTaskComment === task.id ||
-												!taskCommentBodies[task.id]?.trim()}
-										>
-											{postingTaskComment === task.id ? 'Posting to Monday…' : 'Post comment'}
-										</button>
-									</form>
-								{/if}
+									<p>Add yourself to the people list and calendar.</p>
+								</div>
+								<button type="button" onclick={joinProject} disabled={joiningProject}>
+									{joiningProject
+										? 'Adding…'
+										: `Join this ${data.record.source === 'project' ? 'project' : 'event'}`}
+								</button>
 							</div>
-						</div>
-					</article>
-				{/each}
-			</div>
-		{/if}
-		{#if field('calendarUrl')}
-			<!-- eslint-disable svelte/no-navigation-without-resolve -->
-			<a
-				class="workspace-action"
-				href={safeUrl(field('calendarUrl'))}
-				target="_blank"
-				rel="noreferrer">Open shared calendar ↗</a
-			>
-			<!-- eslint-enable svelte/no-navigation-without-resolve -->
-		{/if}
-	</section>
-
-	{#if data.isAdmin && typeof recordFields.campaignId === 'string' && recordFields.campaignId}
-		<section class="signup-roster">
-			<div class="card-heading">
-				<div>
-					<p class="eyebrow">Givebutter campaign {recordFields.campaignId}</p>
-					<h2>Signups</h2>
-				</div>
-				<span class="status-pill">{data.signups.length} registered</span>
-			</div>
-			{#if data.signups.length}
-				<div class="signup-table-wrap">
-					<table>
-						<thead>
-							<tr>
-								<th scope="col">Donor</th>
-								<th scope="col">Email</th>
-								<th scope="col">Event</th>
-								<th scope="col">Ticket type</th>
-								<th scope="col">Transaction date</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each data.signups as signup (signup.id)}
-								<tr>
-									<td>{signup.donorName || 'Name not provided'}</td>
-									<td><a href={`mailto:${signup.donorEmail}`}>{signup.donorEmail}</a></td>
-									<td>{signup.eventTitle || recordTitle}</td>
-									<td>{signup.ticketType || 'Not specified'}</td>
-									<td>
-										<time datetime={signup.transactionDate}>
-											{dateTimeLabel(signup.transactionDate)}
-										</time>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{:else}
-				<p>No Givebutter signups have synchronized for this campaign yet.</p>
-			{/if}
-		</section>
-	{/if}
-
-	<div
-		class:people-editor-grid={data.record.source === 'project'}
-		class="workspace-panel"
-		id="workspace-people"
-	>
-		<section class="host-editor">
-			<div class="people-editor-heading">
-				<div>
-					<p class="eyebrow">Host</p>
-					<h2>{host?.hostLabel || data.record.owner || 'Not assigned'}</h2>
-				</div>
-				{#if hostContact}
-					<div class="host-contact-actions">
-						{#if hostContact.email}<a href={`mailto:${hostContact.email}`}>Email</a>{/if}
-						{#if hostContact.phone}<a href={`tel:${hostContact.phone}`}>Call</a>{/if}
-					</div>
+						{:else if hasJoined}
+							<p class="project-joined-status">
+								✓ You’re part of this {data.record.source === 'project' ? 'project' : 'event'}
+							</p>
+						{/if}
+						{#if data.isAdmin}<div class="admin-person-editor">
+								{#key attendeePickerKey}
+									<MemberPredictivePicker
+										id="event-attendee-member"
+										placeholder="Type @ to add someone"
+										includeSelf={true}
+										bind:selection={attendeeSelection}
+										disabled={savingAttendee}
+									/>
+								{/key}
+								<label>
+									<span>Role</span>
+									<select bind:value={attendeeRole} disabled={savingAttendee}>
+										<option value="attendee">Attendee</option>
+										<option value="volunteer">Volunteer</option>
+									</select>
+								</label>
+								<button type="button" onclick={addAttendee} disabled={savingAttendee}>
+									{savingAttendee ? 'Adding…' : 'Add person'}
+								</button>
+							</div>{/if}
+						{#if attendeeMessage}<p role="status">{attendeeMessage}</p>{/if}
+					</section>
 				{/if}
 			</div>
-			{#if data.canEdit}<div>
-					<MemberPredictivePicker
-						id="event-host-member"
-						placeholder="Type @ to change host"
-						includeSelf={true}
-						bind:selection={hostSelection}
-						disabled={savingHost}
-					/>
-					<button type="button" onclick={saveHost} disabled={savingHost}>
-						{savingHost ? 'Saving…' : 'Assign'}
-					</button>
-				</div>{/if}
-			{#if hostMessage}<p role="status">{hostMessage}</p>{/if}
-		</section>
 
-		{#if data.record.source === 'project' || data.record.source === 'community'}
-			<section class="attendee-editor">
-				<div class="people-editor-heading">
-					<div>
-						<p class="eyebrow">Attendees and volunteers</p>
-						<h2>{attendees.length} assigned</h2>
-					</div>
-					{#if attendees.length}
-						<div class="attendee-list" aria-label="Current attendees">
-							{#each attendees as attendee (attendee.email)}
-								<span title={attendee.email}>
-									{attendee.name}
-									{#if attendee.role === 'volunteer'}<small>Volunteer</small>{/if}
-								</span>
-							{/each}
-						</div>
-					{/if}
-				</div>
-				{#if !data.readOnly && !hasJoined}
-					<div class="project-self-join">
-						<div>
-							<strong
-								>Want this {data.record.source === 'project' ? 'project' : 'event'} on your schedule?</strong
-							>
-							<p>Add yourself to the people list and calendar.</p>
-						</div>
-						<button type="button" onclick={joinProject} disabled={joiningProject}>
-							{joiningProject
-								? 'Adding…'
-								: `Join this ${data.record.source === 'project' ? 'project' : 'event'}`}
-						</button>
-					</div>
-				{:else if hasJoined}
-					<p class="project-joined-status">
-						✓ You’re part of this {data.record.source === 'project' ? 'project' : 'event'}
-					</p>
-				{/if}
-				{#if data.isAdmin}<div class="admin-person-editor">
-						{#key attendeePickerKey}
-							<MemberPredictivePicker
-								id="event-attendee-member"
-								placeholder="Type @ to add someone"
-								includeSelf={true}
-								bind:selection={attendeeSelection}
-								disabled={savingAttendee}
-							/>
-						{/key}
-						<label>
-							<span>Role</span>
-							<select bind:value={attendeeRole} disabled={savingAttendee}>
-								<option value="attendee">Attendee</option>
-								<option value="volunteer">Volunteer</option>
-							</select>
-						</label>
-						<button type="button" onclick={addAttendee} disabled={savingAttendee}>
-							{savingAttendee ? 'Adding…' : 'Add person'}
-						</button>
-					</div>{/if}
-				{#if attendeeMessage}<p role="status">{attendeeMessage}</p>{/if}
+			<section class="workspace-panel">
+				<ItemComments
+					source={data.record.source}
+					eventId={data.record.id}
+					readOnly={data.readOnly}
+					anchorId="workspace-comments"
+				/>
 			</section>
-		{/if}
-	</div>
-
-	<section class="workspace-panel" id="workspace-comments">
-		<ItemComments source={data.record.source} eventId={data.record.id} readOnly={data.readOnly} />
-	</section>
 		</div>
 
 		<aside class="project-detail-rail project-detail-updates">
-			<section class="workspace-panel workspace-card project-activity-summary" id="workspace-activity">
+			<section
+				class="workspace-panel workspace-card project-activity-summary"
+				id="workspace-activity"
+			>
 				<div class="project-activity-summary-heading">
 					<div>
 						<p class="eyebrow">Project pulse</p>
@@ -1611,7 +1774,7 @@
 						<li>
 							<div>
 								<strong>{item.label}</strong>
-								<p>{item.detail}</p>
+								<CollapsibleCommentText text={item.detail} />
 							</div>
 							<time datetime={item.at}>{dateTimeLabel(item.at)}</time>
 						</li>

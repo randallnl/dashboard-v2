@@ -1,4 +1,5 @@
 <script lang="ts">
+	import CollapsibleCommentText from '$lib/components/CollapsibleCommentText.svelte';
 	import type { ProjectEventComment, ProjectEventSource } from '$lib/types/domain';
 	import { onMount, tick } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
@@ -6,8 +7,10 @@
 	let {
 		source,
 		eventId,
-		readOnly = false
-	}: { source: ProjectEventSource; eventId: string; readOnly?: boolean } = $props();
+		readOnly = false,
+		anchorId = ''
+	}: { source: ProjectEventSource; eventId: string; readOnly?: boolean; anchorId?: string } =
+		$props();
 
 	let comments = $state<ProjectEventComment[]>([]);
 	let body = $state('');
@@ -21,6 +24,7 @@
 	let suggestionRequest = 0;
 	let suggestionTimer: ReturnType<typeof setTimeout> | undefined;
 	const visibleComments = $derived(showAllComments ? comments : comments.slice(-5));
+	const commentsId = $derived(`comments-${source}-${eventId}`);
 
 	function dateLabel(value: string): string {
 		const date = new Date(value);
@@ -127,11 +131,28 @@
 		commentTextarea?.setSelectionRange(nextCaret, nextCaret);
 	}
 
-	onMount(load);
+	onMount(() => {
+		void load();
+		const refreshForDriveUpload = (event: Event) => {
+			const detail = event instanceof CustomEvent ? event.detail : null;
+			if (
+				!detail ||
+				typeof detail !== 'object' ||
+				(detail as { source?: unknown }).source !== source ||
+				(detail as { eventId?: unknown }).eventId !== eventId
+			)
+				return;
+			void load();
+		};
+		window.addEventListener('project-drive-files-added', refreshForDriveUpload);
+		return () => window.removeEventListener('project-drive-files-added', refreshForDriveUpload);
+	});
 </script>
 
-<section class="item-comments" aria-labelledby={`comments-${source}-${eventId}`}>
-	<h4 id={`comments-${source}-${eventId}`}>Comments</h4>
+<section class="item-comments" id={anchorId || undefined} aria-labelledby={commentsId}>
+	<h4 id={commentsId}>
+		Comments {#if !loading}<small>{comments.length}</small>{/if}
+	</h4>
 	{#if loading}
 		<p>Loading comments…</p>
 	{:else if comments.length}
@@ -147,7 +168,7 @@
 							{comment.mentionLabels.map((label) => `@${label}`).join(' ')}
 						</p>
 					{/if}
-					<p>{comment.body}</p>
+					<CollapsibleCommentText text={comment.body} />
 				</li>
 			{/each}
 		</ul>

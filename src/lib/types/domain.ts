@@ -131,6 +131,15 @@ export type ProjectDriveFile = {
 	uploadedAt: string;
 };
 
+export type ProjectEmailLink = {
+	projectId: string;
+	url: string;
+	label: string;
+	sourceMessageId: string;
+	sourceSubject: string;
+	createdAt: string;
+};
+
 export type UpcomingProjectAssignment = {
 	record: ProjectEventRecord;
 	roles: Array<'Host' | 'Attendee' | 'Volunteer'>;
@@ -143,6 +152,20 @@ export type ProjectEventComment = {
 	authorLabel: string;
 	body: string;
 	mentionLabels: string[];
+	createdAt: string;
+};
+
+export type DashboardActivityKind =
+	'project_created' | 'project_changed' | 'comment' | 'monday_update';
+
+export type DashboardActivity = {
+	id: string;
+	kind: DashboardActivityKind;
+	source: ProjectEventSource;
+	eventId: string;
+	title: string;
+	summary: string;
+	authorLabel: string;
 	createdAt: string;
 };
 

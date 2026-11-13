@@ -1,5 +1,6 @@
 import { loadMemberContext, requireProjectManager } from '$lib/server/auth/member-context';
-import { ProjectDriveRepository, ProjectEventRepository } from '$lib/server/db';
+import { CommentRepository, ProjectDriveRepository, ProjectEventRepository } from '$lib/server/db';
+import { recordProjectDriveUploadActivity } from '$lib/server/project-drive/activity';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -79,6 +80,14 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		folder: { folderId: drivePayload.folder.id, folderName: drivePayload.folder.name },
 		files: drivePayload.files,
 		uploadedByMemberId: context.viewer.id,
+		now
+	});
+	await recordProjectDriveUploadActivity(new CommentRepository(env!.DB), {
+		source: 'project',
+		projectId,
+		files: drivePayload.files,
+		origin: 'dashboard',
+		actor: context.viewer.preferredName,
 		now
 	});
 

@@ -21,12 +21,49 @@ export type ProjectEventPage = {
 	page: number;
 	pageSize: number;
 	statuses: string[];
+	statusCounts: { status: string; total: number }[];
 };
+
+function recordValue(record: Record<string, unknown>, key: string): string {
+	const value = record[key];
+	if (typeof value === 'string') return value;
+	if (value === undefined || value === null) return '';
+	return JSON.stringify(value) ?? '';
+}
+
+function changeSummary(previous: ProjectEventRecord, next: ProjectEventRecord): string {
+	const changes: string[] = [];
+	if (previous.title !== next.title) changes.push('title');
+	if (previous.status !== next.status) changes.push('status');
+	if (previous.dateValue !== next.dateValue || previous.endDateValue !== next.endDateValue)
+		changes.push('dates');
+	if (previous.location !== next.location) changes.push('location');
+	if (previous.owner !== next.owner) changes.push('owner');
+	for (const field of [
+		['description', 'description'],
+		['priority', 'priority'],
+		['category', 'category'],
+		['strategicGoal', 'strategic goal'],
+		['attendees', 'attendees'],
+		['tasks', 'tasks']
+	] as const) {
+		if (recordValue(previous.record, field[0]) !== recordValue(next.record, field[0])) {
+			changes.push(field[1]);
+		}
+	}
+	if (!changes.length) return '';
+	if (changes.length === 1) return `Updated ${changes[0]}.`;
+	if (changes.length === 2) return `Updated ${changes[0]} and ${changes[1]}.`;
+	return `Updated ${changes.slice(0, 2).join(', ')}, and ${changes.length - 2} more detail${
+		changes.length === 3 ? '' : 's'
+	}.`;
+}
 
 export class ProjectEventRepository {
 	constructor(private readonly db: Database) {}
 
 	async upsert(event: ProjectEventRecord): Promise<void> {
+		const existing = await this.findById(event.source, event.id);
 		await this.db
 			.prepare(
 				`INSERT INTO project_event_records (
@@ -58,6 +95,24 @@ export class ProjectEventRepository {
 				event.syncedAt
 			)
 			.run();
+		const summary = existing ? changeSummary(existing, event) : '';
+		if (summary) {
+			await this.db
+				.prepare(
+					`INSERT INTO project_event_change_log (
+						id, source, event_id, title, summary, created_at
+					) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
+				)
+				.bind(
+					crypto.randomUUID(),
+					event.source,
+					event.id,
+					event.title,
+					summary,
+					event.syncedAt || new Date().toISOString()
+				)
+				.run();
+		}
 	}
 
 	async findById(source: ProjectEventSource, id: string): Promise<ProjectEventRecord | null> {
@@ -134,7 +189,7 @@ export class ProjectEventRepository {
 				   AND (?6 = 1 OR admin_only = 0)`;
 		const bindings = [source, status, fromDate, throughDate, search, includeAdminOnly] as const;
 
-		const [recordsResult, countRow, statusResult] = await Promise.all([
+		const [recordsResult, countRow, statusResult, statusCountsResult] = await Promise.all([
 			this.db
 				.prepare(
 					`SELECT * FROM project_event_records
@@ -154,7 +209,19 @@ export class ProjectEventRepository {
 					 WHERE status <> ''
 					 ORDER BY status ASC`
 				)
-				.all<{ status: string }>()
+				.all<{ status: string }>(),
+			this.db
+				.prepare(
+					`SELECT trim(status) AS status, COUNT(*) AS total
+					 FROM project_event_records
+					 WHERE (?1 = '' OR source = ?1)
+					   AND (?2 = 1 OR admin_only = 0)
+					   AND trim(status) <> ''
+					 GROUP BY trim(status)
+					 ORDER BY total DESC, status COLLATE NOCASE ASC`
+				)
+				.bind(source, includeAdminOnly)
+				.all<{ status: string; total: number }>()
 		]);
 
 		return {
@@ -162,7 +229,11 @@ export class ProjectEventRepository {
 			total: countRow?.total ?? 0,
 			page: safePage,
 			pageSize: safePageSize,
-			statuses: statusResult.results.map((row) => row.status)
+			statuses: statusResult.results.map((row) => row.status),
+			statusCounts: statusCountsResult.results.map((row) => ({
+				status: row.status,
+				total: Number(row.total) || 0
+			}))
 		};
 	}
 
@@ -174,7 +245,8 @@ export class ProjectEventRepository {
 		const result = await this.db
 			.prepare(
 				`SELECT * FROM project_event_records
-				 WHERE date_value <= ?2
+				 WHERE date_value <> ''
+				   AND date_value <= ?2
 				   AND (end_date_value = '' OR end_date_value >= ?1)
 				   AND (?3 = 1 OR admin_only = 0)
 				 ORDER BY date_value ASC, title ASC`

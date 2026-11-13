@@ -2,12 +2,13 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import CalendarPanel from '$lib/components/CalendarPanel.svelte';
+	import CoLabUpcomingEventsRail from '$lib/components/CoLabUpcomingEventsRail.svelte';
 	import ContentState from '$lib/components/ContentState.svelte';
 	import DocumentLibrary from '$lib/components/DocumentLibrary.svelte';
 	import ShiftPanel from '$lib/components/ShiftPanel.svelte';
 	import VotePanel from '$lib/components/VotePanel.svelte';
 	import WorkTradePanel from '$lib/components/WorkTradePanel.svelte';
-	import type { MemberCapabilities, Shift } from '$lib/types/domain';
+	import type { MemberCapabilities, ProjectEventRecord, Shift } from '$lib/types/domain';
 
 	type CoLabSubpage = 'schedule' | 'resources' | 'documents';
 
@@ -18,7 +19,8 @@
 		lockboxCode,
 		websiteUrl,
 		creativeGroundUrl,
-		initialAvailableShifts
+		initialAvailableShifts,
+		upcomingCoLabEvents
 	}: {
 		capabilities: MemberCapabilities;
 		viewerCapabilities: MemberCapabilities;
@@ -27,6 +29,7 @@
 		websiteUrl: string;
 		creativeGroundUrl: string;
 		initialAvailableShifts: Shift[];
+		upcomingCoLabEvents: ProjectEventRecord[];
 	} = $props();
 
 	const activeSubpage = $derived.by<CoLabSubpage>(() => {
@@ -66,27 +69,32 @@
 	</header>
 
 	{#if activeSubpage === 'schedule'}
-		<div class="colab-hub-content colab-schedule-content">
+		<div class="colab-schedule-layout">
 			{#if capabilities.canViewCalendar}
-				<CalendarPanel
-					isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
-					readOnly={isViewingAs}
-				/>
+				<CoLabUpcomingEventsRail events={upcomingCoLabEvents} />
 			{/if}
-			{#if capabilities.canViewShifts}
-				<ShiftPanel
-					isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
-					readOnly={isViewingAs}
-					{initialAvailableShifts}
-				/>
-			{/if}
-			{#if !capabilities.canViewCalendar && !capabilities.canViewShifts}
-				<ContentState
-					kind="empty"
-					title="Schedule access is not available"
-					message="Your membership does not currently include the CoLab schedule or studio shift sign-ups."
-				/>
-			{/if}
+			<div class="colab-hub-content colab-schedule-content">
+				{#if capabilities.canViewCalendar}
+					<CalendarPanel
+						isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
+						readOnly={isViewingAs}
+					/>
+				{/if}
+				{#if capabilities.canViewShifts}
+					<ShiftPanel
+						isAdmin={viewerCapabilities.isAdmin && !isViewingAs}
+						readOnly={isViewingAs}
+						{initialAvailableShifts}
+					/>
+				{/if}
+				{#if !capabilities.canViewCalendar && !capabilities.canViewShifts}
+					<ContentState
+						kind="empty"
+						title="Schedule access is not available"
+						message="Your membership does not currently include the CoLab schedule or studio shift sign-ups."
+					/>
+				{/if}
+			</div>
 		</div>
 	{:else if activeSubpage === 'resources'}
 		<div class="colab-hub-content colab-resources-content">

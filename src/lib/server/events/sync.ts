@@ -90,3 +90,13 @@ export async function syncEventsFromMonday(env: Pick<Env, 'DB' | 'MONDAY_API_TOK
 		new CommentRepository(env.DB)
 	);
 }
+
+export async function syncProjectEventsFromMonday(env: Pick<Env, 'DB' | 'MONDAY_API_TOKEN'>) {
+	const token = await mondayToken(env.MONDAY_API_TOKEN);
+	const directory = new EventDirectory(new MondayClient(token));
+	return syncEvents(
+		{ list: () => directory.listProjects() },
+		new ProjectEventRepository(env.DB),
+		new CommentRepository(env.DB)
+	);
+}

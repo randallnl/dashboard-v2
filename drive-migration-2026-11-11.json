@@ -1,0 +1,192 @@
+{
+  "date": "2026-11-11",
+  "moved": [
+    {
+      "id": "1gHv2geArFTPAhgLjYF6Yu1wuOlbrN4ZCR69y5xo9LUE",
+      "title": "Artist Retreat",
+      "oldParent": "1WtjnMUcqPkDy2Gvjw7V5mRqumAWTxzo8",
+      "newParent": "1urGC-jg8ySV1jlP_SpENEReYdWgmhm8x",
+      "verified": true
+    },
+    {
+      "id": "1859GgA3R_U0_TjkshC51IqvJJaU0_Yzp53gvMOggD98",
+      "title": "Queerlective Handbook",
+      "oldParent": "1U0C7sVO0ouNky5YvwyHqpngurKmnSO12",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1S9zciatnfC7zJubaubb0cw2WCqRL2bAALJcNCgaZElg",
+      "title": "Queerlective Social Change Ecosystem Policy",
+      "oldParent": "1U0C7sVO0ouNky5YvwyHqpngurKmnSO12",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1R5VCpm-caNCmAX3i5MCXUTRPZ83W2_n1",
+      "title": "Certificate of Good Standing 2026 .pdf",
+      "oldParent": "1U0C7sVO0ouNky5YvwyHqpngurKmnSO12",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1Q3_p0pc96DJvLXwbmH8GBJzC_g8JqPnQ",
+      "title": "Charitable Trust Unit Registration.pdf",
+      "oldParent": "1U0C7sVO0ouNky5YvwyHqpngurKmnSO12",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1LuAbORd4cCH9ikeORLb9RoVXQJuswuDx_pc_xmTk2sY",
+      "title": "Team Roles and Responsibilities",
+      "oldParent": "1O2jHxAFDRhoPCB1BRSnznt-XX8fGUq_x",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1-ZzKDaYu5Vp3VCXUlrXGdDWWHASCvOvVdyqj_ogeFH0",
+      "title": "Board Role: Administrative & Governance Steward",
+      "oldParent": "1O2jHxAFDRhoPCB1BRSnznt-XX8fGUq_x",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1FwcLywHOwHP9mHrFRVVr2qY43kwE6JdStU5fXpqDjm0",
+      "title": "Queerlective Board Member Agreement",
+      "oldParent": "1O2jHxAFDRhoPCB1BRSnznt-XX8fGUq_x",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "15cEWy6ggC_2sFdRUoUFhqsekjYti_YOTL3bstNF3buI",
+      "title": "Queerlective Board Member Onboarding Checklist",
+      "oldParent": "1O2jHxAFDRhoPCB1BRSnznt-XX8fGUq_x",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1JF4p01VqIXQC3A7Q8sjuV84t1V3B4To4DeBg0_3nCjc",
+      "title": "Welcome Letter Template_Board Member",
+      "oldParent": "1O2jHxAFDRhoPCB1BRSnznt-XX8fGUq_x",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1sUAgrYCSsoUZhx_kO1zC1vLfCiZo-ifg9gzd5CnladY",
+      "title": "General Policies and Expectations",
+      "oldParent": "1O2jHxAFDRhoPCB1BRSnznt-XX8fGUq_x",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1AjudTY9-B_Vy8f04Z8LRjxRXOXbk2W_w6Fqr-nKj8pc",
+      "title": "Code of Conduct",
+      "oldParent": "1O2jHxAFDRhoPCB1BRSnznt-XX8fGUq_x",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1ko2ow-w5RXZPLZUOQmRtsxX0LHqOdztVEFp3dQd9GcE",
+      "title": "Executive Director Role Description",
+      "oldParent": "1O2jHxAFDRhoPCB1BRSnznt-XX8fGUq_x",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    },
+    {
+      "id": "1od_b_c5xCiE8OseOyfSBHUP6cee5HkJWH89GZzXP6EU",
+      "title": "NH Connect Brainstorm Dump",
+      "oldParent": "1sGIuz2YwW1FdjZ50QVaA15DxTX-4Wy4c",
+      "newParent": "1iEzqurcsFapzokOohOaXZ_3cXKtN5UWo",
+      "verified": true
+    },
+    {
+      "id": "1Qy7z6dx-U5pcn5U9-MPA4W7Hh4Eg3p-P",
+      "title": "Copy of CONFIDENTIAL - NH LGBTQ+ Assessment Report_July 2025-1-2.pdf",
+      "oldParent": "1sGIuz2YwW1FdjZ50QVaA15DxTX-4Wy4c",
+      "newParent": "1iEzqurcsFapzokOohOaXZ_3cXKtN5UWo",
+      "verified": true
+    },
+    {
+      "id": "1918yYetkqDYHSlj5dhrsFSCGzMd_q0toiyMU7jR7Ebs",
+      "title": "LGBTQIA+ Landscape Assessment Recommendations",
+      "oldParent": "1sGIuz2YwW1FdjZ50QVaA15DxTX-4Wy4c",
+      "newParent": "1iEzqurcsFapzokOohOaXZ_3cXKtN5UWo",
+      "verified": true
+    },
+    {
+      "id": "1C9ON9YvC65cLXFia8GanoaPzhNEVXwPY3vHl4F4F_ek",
+      "title": "State of Queer NH Online",
+      "oldParent": "1sGIuz2YwW1FdjZ50QVaA15DxTX-4Wy4c",
+      "newParent": "1iEzqurcsFapzokOohOaXZ_3cXKtN5UWo",
+      "verified": true
+    },
+    {
+      "id": "1jN6NajhL7ykYwhBWcYBhefcWoaYyNi6O",
+      "title": "Not Afraid to Fail Fest 2026 poster",
+      "oldParent": "1fI_nZr-t8XWN_wnXjbBe7LOQ_12dGxw9",
+      "newParent": "16EDG0e-sVm9YgIE9eNcIekFWeBlJcUxB",
+      "verified": true
+    },
+    {
+      "id": "1kkLMk98T4vbGkSGbRIrLK1eJxbTDgPwiV2QldmlT_00",
+      "title": "MC Script",
+      "oldParent": "1UqHgXpe-o6fSII1K68EQTPerjdSjfc3T",
+      "newParent": "1-UTmWuAoxYlTpkk9xV1Kzxw0LGmXNJcr",
+      "verified": true
+    },
+    {
+      "id": "1rcIN3KgV7rINqGkCSDkFTHPPHM0GMfkXnra0A6NPABc",
+      "title": "Not Afraid to Fail Fest — Draft Run of Show",
+      "oldParent": "1UqHgXpe-o6fSII1K68EQTPerjdSjfc3T",
+      "newParent": "1-UTmWuAoxYlTpkk9xV1Kzxw0LGmXNJcr",
+      "verified": true
+    },
+    {
+      "id": "1SLXkOCTcD91gyn-6cstWXuXE3yZ20n5lOGOrEsSRzj8",
+      "title": "Copy of Not Afraid to Fail Fest — Draft Run of Show",
+      "oldParent": "1UqHgXpe-o6fSII1K68EQTPerjdSjfc3T",
+      "newParent": "1-UTmWuAoxYlTpkk9xV1Kzxw0LGmXNJcr",
+      "verified": true
+    },
+    {
+      "id": "1iELln4evXHh7RoLQvpAdbsZaxaNmdWR2",
+      "title": "AngelusMater (1).pdf",
+      "oldParent": "1UqHgXpe-o6fSII1K68EQTPerjdSjfc3T",
+      "newParent": "1-UTmWuAoxYlTpkk9xV1Kzxw0LGmXNJcr",
+      "verified": true
+    },
+    {
+      "id": "1CU7ZmmAy4JH7raCbqHY6BHjR7ge3R9VB72v1VPrSZ-U",
+      "title": "Not Afraid to Fail Fest 2026",
+      "oldParent": "1UqHgXpe-o6fSII1K68EQTPerjdSjfc3T",
+      "newParent": "1-UTmWuAoxYlTpkk9xV1Kzxw0LGmXNJcr",
+      "verified": true
+    },
+    {
+      "id": "1RxPZMfupYeQg0bLI1DcjHx7GfGwZ592NAtJWxy2NJCI",
+      "title": "NAFF Sign Ups",
+      "oldParent": "1UqHgXpe-o6fSII1K68EQTPerjdSjfc3T",
+      "newParent": "1-UTmWuAoxYlTpkk9xV1Kzxw0LGmXNJcr",
+      "verified": true
+    },
+    {
+      "id": "1XBVQsvvaD-eqnXTzImTvqTVRY7p-lcy5",
+      "title": "not afraid to fail fest 2026 poster.png",
+      "oldParent": "1UqHgXpe-o6fSII1K68EQTPerjdSjfc3T",
+      "newParent": "1-UTmWuAoxYlTpkk9xV1Kzxw0LGmXNJcr",
+      "verified": true
+    },
+    {
+      "id": "13lFku5_r5013c2Ryd2ZI9_TekG-qf94j7YL5JbgRH90",
+      "title": "Queerlective - Strategic Plan - 2025-2027",
+      "oldParent": "1U0C7sVO0ouNky5YvwyHqpngurKmnSO12",
+      "newParent": "1NQxsTkzWW4AV0BmRQ9zGzfwN6r-kP_MI",
+      "verified": true
+    }
+  ],
+  "pending": [
+    "Festival 2025 archive, StageReadyness, and 2026 photo/video collections",
+    "Other active programs including CoLab",
+    "Remaining governance files requiring classification"
+  ]
+}

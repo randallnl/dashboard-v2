@@ -17,7 +17,7 @@ const PROJECT_COLUMNS = {
 	start: 'date_mkns6cak',
 	end: 'date_mm171v9p',
 	status: 'status',
-	location: 'dropdown_mknqezw8',
+	location: 'text_mm17ts1g',
 	posters: 'file_mknscbex',
 	files: 'file_mkpbye8s',
 	registration: 'link_mkppdhq5',
@@ -397,6 +397,7 @@ export function mapProjectEvent(item: Item, syncedAt: string): ProjectEventRecor
 			calendarUrl: safeUrl(columns, PROJECT_COLUMNS.calendar),
 			spaceReservation: text(columns, PROJECT_COLUMNS.spaceReservation),
 			attendees: text(columns, PROJECT_COLUMNS.attendees),
+			creationLog: item.created_at?.trim() ?? '',
 			tasks: projectTasks(item),
 			_mondayUpdates: mondayUpdates(item),
 			mondayUrl: mondayUrl(PROJECT_BOARD_ID, item.id)
@@ -467,7 +468,7 @@ export class EventDirectory {
 			try {
 				const mapped =
 					source === 'project' ? mapProjectEvent(item, '') : mapCommunityEvent(item, '');
-				return /^\d{4}-\d{2}-\d{2}$/u.test(mapped.dateValue);
+				return source === 'project' || /^\d{4}-\d{2}-\d{2}$/u.test(mapped.dateValue);
 			} catch (cause) {
 				console.warn(
 					JSON.stringify({
@@ -494,6 +495,16 @@ export class EventDirectory {
 		];
 	}
 
+	async listProjects(): Promise<ProjectEventRecord[]> {
+		const projects = await this.listBoard(
+			PROJECT_BOARD_ID,
+			Object.values(PROJECT_COLUMNS),
+			'project'
+		);
+		const syncedAt = new Date().toISOString();
+		return projects.map((item) => mapProjectEvent(item, syncedAt));
+	}
+
 	async update(
 		source: ProjectEventSource,
 		itemId: string,
@@ -502,9 +513,9 @@ export class EventDirectory {
 		const boardId = source === 'project' ? PROJECT_BOARD_ID : COMMUNITY_BOARD_ID;
 		const columnValues: Record<string, unknown> = {
 			name: update.title,
-			[source === 'project' ? PROJECT_COLUMNS.start : COMMUNITY_COLUMNS.date]: {
-				date: update.dateValue
-			},
+			[source === 'project' ? PROJECT_COLUMNS.start : COMMUNITY_COLUMNS.date]: update.dateValue
+				? { date: update.dateValue }
+				: {},
 			[source === 'project' ? PROJECT_COLUMNS.status : COMMUNITY_COLUMNS.status]: update.status,
 			[source === 'project' ? PROJECT_COLUMNS.description : COMMUNITY_COLUMNS.description]:
 				update.description
@@ -547,7 +558,7 @@ export class EventDirectory {
 		const columnValues: Record<string, unknown> = {
 			[PROJECT_COLUMNS.start]: { date: input.startDate },
 			[PROJECT_COLUMNS.end]: { date: input.endDate },
-			[PROJECT_COLUMNS.location]: { labels: ['CoLab'] },
+			[PROJECT_COLUMNS.location]: 'CoLab',
 			[PROJECT_COLUMNS.description]: input.description
 		};
 		if (input.email) {

@@ -40,7 +40,7 @@
 
 	<main class="projects-main" id="main-content">
 		<div class="projects-page-rails">
-			<ProjectRail kind="active" projects={data.workingOnItProjects} />
+			<ProjectRail kind="ongoing" projects={data.ongoingProjects} />
 
 			<div class="projects-primary-rail">
 				<section class="workspace-page-heading" aria-labelledby="projects-page-title">
@@ -48,27 +48,16 @@
 						<p class="eyebrow">Project workspace</p>
 						<h1 id="projects-page-title">Projects</h1>
 					</div>
-					<a class="workspace-page-action" href={resolve('/')}>Dashboard</a>
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a
+						class="workspace-page-action"
+						href={projectCreationFormUrl}
+						target="_blank"
+						rel="noreferrer">Open project form ↗</a
+					>
 				</section>
 
-				<section class="project-create-panel" aria-labelledby="project-create-title">
-					<div class="project-create-heading">
-						<div>
-							<p class="eyebrow">New project</p>
-							<h2 id="project-create-title">Create a project</h2>
-							<p>Use the project intake form to add a new project to the CoLab workspace.</p>
-						</div>
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a
-							class="project-create-action"
-							href={projectCreationFormUrl}
-							target="_blank"
-							rel="noreferrer">Open project form ↗</a
-						>
-					</div>
-				</section>
-
-				<AdminProjectsPanel />
+				<AdminProjectsPanel showStatusSummary />
 			</div>
 
 			<ProjectRail kind="priority" projects={data.highPriorityProjects} />

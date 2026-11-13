@@ -21,6 +21,7 @@ declare global {
 		META_APP_SECRET?: string;
 		SOCIAL_TOKEN_ENCRYPTION_KEY?: string;
 		SHOPIFY_CALENDAR_URL?: string;
+		MONDAY_PROJECT_WEBHOOK_SECRET?: string;
 	}
 
 	namespace App {

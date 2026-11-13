@@ -44,7 +44,7 @@
 	let failed = $state(false);
 	const pendingCash = $derived(sales.filter((sale) => sale.cashSales > 0 && !sale.cashDepositedAt));
 	const pendingCashTotal = $derived(pendingCash.reduce((sum, sale) => sum + sale.cashSales, 0));
-	const unassigned = $derived(sales.filter((sale) => !sale.projectId).length);
+	const unlinked = $derived(sales.filter((sale) => !sale.projectId).length);
 
 	async function load() {
 		loading = true;
@@ -102,8 +102,8 @@
 			<p class="eyebrow">Market sales</p>
 			<h2 id="market-sales-title">Daily Shopify sales</h2>
 			<p>
-				Daily reports are matched to the market project here. Cash stays visible until it is
-				deposited.
+				The seven most recent daily reports stay visible, including zero-sales days. You can
+				optionally connect any report to a project or event. Cash stays visible until it is deposited.
 			</p>
 		</div>
 		<div class="market-sales-inbox"><span>Shopify report inbox</span><code>{inbox}</code></div>
@@ -122,7 +122,7 @@
 	{:else}
 		<div class="market-sales-summary">
 			<div><strong>{money.format(pendingCashTotal)}</strong><span>cash awaiting deposit</span></div>
-			<div><strong>{unassigned}</strong><span>reports need a project</span></div>
+			<div><strong>{unlinked}</strong><span>not linked (optional)</span></div>
 			<div><strong>{pendingCash.length}</strong><span>open cash deposits</span></div>
 		</div>
 		{#if !sales.length}
@@ -130,8 +130,8 @@
 				<div>
 					<strong>Awaiting the first Shopify daily sales email.</strong>
 					<p>
-						Set Shopify to send its daily sales report to <code>{inbox}</code>. It will appear here
-						for project matching and cash tracking.
+						Set Shopify to send its daily sales report to <code>{inbox}</code>. The seven most recent
+						reports will appear here for optional project/event matching and cash tracking.
 					</p>
 				</div>
 			</div>
@@ -139,7 +139,7 @@
 			<div class="market-sales-table-wrap">
 				<table class="market-sales-table">
 					<thead
-						><tr><th>Date</th><th>Sales by tender</th><th>Project</th><th>Cash deposit</th></tr
+						><tr><th>Date</th><th>Sales by tender</th><th>Project / event</th><th>Cash deposit</th></tr
 						></thead
 					><tbody>
 						{#each sales as sale (sale.id)}<tr
@@ -157,13 +157,13 @@
 									</div></td
 								><td
 									><label class="sr-only" for={`project-${sale.id}`}
-										>Project for {dateLabel(sale.saleDate)}</label
+										>Project or event for {dateLabel(sale.saleDate)}</label
 									><select
 										id={`project-${sale.id}`}
 										value={projectKey(sale)}
 										disabled={Boolean(saving)}
 										onchange={(event) => changeProject(sale, event.currentTarget.value)}
-										><option value="">Needs a project</option
+										><option value="">No project or event</option
 										>{#each projects as project (`${project.source}:${project.id}`)}<option
 												value={`${project.source}:${project.id}`}
 												>{project.title}{project.dateValue

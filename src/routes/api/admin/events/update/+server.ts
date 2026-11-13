@@ -34,16 +34,18 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		location: typeof body?.location === 'string' ? body.location.trim() : '',
 		description: typeof body?.description === 'string' ? body.description.trim() : ''
 	};
+	const hasValidStartDate = DATE.test(update.dateValue);
 	if (
 		!update.title ||
 		update.title.length > 255 ||
-		!DATE.test(update.dateValue) ||
+		(source === 'community' && !hasValidStartDate) ||
+		(source === 'project' && update.dateValue && !hasValidStartDate) ||
 		(update.endDateValue && !DATE.test(update.endDateValue)) ||
 		update.description.length > 10_000
 	) {
 		error(400, 'Enter a title, valid dates, and a description under 10,000 characters.');
 	}
-	if (update.endDateValue && update.endDateValue < update.dateValue) {
+	if (update.endDateValue && (!update.dateValue || update.endDateValue < update.dateValue)) {
 		error(400, 'The end date cannot be before the start date.');
 	}
 

@@ -21,10 +21,14 @@
 		capabilities={data.capabilities}
 		viewerCapabilities={data.viewerCapabilities}
 		isViewingAs={data.isViewingAs}
+		dashboardDate={data.dashboardDate}
 		lockboxCode={data.lockboxCode}
 		initialAvailableShifts={data.initialAvailableShifts}
 		upcomingMemberShifts={data.upcomingMemberShifts}
 		upcomingProjects={data.upcomingProjects}
+		upcomingCoLabEvents={data.upcomingCoLabEvents}
+		adminOverview={data.adminOverview}
+		adminActivity={data.adminActivity}
 	/>
 {:else}
 	<LoginSplash authStatus={data.authStatus} />

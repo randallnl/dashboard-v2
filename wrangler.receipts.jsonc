@@ -12,6 +12,12 @@
 			"database_id": "fd34016a-db11-4ee7-8103-73f149118172"
 		}
 	],
+	"services": [
+		{
+			"binding": "RECEIPT_DRIVE",
+			"service": "drive-dashboard-sync"
+		}
+	],
 	"send_email": [
 		{
 			"name": "EMAIL",
@@ -21,5 +27,12 @@
 	"observability": {
 		"enabled": true,
 		"head_sampling_rate": 1
+	},
+	"vars": {
+		"GOOGLE_DRIVE_RECEIPTS_FOLDER_ID": "16BxD6rkncQp0yX5Di7ITtIXrholsj114",
+		"NOTIFICATION_EMAIL": "randall@queerlective.com",
+		"QUICKBOOKS_RECEIPT_EMAIL": "queerlective_inc+expenses@assist.intuit.com",
+		"RECEIPT_FROM_EMAIL": "dashboard@nhciviccommons.com",
+		"RECEIPT_INBOX_EMAIL": "receipts@nhsolidarityecosystem.com"
 	}
 }

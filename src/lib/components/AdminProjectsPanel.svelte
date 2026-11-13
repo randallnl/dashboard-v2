@@ -11,16 +11,21 @@
 		page: number;
 		pageSize: number;
 		statuses: string[];
+		statusCounts: { status: string; total: number }[];
 	};
 
-	let { isAdmin = false }: { isAdmin?: boolean } = $props();
+	let {
+		isAdmin = false,
+		showStatusSummary = false
+	}: { isAdmin?: boolean; showStatusSummary?: boolean } = $props();
 	let records = $state<ProjectEventRecord[]>([]);
 	let statuses = $state<string[]>([]);
+	let statusCounts = $state<{ status: string; total: number }[]>([]);
 	let search = $state('');
 	let source = $state(untrack(() => (isAdmin ? '' : 'project')));
 	let status = $state('');
 	let sort = $state('upcoming');
-	let from = $state(new Date().toISOString().slice(0, 10));
+	let from = $state(untrack(() => (isAdmin ? new Date().toISOString().slice(0, 10) : '')));
 	let through = $state('');
 	let page = $state(1);
 	let pageSize = $state(24);
@@ -36,6 +41,15 @@
 	const totalPages = $derived(Math.max(1, Math.ceil(total / pageSize)));
 	const syncedAt = $derived(
 		records.reduce((latest, record) => (record.syncedAt > latest ? record.syncedAt : latest), '')
+	);
+	const projectStatusCounts = $derived.by(() => {
+		const includesOngoing = statusCounts.some(
+			(entry) => entry.status.trim().toLocaleLowerCase('en-US') === 'ongoing'
+		);
+		return includesOngoing ? statusCounts : [{ status: 'Ongoing', total: 0 }, ...statusCounts];
+	});
+	const projectStatusTotal = $derived(
+		projectStatusCounts.reduce((total, entry) => total + entry.total, 0)
 	);
 
 	function field(record: ProjectEventRecord, key: string): string {
@@ -85,6 +99,7 @@
 			if (!response.ok) throw new Error(result.message || 'Could not load projects.');
 			records = result.records;
 			statuses = result.statuses;
+			statusCounts = result.statusCounts;
 			total = result.total;
 			page = result.page;
 			pageSize = result.pageSize;
@@ -99,6 +114,12 @@
 
 	function applyFilters(event: SubmitEvent) {
 		event.preventDefault();
+		void load(1);
+	}
+
+	function filterByStatus(nextStatus: string) {
+		if (loading && nextStatus === status) return;
+		status = nextStatus;
 		void load(1);
 	}
 
@@ -160,6 +181,40 @@
 		<p class="admin-message" class:error={syncFailed} role={syncFailed ? 'alert' : 'status'}>
 			{syncMessage}
 		</p>
+	{/if}
+
+	{#if showStatusSummary}
+		<section class="project-status-summary" aria-labelledby="project-status-summary-title">
+			<div class="project-status-summary-heading">
+				<div>
+					<p class="eyebrow">Project mix</p>
+					<h3 id="project-status-summary-title">Projects by status</h3>
+				</div>
+				<p>Choose a status to filter the project list.</p>
+			</div>
+			<div class="project-status-filter-cards">
+				<button
+					type="button"
+					class:active={!status}
+					aria-pressed={!status}
+					onclick={() => filterByStatus('')}
+					disabled={loading}
+				>
+					<span>All projects</span><strong>{projectStatusTotal}</strong>
+				</button>
+				{#each projectStatusCounts as entry (entry.status)}
+					<button
+						type="button"
+						class:active={status === entry.status}
+						aria-pressed={status === entry.status}
+						onclick={() => filterByStatus(entry.status)}
+						disabled={loading}
+					>
+						<span>{entry.status}</span><strong>{entry.total}</strong>
+					</button>
+				{/each}
+			</div>
+		</section>
 	{/if}
 
 	<form class="admin-filters" onsubmit={applyFilters}>

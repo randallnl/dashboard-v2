@@ -86,6 +86,36 @@ export class CommentRepository {
 		};
 	}
 
+	async createIfAbsent(input: {
+		id: string;
+		source: ProjectEventSource;
+		eventId: string;
+		memberId: string;
+		authorLabel: string;
+		body: string;
+		mentionLabels: string[];
+		createdAt: string;
+	}): Promise<boolean> {
+		const result = await this.db
+			.prepare(
+				`INSERT OR IGNORE INTO project_event_comments (
+					id, source, event_id, member_id, author_label, body, mentions_json, created_at
+				) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`
+			)
+			.bind(
+				input.id,
+				input.source,
+				input.eventId,
+				input.memberId,
+				input.authorLabel,
+				input.body,
+				JSON.stringify(input.mentionLabels),
+				input.createdAt
+			)
+			.run();
+		return result.meta.changes > 0;
+	}
+
 	async upsertMondayUpdate(input: {
 		updateId: string;
 		source: ProjectEventSource;

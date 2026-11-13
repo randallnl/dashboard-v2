@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { ProjectEventRecord } from '$lib/types/domain';
 
-	type ProjectRailKind = 'active' | 'priority';
+	type ProjectRailKind = 'ongoing' | 'priority';
 
 	let {
 		projects,
@@ -12,13 +12,13 @@
 	} = $props();
 
 	const labels = $derived(
-		kind === 'active'
+		kind === 'ongoing'
 			? {
-					eyebrow: 'Active work',
-					title: 'Working on it',
-					description: 'Projects currently in motion.',
-					empty: 'No projects are currently marked “Working on it.”',
-					cardLabel: 'Working on it'
+					eyebrow: 'Programs and partners',
+					title: 'Ongoing',
+					description: 'Recurring work, programs, and partner meetings.',
+					empty: 'No projects are currently marked “Ongoing.”',
+					cardLabel: 'Ongoing'
 				}
 			: {
 					eyebrow: 'Needs attention',
@@ -72,7 +72,7 @@
 							<span class:priority={kind === 'priority'} class="project-rail-label"
 								>{labels.cardLabel}</span
 							>
-							{#if kind === 'active' && field(project, 'priority')}
+							{#if kind === 'ongoing' && field(project, 'priority')}
 								<span class="project-rail-priority">{field(project, 'priority')} priority</span>
 							{:else if kind === 'priority' && project.status}
 								<span class="project-rail-priority">{project.status}</span>

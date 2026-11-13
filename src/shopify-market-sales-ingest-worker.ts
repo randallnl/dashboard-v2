@@ -46,8 +46,8 @@ function parseDailySales(text: string): {
 	cardSales: number;
 	otherSales: number;
 } {
-	const totalSales =
-		labelledAmount(text, ['total\\s+(?:net\\s+)?sales', 'net\\s+sales', 'total']) ?? 0;
+	const parsedTotal = labelledAmount(text, ['total\\s+(?:net\\s+)?sales', 'net\\s+sales', 'total']);
+	const totalSales = parsedTotal ?? 0;
 	const cashSales = labelledAmount(text, ['cash(?:\\s+payments?|\\s+tender)?']) ?? 0;
 	const cardSales =
 		labelledAmount(text, [

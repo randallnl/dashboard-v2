@@ -1,13 +1,6 @@
 import PostalMime, { type Attachment } from 'postal-mime';
 
-const DRIVE_UPLOAD_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const MAX_ERROR_LENGTH = 500;
-
-type ServiceAccountCredentials = {
-	client_email: string;
-	private_key: string;
-	token_uri?: string;
-};
 
 type StoredReceipt = {
 	drive_file_id: string | null;
@@ -19,57 +12,6 @@ function encodeBase64Url(value: string | ArrayBuffer): string {
 	let binary = '';
 	for (const byte of bytes) binary += String.fromCharCode(byte);
 	return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/u, '');
-}
-
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-	const body = pem
-		.replace('-----BEGIN PRIVATE KEY-----', '')
-		.replace('-----END PRIVATE KEY-----', '')
-		.replaceAll(/\s/gu, '');
-	const binary = atob(body);
-	const bytes = new Uint8Array(binary.length);
-	for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-	return bytes.buffer;
-}
-
-async function googleAccessToken(credentials: ServiceAccountCredentials): Promise<string> {
-	const now = Math.floor(Date.now() / 1000);
-	const header = encodeBase64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-	const claims = encodeBase64Url(
-		JSON.stringify({
-			iss: credentials.client_email,
-			scope: DRIVE_UPLOAD_SCOPE,
-			aud: credentials.token_uri ?? 'https://oauth2.googleapis.com/token',
-			iat: now,
-			exp: now + 3600
-		})
-	);
-	const unsignedToken = `${header}.${claims}`;
-	const key = await crypto.subtle.importKey(
-		'pkcs8',
-		pemToArrayBuffer(credentials.private_key),
-		{ name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-		false,
-		['sign']
-	);
-	const signature = await crypto.subtle.sign(
-		'RSASSA-PKCS1-v1_5',
-		key,
-		new TextEncoder().encode(unsignedToken)
-	);
-	const assertion = `${unsignedToken}.${encodeBase64Url(signature)}`;
-	const response = await fetch(credentials.token_uri ?? 'https://oauth2.googleapis.com/token', {
-		method: 'POST',
-		headers: { 'content-type': 'application/x-www-form-urlencoded' },
-		body: new URLSearchParams({
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion
-		})
-	});
-	if (!response.ok) throw new Error(`Google authentication failed (${response.status})`);
-	const payload = (await response.json()) as { access_token?: string };
-	if (!payload.access_token) throw new Error('Google authentication returned no access token');
-	return payload.access_token;
 }
 
 function safeFilename(name: string | null, position: number): string {
@@ -90,36 +32,29 @@ async function digest(value: ArrayBuffer): Promise<string> {
 	return encodeBase64Url(await crypto.subtle.digest('SHA-256', value));
 }
 
-async function uploadToGoogleDrive(
-	token: string,
-	folderId: string,
+async function uploadToReceiptFolder(
+	env: ReceiptEnv,
 	filename: string,
 	mimeType: string,
 	content: ArrayBuffer
 ): Promise<string> {
-	const boundary = `receipt-${crypto.randomUUID()}`;
-	const metadata = JSON.stringify({ name: filename, parents: [folderId] });
-	const body = new Blob([
-		`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
-		`--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`,
-		content,
-		`\r\n--${boundary}--\r\n`
-	]);
-	const response = await fetch(
-		'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id',
-		{
+	const form = new FormData();
+	form.set('folderId', env.GOOGLE_DRIVE_RECEIPTS_FOLDER_ID);
+	form.set('receipt', new File([content], filename, { type: mimeType }), filename);
+	const response = await env.RECEIPT_DRIVE.fetch(
+		new Request('https://finance-drive.internal/receipt-attachments', {
 			method: 'POST',
-			headers: {
-				authorization: `Bearer ${token}`,
-				'content-type': `multipart/related; boundary=${boundary}`
-			},
-			body
-		}
+			body: form
+		})
 	);
-	if (!response.ok) throw new Error(`Google Drive upload failed (${response.status})`);
-	const payload = (await response.json()) as { id?: string };
-	if (!payload.id) throw new Error('Google Drive upload returned no file ID');
-	return payload.id;
+	const payload = (await response.json().catch(() => null)) as {
+		file?: { id?: string };
+		message?: string;
+	} | null;
+	if (!response.ok || !payload?.file?.id) {
+		throw new Error(payload?.message || 'Google Drive could not save the receipt');
+	}
+	return payload.file.id;
 }
 
 function receiptAttachments(attachments: Attachment[]): Attachment[] {
@@ -131,7 +66,6 @@ function receiptAttachments(attachments: Attachment[]): Attachment[] {
 
 async function processAttachment(
 	env: ReceiptEnv,
-	googleToken: string,
 	sourceMessageId: string,
 	attachment: Attachment,
 	position: number
@@ -159,13 +93,7 @@ async function processAttachment(
 		.first<StoredReceipt>();
 
 	if (!stored?.drive_file_id) {
-		const driveFileId = await uploadToGoogleDrive(
-			googleToken,
-			env.GOOGLE_DRIVE_RECEIPTS_FOLDER_ID,
-			filename,
-			mimeType,
-			content
-		);
+		const driveFileId = await uploadToReceiptFolder(env, filename, mimeType, content);
 		await env.DB.prepare(
 			`UPDATE receipt_ingest_files SET drive_file_id = ?
 			WHERE source_message_id = ? AND attachment_hash = ?`
@@ -246,15 +174,8 @@ async function processReceipt(message: ForwardableEmailMessage, env: ReceiptEnv)
 	if (existing?.status === 'complete') return;
 
 	try {
-		const credentials = JSON.parse(
-			env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON
-		) as ServiceAccountCredentials;
-		if (!credentials.client_email || !credentials.private_key) {
-			throw new Error('Google Drive service-account credentials are incomplete');
-		}
-		const googleToken = await googleAccessToken(credentials);
 		for (const [position, attachment] of attachments.entries()) {
-			await processAttachment(env, googleToken, sourceMessageId, attachment, position);
+			await processAttachment(env, sourceMessageId, attachment, position);
 		}
 
 		if (!existing?.notification_message_id) {
