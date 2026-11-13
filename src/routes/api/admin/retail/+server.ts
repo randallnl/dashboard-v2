@@ -43,6 +43,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			error(400, 'Invalid checklist update.');
 		if (!(await repository.setStep(body.id, body.step, body.complete, context.viewer.id)))
 			error(404, 'Order step not found.');
+	} else if (body.action === 'delete') {
+		if (typeof body.id !== 'string' || !/^[a-f0-9-]{36}$/iu.test(body.id))
+			error(400, 'Invalid retail order.');
+		if (!(await repository.remove(body.id))) error(404, 'Retail order not found.');
 	} else error(400, 'Unknown retail action.');
 	return payload(repository);
 };

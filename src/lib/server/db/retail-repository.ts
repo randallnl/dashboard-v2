@@ -121,4 +121,8 @@ export class RetailRepository {
 			.run();
 		return result.meta.changes > 0;
 	}
+	async remove(id: string): Promise<boolean> {
+		const result = await this.db.prepare('DELETE FROM retail_orders WHERE id = ?1').bind(id).run();
+		return result.meta.changes > 0;
+	}
 }

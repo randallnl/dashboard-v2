@@ -53,6 +53,15 @@
 			notes = '';
 		}
 	}
+	async function remove(order: RetailOrder) {
+		if (
+			!window.confirm(
+				`Remove “${order.brand || order.title}” from retail tracking? This removes its checklist and product details from the dashboard, but does not delete any Drive or QuickBooks receipt.`
+			)
+		)
+			return;
+		await request({ action: 'delete', id: order.id });
+	}
 </script>
 
 <div class="retail-panel">
@@ -148,6 +157,9 @@
 						>{RETAIL_STEPS.filter((step) => order.steps[step.id]).length} / {RETAIL_STEPS.length} complete</span
 					>
 				</div>
+				<button class="remove-order" type="button" disabled={busy} onclick={() => remove(order)}
+					>Remove tracking entry</button
+				>
 				<p class="muted">
 					{order.order_number
 						? `Faire #${order.order_number}`
@@ -322,6 +334,22 @@
 	}
 	.product-card small {
 		font-size: 0.76rem;
+	}
+	.remove-order {
+		justify-self: start;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: #9a2020;
+		font: inherit;
+		font-size: 0.82rem;
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+		cursor: pointer;
+	}
+	.remove-order:disabled {
+		cursor: wait;
+		opacity: 0.65;
 	}
 	pre {
 		white-space: pre-wrap;
