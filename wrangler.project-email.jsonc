@@ -18,8 +18,16 @@
 			"service": "drive-dashboard-sync"
 		}
 	],
+	"send_email": [
+		{
+			"name": "EMAIL",
+			"allowed_sender_addresses": ["dashboard@nhciviccommons.com"]
+		}
+	],
 	"vars": {
-		"PROJECT_INBOX_EMAIL": "projects@nhsolidarityecosystem.com"
+		"PROJECT_INBOX_EMAIL": "projects@nhsolidarityecosystem.com",
+		"RECEIPT_INBOX_EMAIL": "receipts@nhsolidarityecosystem.com",
+		"RETAIL_RECEIPT_FROM_EMAIL": "dashboard@nhciviccommons.com"
 	},
 	"observability": {
 		"enabled": true,

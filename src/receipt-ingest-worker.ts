@@ -1,4 +1,5 @@
 import PostalMime, { type Attachment } from 'postal-mime';
+import { faireReceiptFile, type GeneratedReceiptFile } from '$lib/server/receipts/faire-receipt';
 
 const MAX_ERROR_LENGTH = 500;
 
@@ -6,6 +7,9 @@ type StoredReceipt = {
 	drive_file_id: string | null;
 	quickbooks_message_id: string | null;
 };
+
+type ReceiptFile =
+	GeneratedReceiptFile | { filename: string | null; mimeType: string; content: ArrayBuffer };
 
 function encodeBase64Url(value: string | ArrayBuffer): string {
 	const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : new Uint8Array(value);
@@ -67,14 +71,11 @@ function receiptAttachments(attachments: Attachment[]): Attachment[] {
 async function processAttachment(
 	env: ReceiptEnv,
 	sourceMessageId: string,
-	attachment: Attachment,
+	attachment: ReceiptFile,
 	position: number
 ): Promise<void> {
 	const filename = safeFilename(attachment.filename, position);
 	const mimeType = safeMimeType(attachment.mimeType);
-	if (!(attachment.content instanceof ArrayBuffer)) {
-		throw new Error('Receipt attachment was not decoded as binary content');
-	}
 	const content = attachment.content;
 	const attachmentHash = await digest(content);
 
@@ -120,6 +121,24 @@ async function processAttachment(
 	}
 }
 
+function receiptFile(attachment: Attachment): ReceiptFile {
+	if (!(attachment.content instanceof ArrayBuffer)) {
+		throw new Error('Receipt attachment was not decoded as binary content');
+	}
+	return {
+		filename: attachment.filename,
+		mimeType: attachment.mimeType,
+		content: attachment.content
+	};
+}
+
+function retailReceiptSourceId(message: ForwardableEmailMessage, env: ReceiptEnv): string {
+	if (message.from.toLocaleLowerCase('en-US') !== env.RECEIPT_FROM_EMAIL.toLocaleLowerCase('en-US'))
+		return '';
+	const key = message.headers.get('x-queerlective-retail-receipt')?.trim() ?? '';
+	return /^[A-Z0-9][A-Z0-9-]{3,79}$/iu.test(key) ? `retail:${key.toUpperCase()}` : '';
+}
+
 async function notifyCompletion(
 	env: ReceiptEnv,
 	count: number,
@@ -151,13 +170,28 @@ async function processReceipt(message: ForwardableEmailMessage, env: ReceiptEnv)
 	const raw = await new Response(message.raw).arrayBuffer();
 	const parsed = await PostalMime.parse(raw, { attachmentEncoding: 'arraybuffer' });
 	const attachments = receiptAttachments(parsed.attachments);
-	if (attachments.length === 0) {
-		message.setReject('Attach at least one receipt file.');
-		return;
-	}
-	const sourceMessageId = message.headers.get('message-id')?.trim() || (await digest(raw));
 	const sourceSubject = parsed.subject?.trim() || '(no subject)';
 	const now = new Date().toISOString();
+	const generated = attachments.length
+		? null
+		: faireReceiptFile({
+				text: parsed.text || (parsed.html || '').replace(/<[^>]*>/gu, ' '),
+				html: parsed.html,
+				receivedAt: now
+			});
+	if (!attachments.length && !generated) {
+		message.setReject('Attach a receipt file or forward a supported Faire order confirmation.');
+		return;
+	}
+	const files: ReceiptFile[] = attachments.length
+		? attachments.map(receiptFile)
+		: generated
+			? [generated]
+			: [];
+	const sourceMessageId =
+		retailReceiptSourceId(message, env) ||
+		message.headers.get('message-id')?.trim() ||
+		(await digest(raw));
 
 	await env.DB.prepare(
 		`INSERT OR IGNORE INTO receipt_ingest
@@ -174,12 +208,12 @@ async function processReceipt(message: ForwardableEmailMessage, env: ReceiptEnv)
 	if (existing?.status === 'complete') return;
 
 	try {
-		for (const [position, attachment] of attachments.entries()) {
+		for (const [position, attachment] of files.entries()) {
 			await processAttachment(env, sourceMessageId, attachment, position);
 		}
 
 		if (!existing?.notification_message_id) {
-			const notificationMessageId = await notifyCompletion(env, attachments.length, sourceSubject);
+			const notificationMessageId = await notifyCompletion(env, files.length, sourceSubject);
 			await env.DB.prepare(
 				`UPDATE receipt_ingest SET notification_message_id = ? WHERE source_message_id = ?`
 			)

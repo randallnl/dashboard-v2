@@ -431,7 +431,7 @@ async function processProjectEmail(
 
 export default {
 	async email(message, env): Promise<void> {
-		if (await processRetailEmail(message, env.DB)) return;
+		if (await processRetailEmail(message, env)) return;
 		await processProjectEmail(message, env);
 	},
 	async fetch(): Promise<Response> {
