@@ -17,7 +17,7 @@ function pdfText(value: string): string {
 		.replaceAll(')', '\\)');
 }
 
-function wrap(value: string, maxLength = 86): string[] {
+export function wrapPdfText(value: string, maxLength = 86): string[] {
 	const words = value.trim().split(/\s+/u).filter(Boolean);
 	if (!words.length) return [''];
 	const lines: string[] = [];
@@ -51,7 +51,7 @@ function receiptLines(order: ParsedFaireOrder, receivedAt: string): string[] {
 		'',
 		'Products',
 		...order.products.flatMap((product) =>
-			wrap(`${product.name} — ${product.unit_price} × ${product.quantity}`)
+			wrapPdfText(`${product.name} — ${product.unit_price} × ${product.quantity}`)
 		),
 		'',
 		`Total: ${order.total}`,
@@ -60,7 +60,7 @@ function receiptLines(order: ParsedFaireOrder, receivedAt: string): string[] {
 	];
 }
 
-function receiptPdf(lines: string[]): ArrayBuffer {
+export function textPdf(lines: string[], minimumBytes = 0): ArrayBuffer {
 	const perPage = 52;
 	const pages = Array.from({ length: Math.max(1, Math.ceil(lines.length / perPage)) }, (_, index) =>
 		lines.slice(index * perPage, (index + 1) * perPage)
@@ -111,8 +111,8 @@ function receiptPdf(lines: string[]): ArrayBuffer {
 		return `xref\n0 ${objects.size + 1}\n0000000000 65535 f \n${rows}\ntrailer\n<< /Size ${objects.size + 1} /Root 1 0 R >>\nstartxref\n${start}\n%%EOF\n`;
 	};
 	let pdf = header + body + xref();
-	if (encoder.encode(pdf).byteLength < MINIMUM_QUICKBOOKS_ATTACHMENT_BYTES) {
-		body += `% ${'P'.repeat(MINIMUM_QUICKBOOKS_ATTACHMENT_BYTES - encoder.encode(pdf).byteLength)}\n`;
+	if (encoder.encode(pdf).byteLength < minimumBytes) {
+		body += `% ${'P'.repeat(minimumBytes - encoder.encode(pdf).byteLength)}\n`;
 		pdf = header + body + xref();
 	}
 	return encoder.encode(pdf).buffer;
@@ -128,6 +128,6 @@ export function faireReceiptFile(input: {
 	return {
 		filename: `faire-order-${order.orderNumber}.pdf`,
 		mimeType: 'application/pdf',
-		content: receiptPdf(receiptLines(order, input.receivedAt))
+		content: textPdf(receiptLines(order, input.receivedAt), MINIMUM_QUICKBOOKS_ATTACHMENT_BYTES)
 	};
 }

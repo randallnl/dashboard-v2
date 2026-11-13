@@ -1,4 +1,5 @@
 import PostalMime, { type Attachment } from 'postal-mime';
+import { receiptEmailCopyFile } from '$lib/server/receipts/email-copy';
 import { faireReceiptFile, type GeneratedReceiptFile } from '$lib/server/receipts/faire-receipt';
 
 const MAX_ERROR_LENGTH = 500;
@@ -8,8 +9,12 @@ type StoredReceipt = {
 	quickbooks_message_id: string | null;
 };
 
-type ReceiptFile =
-	GeneratedReceiptFile | { filename: string | null; mimeType: string; content: ArrayBuffer };
+type ReceiptFile = {
+	filename: string | null;
+	mimeType: string;
+	content: ArrayBuffer;
+	sendToQuickBooks: boolean;
+};
 
 function encodeBase64Url(value: string | ArrayBuffer): string {
 	const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : new Uint8Array(value);
@@ -103,7 +108,7 @@ async function processAttachment(
 			.run();
 	}
 
-	if (!stored?.quickbooks_message_id) {
+	if (attachment.sendToQuickBooks && !stored?.quickbooks_message_id) {
 		const sent = await env.EMAIL.send({
 			to: env.QUICKBOOKS_RECEIPT_EMAIL,
 			from: env.RECEIPT_FROM_EMAIL,
@@ -128,8 +133,17 @@ function receiptFile(attachment: Attachment): ReceiptFile {
 	return {
 		filename: attachment.filename,
 		mimeType: attachment.mimeType,
-		content: attachment.content
+		content: attachment.content,
+		sendToQuickBooks: true
 	};
+}
+
+function quickBooksReceiptFile(attachment: GeneratedReceiptFile): ReceiptFile {
+	return { ...attachment, sendToQuickBooks: true };
+}
+
+function driveOnlyReceiptFile(attachment: GeneratedReceiptFile): ReceiptFile {
+	return { ...attachment, sendToQuickBooks: false };
 }
 
 function retailReceiptSourceId(message: ForwardableEmailMessage, env: ReceiptEnv): string {
@@ -141,15 +155,16 @@ function retailReceiptSourceId(message: ForwardableEmailMessage, env: ReceiptEnv
 
 async function notifyCompletion(
 	env: ReceiptEnv,
-	count: number,
+	driveFileCount: number,
+	quickBooksFileCount: number,
 	sourceSubject: string
 ): Promise<string> {
 	const sent = await env.EMAIL.send({
 		to: env.NOTIFICATION_EMAIL,
 		from: env.RECEIPT_FROM_EMAIL,
-		subject: `Receipt processing complete (${count})`,
-		text: `${count} receipt${count === 1 ? '' : 's'} from “${sourceSubject}” were saved to Google Drive and sent to QuickBooks.`,
-		html: `<p>${count} receipt${count === 1 ? '' : 's'} from <strong>${escapeHtml(sourceSubject)}</strong> were saved to Google Drive and sent to QuickBooks.</p>`
+		subject: `Receipt processing complete (${driveFileCount} saved)`,
+		text: `${driveFileCount} file${driveFileCount === 1 ? '' : 's'} from “${sourceSubject}” were saved to Google Drive. ${quickBooksFileCount} receipt${quickBooksFileCount === 1 ? '' : 's'} were sent to QuickBooks.`,
+		html: `<p>${driveFileCount} file${driveFileCount === 1 ? '' : 's'} from <strong>${escapeHtml(sourceSubject)}</strong> were saved to Google Drive. ${quickBooksFileCount} receipt${quickBooksFileCount === 1 ? '' : 's'} were sent to QuickBooks.</p>`
 	});
 	return sent.messageId;
 }
@@ -183,11 +198,24 @@ async function processReceipt(message: ForwardableEmailMessage, env: ReceiptEnv)
 		message.setReject('Attach a receipt file or forward a supported Faire order confirmation.');
 		return;
 	}
-	const files: ReceiptFile[] = attachments.length
+	const receiptFiles: ReceiptFile[] = attachments.length
 		? attachments.map(receiptFile)
 		: generated
-			? [generated]
+			? [quickBooksReceiptFile(generated)]
 			: [];
+	const files = [
+		...receiptFiles,
+		driveOnlyReceiptFile(
+			receiptEmailCopyFile({
+				from: message.from,
+				to: message.to,
+				subject: sourceSubject,
+				receivedAt: now,
+				text: parsed.text || '',
+				html: parsed.html
+			})
+		)
+	];
 	const sourceMessageId =
 		retailReceiptSourceId(message, env) ||
 		message.headers.get('message-id')?.trim() ||
@@ -213,7 +241,12 @@ async function processReceipt(message: ForwardableEmailMessage, env: ReceiptEnv)
 		}
 
 		if (!existing?.notification_message_id) {
-			const notificationMessageId = await notifyCompletion(env, files.length, sourceSubject);
+			const notificationMessageId = await notifyCompletion(
+				env,
+				files.length,
+				receiptFiles.length,
+				sourceSubject
+			);
 			await env.DB.prepare(
 				`UPDATE receipt_ingest SET notification_message_id = ? WHERE source_message_id = ?`
 			)
