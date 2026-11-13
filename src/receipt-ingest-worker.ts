@@ -187,39 +187,48 @@ async function processReceipt(message: ForwardableEmailMessage, env: ReceiptEnv)
 	const attachments = receiptAttachments(parsed.attachments);
 	const sourceSubject = parsed.subject?.trim() || '(no subject)';
 	const now = new Date().toISOString();
-	const generated = attachments.length
-		? null
-		: faireReceiptFile({
-				text: parsed.text || (parsed.html || '').replace(/<[^>]*>/gu, ' '),
-				html: parsed.html,
-				receivedAt: now
-			});
+	const retailSourceMessageId = retailReceiptSourceId(message, env);
+	const includesOriginalEmailPdf =
+		Boolean(retailSourceMessageId) &&
+		message.headers.get('x-queerlective-original-email-pdf')?.trim() === '1';
+	const generated =
+		attachments.length && !retailSourceMessageId
+			? null
+			: faireReceiptFile({
+					text: parsed.text || (parsed.html || '').replace(/<[^>]*>/gu, ' '),
+					html: parsed.html,
+					receivedAt: now
+				});
 	if (!attachments.length && !generated) {
 		message.setReject('Attach a receipt file or forward a supported Faire order confirmation.');
 		return;
 	}
-	const receiptFiles: ReceiptFile[] = attachments.length
-		? attachments.map(receiptFile)
-		: generated
-			? [quickBooksReceiptFile(generated)]
-			: [];
+	const receiptFiles: ReceiptFile[] = [
+		...attachments.map((attachment) => {
+			const file = receiptFile(attachment);
+			return includesOriginalEmailPdf ? { ...file, sendToQuickBooks: false } : file;
+		}),
+		...(generated ? [quickBooksReceiptFile(generated)] : [])
+	];
 	const files = [
 		...receiptFiles,
-		driveOnlyReceiptFile(
-			receiptEmailCopyFile({
-				from: message.from,
-				to: message.to,
-				subject: sourceSubject,
-				receivedAt: now,
-				text: parsed.text || '',
-				html: parsed.html
-			})
-		)
+		...(includesOriginalEmailPdf
+			? []
+			: [
+					driveOnlyReceiptFile(
+						receiptEmailCopyFile({
+							from: message.from,
+							to: message.to,
+							subject: sourceSubject,
+							receivedAt: now,
+							text: parsed.text || '',
+							html: parsed.html
+						})
+					)
+				])
 	];
 	const sourceMessageId =
-		retailReceiptSourceId(message, env) ||
-		message.headers.get('message-id')?.trim() ||
-		(await digest(raw));
+		retailSourceMessageId || message.headers.get('message-id')?.trim() || (await digest(raw));
 
 	await env.DB.prepare(
 		`INSERT OR IGNORE INTO receipt_ingest
@@ -244,7 +253,7 @@ async function processReceipt(message: ForwardableEmailMessage, env: ReceiptEnv)
 			const notificationMessageId = await notifyCompletion(
 				env,
 				files.length,
-				receiptFiles.length,
+				receiptFiles.filter((file) => file.sendToQuickBooks).length,
 				sourceSubject
 			);
 			await env.DB.prepare(

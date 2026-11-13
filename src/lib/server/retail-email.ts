@@ -6,6 +6,7 @@ import {
 	savedFaireEmailText
 } from '$lib/retail/orders';
 import { RetailRepository } from '$lib/server/db/retail-repository';
+import { receiptEmailCopyFile } from '$lib/server/receipts/email-copy';
 
 type RetailEmailEnv = {
 	DB: D1Database;
@@ -80,14 +81,33 @@ export async function processRetailEmail(
 		enrich: true
 	});
 	if (details.orderNumber && details.total) {
-		const text = receiptSummary(details);
+		const summary = receiptSummary(details);
+		const originalEmailPdf = receiptEmailCopyFile({
+			from: message.from,
+			to: message.to,
+			subject,
+			receivedAt: new Date().toISOString(),
+			text: parsed.text || '',
+			html: parsed.html
+		});
 		await env.EMAIL.send({
 			to: env.RECEIPT_INBOX_EMAIL,
 			from: env.RETAIL_RECEIPT_FROM_EMAIL,
 			subject: `Faire receipt ${details.orderNumber} — ${details.brand || 'order'}`,
-			text,
-			html: `<pre>${escapeHtml(text)}</pre>`,
-			headers: { 'X-Queerlective-Retail-Receipt': details.orderNumber }
+			text: summary,
+			html: `<pre>${escapeHtml(summary)}</pre>`,
+			headers: {
+				'X-Queerlective-Retail-Receipt': details.orderNumber,
+				'X-Queerlective-Original-Email-PDF': '1'
+			},
+			attachments: [
+				{
+					content: originalEmailPdf.content,
+					filename: originalEmailPdf.filename,
+					type: originalEmailPdf.mimeType,
+					disposition: 'attachment'
+				}
+			]
 		});
 	}
 	return true;

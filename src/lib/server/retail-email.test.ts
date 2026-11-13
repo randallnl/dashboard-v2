@@ -65,16 +65,33 @@ describe('retail email intake', () => {
 	it('sends a recognized Faire order through the receipts inbox', async () => {
 		const { email, env, message } = fixture(
 			RETAIL_INBOX,
-			'Order summary\r\nVDUWADJNM8\r\nCamilla Watson Art\r\n23 items · $150.00\r\nFrog Wizard Enamel Pin\r\n$24.00\r\nQty: 3\r\nView all products'
+			'Order summary\r\nVDUWADJNM8\r\nCamilla Watson Art\r\n23 items · $150.00\r\nFrog Wizard Enamel Pin\r\n$24.00\r\nQty: 3\r\nOriginal-message marker\r\nView all products'
 		);
 		await processRetailEmail(message, env);
 		expect(email.send).toHaveBeenCalledWith(
 			expect.objectContaining({
 				to: 'receipts@nhsolidarityecosystem.com',
 				subject: 'Faire receipt VDUWADJNM8 — Camilla Watson Art',
-				headers: { 'X-Queerlective-Retail-Receipt': 'VDUWADJNM8' }
+				headers: {
+					'X-Queerlective-Retail-Receipt': 'VDUWADJNM8',
+					'X-Queerlective-Original-Email-PDF': '1'
+				},
+				attachments: [
+					expect.objectContaining({
+						filename: expect.stringMatching(/^receipt-email-.*\.pdf$/u),
+						type: 'application/pdf'
+					})
+				]
 			})
 		);
+		const sent = (
+			email.send.mock.calls as unknown as Array<
+				Array<{ attachments: Array<{ content: ArrayBuffer }> }>
+			>
+		)[0]?.[0];
+		const originalEmailPdf = sent?.attachments[0];
+		if (!originalEmailPdf) throw new Error('Expected the original email PDF attachment.');
+		expect(new TextDecoder().decode(originalEmailPdf.content)).toContain('Original-message marker');
 	});
 	it('does not guess an order number from ordinary prose', () => {
 		expect(faireOrderNumber('Your order has shipped')).toBe('');
