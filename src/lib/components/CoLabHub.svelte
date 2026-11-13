@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import RetailPanel from '$lib/components/RetailPanel.svelte';
 	import CalendarPanel from '$lib/components/CalendarPanel.svelte';
 	import CoLabUpcomingEventsRail from '$lib/components/CoLabUpcomingEventsRail.svelte';
 	import ContentState from '$lib/components/ContentState.svelte';
@@ -10,7 +11,7 @@
 	import WorkTradePanel from '$lib/components/WorkTradePanel.svelte';
 	import type { MemberCapabilities, ProjectEventRecord, Shift } from '$lib/types/domain';
 
-	type CoLabSubpage = 'schedule' | 'resources' | 'documents';
+	type CoLabSubpage = 'schedule' | 'resources' | 'documents' | 'retail';
 
 	let {
 		capabilities,
@@ -34,6 +35,7 @@
 
 	const activeSubpage = $derived.by<CoLabSubpage>(() => {
 		const requestedTab = page.url.searchParams.get('tab');
+		if (requestedTab === 'retail') return 'retail';
 		if (requestedTab === 'resources') return 'resources';
 		if (requestedTab === 'documents') return 'documents';
 
@@ -45,10 +47,6 @@
 
 		return 'schedule';
 	});
-
-	function coLabHref(tab: CoLabSubpage): string {
-		return `${resolve('/')}?view=colab&tab=${tab}`;
-	}
 </script>
 
 <section class="colab-hub" id="colab" aria-labelledby="colab-title">
@@ -57,15 +55,25 @@
 			<p class="eyebrow">Shared member workspace</p>
 			<h1 id="colab-title">CoLab</h1>
 		</div>
+		<!-- eslint-disable svelte/no-navigation-without-resolve -->
 		<nav class="colab-subnav" aria-label="CoLab sections">
-			<a class:active={activeSubpage === 'schedule'} href={coLabHref('schedule')}
-				>Schedule &amp; sign-ups</a
+			<a class:active={activeSubpage === 'retail'} href={`${resolve('/')}?view=colab&tab=retail`}
+				>Retail</a
 			>
-			<a class:active={activeSubpage === 'resources'} href={coLabHref('resources')}
-				>Resources &amp; tools</a
+			<a
+				class:active={activeSubpage === 'schedule'}
+				href={`${resolve('/')}?view=colab&tab=schedule`}>Schedule &amp; sign-ups</a
 			>
-			<a class:active={activeSubpage === 'documents'} href={coLabHref('documents')}>Documents</a>
+			<a
+				class:active={activeSubpage === 'resources'}
+				href={`${resolve('/')}?view=colab&tab=resources`}>Resources &amp; tools</a
+			>
+			<a
+				class:active={activeSubpage === 'documents'}
+				href={`${resolve('/')}?view=colab&tab=documents`}>Documents</a
+			>
 		</nav>
+		<!-- eslint-enable svelte/no-navigation-without-resolve -->
 	</header>
 
 	{#if activeSubpage === 'schedule'}
@@ -96,6 +104,8 @@
 				{/if}
 			</div>
 		</div>
+	{:else if activeSubpage === 'retail'}
+		<RetailPanel canManage={viewerCapabilities.isAdmin && !isViewingAs} />
 	{:else if activeSubpage === 'resources'}
 		<div class="colab-hub-content colab-resources-content">
 			<article class="resources-card dashboard-top-resources" id="resources">

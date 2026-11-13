@@ -1,3 +1,4 @@
+import { processRetailEmail } from '$lib/server/retail-email';
 import PostalMime, { type Attachment } from 'postal-mime';
 import { CommentRepository } from '$lib/server/db/comment-repository';
 import { ProjectDriveRepository } from '$lib/server/db/project-drive-repository';
@@ -430,6 +431,7 @@ async function processProjectEmail(
 
 export default {
 	async email(message, env): Promise<void> {
+		if (await processRetailEmail(message, env.DB)) return;
 		await processProjectEmail(message, env);
 	},
 	async fetch(): Promise<Response> {
