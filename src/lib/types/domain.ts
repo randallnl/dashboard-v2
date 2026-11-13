@@ -131,15 +131,6 @@ export type ProjectDriveFile = {
 	uploadedAt: string;
 };
 
-export type ProjectEmailLink = {
-	projectId: string;
-	url: string;
-	label: string;
-	sourceMessageId: string;
-	sourceSubject: string;
-	createdAt: string;
-};
-
 export type UpcomingProjectAssignment = {
 	record: ProjectEventRecord;
 	roles: Array<'Host' | 'Attendee' | 'Volunteer'>;

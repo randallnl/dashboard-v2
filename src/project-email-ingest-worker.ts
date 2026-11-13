@@ -1,7 +1,6 @@
 import PostalMime, { type Attachment } from 'postal-mime';
 import { CommentRepository } from '$lib/server/db/comment-repository';
 import { ProjectDriveRepository } from '$lib/server/db/project-drive-repository';
-import { ProjectEmailLinkRepository } from '$lib/server/db/project-email-link-repository';
 import { recordProjectDriveUploadActivity } from '$lib/server/project-drive/activity';
 import { ProjectEventRepository } from '$lib/server/db/project-repository';
 
@@ -9,7 +8,7 @@ const MAX_ATTACHMENTS = 10;
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const MAX_COMMENT_LENGTH = 2_000;
 const MAX_ERROR_LENGTH = 500;
-const MAX_EMAIL_LINKS = 25;
+const MAX_GOOGLE_DRIVE_DOCUMENT_LINKS = 25;
 
 type IngestRow = {
 	status: 'processing' | 'complete' | 'failed';
@@ -36,12 +35,6 @@ type DriveShortcutResponse = {
 	files: Array<DriveFile & { targetId: string }>;
 	skipped?: number;
 	message?: string;
-};
-
-type EmailLink = {
-	url: string;
-	label: string;
-	driveFileId: string;
 };
 
 function encodeBase64Url(value: ArrayBuffer): string {
@@ -136,31 +129,19 @@ export function googleDriveFileId(value: string): string {
 	}
 }
 
-function linkLabel(url: string, driveFileId: string): string {
-	if (driveFileId) return 'Google Drive document';
-	const parsed = new URL(url);
-	const host = parsed.hostname.replace(/^www\./u, '');
-	const finalPath = parsed.pathname.split('/').filter(Boolean).at(-1) ?? '';
-	if (!finalPath || finalPath.length > 38) return host;
-	try {
-		return `${host} · ${decodeURIComponent(finalPath).replace(/[-_]+/gu, ' ')}`;
-	} catch {
-		return `${host} · ${finalPath.replace(/[-_]+/gu, ' ')}`;
-	}
-}
-
-export function emailLinksFrom(...bodies: string[]): EmailLink[] {
-	const links = new Map<string, EmailLink>();
+export function googleDriveDocumentIdsFrom(...bodies: string[]): string[] {
+	const ids = new Set<string>();
 	for (const body of bodies) {
 		for (const match of body.matchAll(/\bhttps?:\/\/[^\s<>"']+/giu)) {
 			const url = normalHttpUrl(match[0]);
-			if (!url || links.has(url)) continue;
-			const driveFileId = googleDriveFileId(url);
-			links.set(url, { url, label: linkLabel(url, driveFileId), driveFileId });
-			if (links.size >= MAX_EMAIL_LINKS) return [...links.values()];
+			if (!url) continue;
+			const documentId = googleDriveFileId(url);
+			if (!documentId || ids.has(documentId)) continue;
+			ids.add(documentId);
+			if (ids.size >= MAX_GOOGLE_DRIVE_DOCUMENT_LINKS) return [...ids];
 		}
 	}
-	return [...links.values()];
+	return [...ids];
 }
 
 function emailComment(input: {
@@ -279,7 +260,7 @@ async function processProjectEmail(
 	const sourceMessageId = message.headers.get('message-id')?.trim() || (await digest(raw));
 	const subject = parsed.subject?.trim() || '(no subject)';
 	const sender = message.from.trim() || 'unknown sender';
-	const emailLinks = emailLinksFrom(parsed.text || '', parsed.html || '');
+	const googleDriveDocumentIds = googleDriveDocumentIdsFrom(parsed.text || '', parsed.html || '');
 	const commentId = `email:${projectId}:${sourceMessageId}`;
 	const now = new Date().toISOString();
 	await env.DB.prepare(
@@ -318,14 +299,6 @@ async function processProjectEmail(
 				now
 			)
 			.run();
-
-		await new ProjectEmailLinkRepository(env.DB).record({
-			projectId,
-			sourceMessageId,
-			sourceSubject: subject,
-			links: emailLinks.map(({ url, label }) => ({ url, label })),
-			now
-		});
 
 		const uploadedFileCount = await env.DB.prepare(
 			`SELECT count(*) AS count
@@ -374,10 +347,7 @@ async function processProjectEmail(
 			);
 		}
 
-		const driveDocumentIds = [
-			...new Set(emailLinks.map((link) => link.driveFileId).filter(Boolean))
-		];
-		if (driveDocumentIds.length) {
+		if (googleDriveDocumentIds.length) {
 			const existingShortcuts = await env.DB.prepare(
 				`SELECT target_file_id
 				 FROM project_email_ingest_shortcuts
@@ -388,7 +358,7 @@ async function processProjectEmail(
 			const previouslyLinked = new Set(
 				existingShortcuts.results.map((shortcut) => shortcut.target_file_id)
 			);
-			const newDriveDocumentIds = driveDocumentIds.filter((id) => !previouslyLinked.has(id));
+			const newDriveDocumentIds = googleDriveDocumentIds.filter((id) => !previouslyLinked.has(id));
 			if (newDriveDocumentIds.length) {
 				const driveRepository = new ProjectDriveRepository(env.DB);
 				const knownFolder = await driveRepository.findFolder('project', projectId);

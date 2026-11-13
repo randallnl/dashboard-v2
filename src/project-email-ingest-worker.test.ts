@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { emailLinksFrom, googleDriveFileId, inboxTokenFrom } from './project-email-ingest-worker';
+import {
+	googleDriveDocumentIdsFrom,
+	googleDriveFileId,
+	inboxTokenFrom
+} from './project-email-ingest-worker';
 
 const inbox = 'projects@nhsolidarityecosystem.com';
 const token = 'f6d46896-0c2c-45d5-a2a1-c2bb4e11a5d8';
@@ -31,21 +35,20 @@ describe('project email recipient matching', () => {
 	});
 });
 
-describe('project email link extraction', () => {
-	it('keeps normal web links for the Files & links area', () => {
-		expect(emailLinksFrom('Read https://example.com/updates.')).toEqual([
-			{ url: 'https://example.com/updates', label: 'example.com · updates', driveFileId: '' }
-		]);
+describe('project email Google Drive document extraction', () => {
+	it('ignores ordinary web links', () => {
+		expect(googleDriveDocumentIdsFrom('Read https://example.com/updates.')).toEqual([]);
 	});
 
 	it('finds Google Docs and Drive document ids for project-folder shortcuts', () => {
 		const documentId = '1AbCdEfGhIjKlMnOpQrStUvWxYz';
 		const fileId = '1ZyXwVuTsRqPoNmLkJiHgFeDcBa';
-		const links = emailLinksFrom(
-			`Agenda https://docs.google.com/document/d/${documentId}/edit`,
-			`Asset https://drive.google.com/file/d/${fileId}/view?usp=drive_link`
-		);
-		expect(links.map((link) => link.driveFileId)).toEqual([documentId, fileId]);
+		expect(
+			googleDriveDocumentIdsFrom(
+				`Agenda https://docs.google.com/document/d/${documentId}/edit`,
+				`Asset https://drive.google.com/file/d/${fileId}/view?usp=drive_link`
+			)
+		).toEqual([documentId, fileId]);
 		expect(googleDriveFileId('https://example.com/document/d/not-a-drive-file')).toBe('');
 	});
 });

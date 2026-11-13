@@ -9,7 +9,6 @@
 		EventAttachment,
 		ProjectDriveFile,
 		ProjectDriveFolder,
-		ProjectEmailLink,
 		ProjectTask
 	} from '$lib/types/domain';
 	import { onMount } from 'svelte';
@@ -67,9 +66,6 @@
 	let savingDates = $state(false);
 	let dateMessage = $state('');
 	let pinnedUrls = $state<string[]>([]);
-	let projectEmailLinks = $state<ProjectEmailLink[]>(untrack(() => data.projectEmailLinks));
-	let removingProjectEmailLink = $state('');
-	let projectEmailLinkMessage = $state('');
 	let projectDriveFolder = $state<ProjectDriveFolder | null>(
 		untrack(() => data.projectDriveFolder)
 	);
@@ -120,7 +116,7 @@
 		];
 		return [...new Map(photos.map((photo) => [photo.url, photo])).values()];
 	});
-	const visibleProjectHeaderPhotos = $derived(projectHeaderPhotos.slice(0, 4));
+	const visibleProjectHeaderPhotos = $derived(projectHeaderPhotos.slice(0, 2));
 	const additionalProjectHeaderPhotos = $derived(
 		Math.max(0, projectHeaderPhotos.length - visibleProjectHeaderPhotos.length)
 	);
@@ -318,35 +314,6 @@
 			`project-pins:${data.record.source}:${data.record.id}`,
 			JSON.stringify(pinnedUrls)
 		);
-	}
-
-	async function removeProjectEmailLink(link: ProjectEmailLink) {
-		if (removingProjectEmailLink) return;
-		removingProjectEmailLink = link.url;
-		projectEmailLinkMessage = '';
-		try {
-			const response = await fetch('/api/projects/email-links', {
-				method: 'DELETE',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ projectId: data.record.id, url: link.url })
-			});
-			const result = (await response.json()) as { removed?: boolean; message?: string };
-			if (!response.ok) throw new Error(result.message || 'Could not remove this email link.');
-			projectEmailLinks = projectEmailLinks.filter((candidate) => candidate.url !== link.url);
-			if (pinnedUrls.includes(link.url)) {
-				pinnedUrls = pinnedUrls.filter((candidate) => candidate !== link.url);
-				localStorage.setItem(
-					`project-pins:${data.record.source}:${data.record.id}`,
-					JSON.stringify(pinnedUrls)
-				);
-			}
-			projectEmailLinkMessage = result.message || 'Email link removed.';
-		} catch (cause) {
-			projectEmailLinkMessage =
-				cause instanceof Error ? cause.message : 'Could not remove this email link.';
-		} finally {
-			removingProjectEmailLink = '';
-		}
 	}
 
 	function confirmMonday(action: string, updatesMonday = true): boolean {
@@ -965,36 +932,40 @@
 					<div class="item-dashboard-hero-top">
 						<div class="project-hero-summary">
 							<p class="eyebrow">{data.record.source} dashboard</p>
-							<h1>{recordTitle}</h1>
-							<p class="item-dashboard-date">{recordDate}</p>
-							{#if visibleProjectHeaderPhotos.length}
-								<div
-									class="project-header-photos"
-									aria-label={`${projectHeaderPhotos.length} project photo${projectHeaderPhotos.length === 1 ? '' : 's'}`}
-								>
-									{#each visibleProjectHeaderPhotos as photo (photo.url)}
-										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-										<a
-											class="project-header-photo"
-											href={photo.url}
-											target="_blank"
-											rel="noreferrer"
-											title={`Open ${photo.name}`}
-										>
-											<img src={photo.thumbnailUrl} alt={photo.name} />
-										</a>
-									{/each}
-									{#if additionalProjectHeaderPhotos}
-										<a
-											class="project-header-photo-more"
-											href="#workspace-files"
-											aria-label={`View ${additionalProjectHeaderPhotos} more project photos`}
-										>
-											+{additionalProjectHeaderPhotos}
-										</a>
-									{/if}
+							<div class="project-hero-title-row">
+								<div class="project-hero-title-copy">
+									<h1>{recordTitle}</h1>
+									<p class="item-dashboard-date">{recordDate}</p>
 								</div>
-							{/if}
+								{#if visibleProjectHeaderPhotos.length}
+									<div
+										class="project-header-photos"
+										aria-label={`${projectHeaderPhotos.length} project photo${projectHeaderPhotos.length === 1 ? '' : 's'}`}
+									>
+										{#each visibleProjectHeaderPhotos as photo (photo.url)}
+											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+											<a
+												class="project-header-photo"
+												href={photo.url}
+												target="_blank"
+												rel="noreferrer"
+												title={`Open ${photo.name}`}
+											>
+												<img src={photo.thumbnailUrl} alt={photo.name} />
+											</a>
+										{/each}
+										{#if additionalProjectHeaderPhotos}
+											<a
+												class="project-header-photo-more"
+												href="#workspace-files"
+												aria-label={`View ${additionalProjectHeaderPhotos} more project photos`}
+											>
+												+{additionalProjectHeaderPhotos}
+											</a>
+										{/if}
+									</div>
+								{/if}
+							</div>
 						</div>
 						{#if data.canEdit}
 							<div class="project-hero-actions">
@@ -1407,27 +1378,6 @@
 							</button>
 						</div>
 					{/each}
-					{#each projectEmailLinks as emailLink (emailLink.url)}
-						<div
-							class:pinned-resource={pinnedUrls.includes(emailLink.url)}
-							class="resource-tile email-link-resource"
-						>
-							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-							<a href={safeUrl(emailLink.url)} target="_blank" rel="noreferrer">
-								<strong>{emailLink.label}</strong>
-								<span>Email link · {emailLink.sourceSubject || 'Forwarded message'} ↗</span>
-							</a>
-							{#if data.canEdit && data.record.source === 'project'}
-								<button
-									type="button"
-									onclick={() => void removeProjectEmailLink(emailLink)}
-									disabled={removingProjectEmailLink === emailLink.url}
-								>
-									{removingProjectEmailLink === emailLink.url ? 'Removing…' : 'Remove'}
-								</button>
-							{/if}
-						</div>
-					{/each}
 					<!-- eslint-disable svelte/no-navigation-without-resolve -->
 					{#each entries.filter(([, value]) => safeUrl(value)) as [key, value] (key)}
 						<div class:pinned-resource={pinnedUrls.includes(value)} class="resource-tile">
@@ -1443,9 +1393,6 @@
 					{/each}
 					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				</div>
-				{#if projectEmailLinkMessage}<p class="project-email-link-message" role="status">
-						{projectEmailLinkMessage}
-					</p>{/if}
 			</section>
 
 			<section class="workspace-panel workspace-card" id="workspace-schedule">

@@ -5,7 +5,6 @@ import {
 	MemberRepository,
 	ProjectEventRepository,
 	ProjectDriveRepository,
-	ProjectEmailLinkRepository,
 	QuickLinkRepository,
 	VolunteerRepository
 } from '$lib/server/db';
@@ -90,8 +89,7 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		participants,
 		projectRecords,
 		projectDriveFolder,
-		projectDriveFiles,
-		projectEmailLinks
+		projectDriveFiles
 	] = await Promise.all([
 		host?.memberId ? memberRepository.findById(host.memberId) : Promise.resolve(null),
 		memberRepository.search('', 100),
@@ -101,8 +99,7 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 			? new ProjectEventRepository(db).list({ source: 'project', includeAdminOnly: true })
 			: Promise.resolve([]),
 		source === 'project' ? driveRepository.findFolder(source, record.id) : Promise.resolve(null),
-		source === 'project' ? driveRepository.listFiles(source, record.id) : Promise.resolve([]),
-		source === 'project' ? new ProjectEmailLinkRepository(db).list(record.id) : Promise.resolve([])
+		source === 'project' ? driveRepository.listFiles(source, record.id) : Promise.resolve([])
 	]);
 	const projectStatusOptions = [
 		...new Map(
@@ -189,7 +186,6 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		projectStatusOptions,
 		projectDriveFolder,
 		projectDriveFiles,
-		projectEmailLinks,
 		projectEmailForwarding: projectEmailInboxToken
 			? {
 					address: projectEmailAddress(projectEmailInboxToken)

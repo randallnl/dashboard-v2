@@ -29,7 +29,6 @@ export { ProjectEventRepository } from './project-repository';
 export type { ProjectEventFilters, ProjectEventPage, ProjectEventSort } from './project-repository';
 export { ProjectActivityRepository } from './project-activity-repository';
 export { ProjectDriveRepository } from './project-drive-repository';
-export { ProjectEmailLinkRepository } from './project-email-link-repository';
 export { QuickLinkRepository } from './quick-link-repository';
 export { QuickBooksFinanceRepository } from './quickbooks-finance-repository';
 export type {
