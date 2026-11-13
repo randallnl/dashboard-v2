@@ -3,22 +3,6 @@ import type { Database } from './types';
 
 export class RetailRepository {
 	constructor(private readonly db: Database) {}
-	async inbox(): Promise<string> {
-		return (
-			(
-				await this.db
-					.prepare('SELECT token FROM retail_inbox WHERE id = 1')
-					.first<{ token: string }>()
-			)?.token ?? ''
-		);
-	}
-	async enableInbox(): Promise<string> {
-		await this.db
-			.prepare('INSERT OR IGNORE INTO retail_inbox (id, token) VALUES (1, ?1)')
-			.bind(crypto.randomUUID())
-			.run();
-		return this.inbox();
-	}
 	async list(): Promise<RetailOrder[]> {
 		const [orders, steps] = await Promise.all([
 			this.db

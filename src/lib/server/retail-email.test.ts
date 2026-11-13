@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { processRetailEmail } from './retail-email';
 import { faireOrderNumber, RETAIL_INBOX } from '$lib/retail/orders';
 
-function fixture(to: string, token = 'private-token') {
+function fixture(to: string) {
 	const statements: Array<{ sql: string; values: unknown[] }> = [];
 	const db = {
 		prepare: (sql: string) => {
@@ -13,7 +13,7 @@ function fixture(to: string, token = 'private-token') {
 					this.values = values;
 					return this;
 				},
-				first: async () => ({ token })
+				first: async () => null
 			};
 			statements.push(statement);
 			return statement;
@@ -38,20 +38,19 @@ describe('retail email intake', () => {
 		expect(await processRetailEmail(message, db)).toBe(false);
 		expect(statements).toHaveLength(0);
 	});
-	it('rejects an invalid private address before parsing or writing', async () => {
+	it('leaves the retired plus-address format alone', async () => {
 		const { db, message } = fixture(RETAIL_INBOX.replace('@', '+wrong@'));
-		expect(await processRetailEmail(message, db)).toBe(true);
-		expect(message.setReject).toHaveBeenCalled();
+		expect(await processRetailEmail(message, db)).toBe(false);
 		expect(db.batch).not.toHaveBeenCalled();
 	});
 	it('atomically creates a deduplicated order and five steps', async () => {
-		const { db, message, statements } = fixture(RETAIL_INBOX.replace('@', '+private-token@'));
+		const { db, message, statements } = fixture(RETAIL_INBOX);
 		await processRetailEmail(message, db);
 		expect(db.batch).toHaveBeenCalledOnce();
-		expect(statements[1].sql).toContain('INSERT OR IGNORE');
-		expect(statements[1].values[1]).toBe('faire:AB12345');
-		expect(statements.slice(2)).toHaveLength(5);
-		expect(statements.slice(2).every((statement) => statement.values[1] === 'faire:AB12345')).toBe(
+		expect(statements[0].sql).toContain('INSERT OR IGNORE');
+		expect(statements[0].values[1]).toBe('faire:AB12345');
+		expect(statements.slice(1)).toHaveLength(5);
+		expect(statements.slice(1).every((statement) => statement.values[1] === 'faire:AB12345')).toBe(
 			true
 		);
 	});

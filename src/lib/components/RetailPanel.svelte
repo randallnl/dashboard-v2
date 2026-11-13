@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { RETAIL_STEPS, type RetailOrder } from '$lib/retail/orders';
+	import { RETAIL_INBOX, RETAIL_STEPS, type RetailOrder } from '$lib/retail/orders';
 	let { canManage }: { canManage: boolean } = $props();
 	let orders = $state<RetailOrder[]>([]);
-	let inbox = $state('');
 	let loading = $state(true);
 	let busy = $state(false);
 	let error = $state('');
@@ -30,12 +29,10 @@
 			);
 			const data = (await response.json()) as {
 				orders: RetailOrder[];
-				inbox: string;
 				message?: string;
 			};
 			if (!response.ok) throw new Error(data.message || 'Unable to load retail orders.');
 			orders = data.orders;
-			inbox = data.inbox;
 			return true;
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : 'Unable to save changes. Try again.';
@@ -101,34 +98,17 @@
 					<small>An existing Faire order number keeps its original record and progress.</small>
 				</form>
 			</details>
-			<details class="retail-card">
-				<summary>Forward Faire emails</summary>
+			<article class="retail-card">
+				<h3>Forward Faire emails</h3>
 				<p>
-					Forward one order confirmation per email to create its checklist. Keep this address
-					private.
+					Forward one order confirmation per email to <strong>{RETAIL_INBOX}</strong> to create its checklist.
 				</p>
-				{#if inbox}
-					<label
-						>Private forwarding address<input
-							readonly
-							value={inbox}
-							onclick={(event) => event.currentTarget.select()}
-						/></label
-					>
-				{:else}
-					<button disabled={busy || loading} onclick={() => request({ action: 'inbox' })}
-						>Generate forwarding address</button
-					>
-				{/if}
 				<p class="muted">
-					Setup required: route this address to the dashboard email receiver in Cloudflare.
-					Generating an address does not activate delivery.
+					This dedicated inbox routes directly to the dashboard email receiver. Email text is saved
+					for reference; attachments are not imported.
 				</p>
-				<small
-					>Email text is saved for reference; attachments are not imported. Inventory updates remain
-					manual checklist steps.</small
-				>
-			</details>
+				<small>Inventory updates remain manual checklist steps.</small>
+			</article>
 		</div>
 		<div class="retail-list-heading">
 			<h3>

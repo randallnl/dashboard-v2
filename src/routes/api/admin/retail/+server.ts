@@ -5,15 +5,12 @@ import {
 	requireWritableMemberView
 } from '$lib/server/auth/member-context';
 import { RetailRepository } from '$lib/server/db/retail-repository';
-import { RETAIL_INBOX, RETAIL_STEPS } from '$lib/retail/orders';
+import { RETAIL_STEPS } from '$lib/retail/orders';
 import type { RequestHandler } from './$types';
 
 async function payload(repository: RetailRepository) {
-	const [orders, token] = await Promise.all([repository.list(), repository.inbox()]);
-	return json(
-		{ orders, inbox: token ? RETAIL_INBOX.replace('@', `+${token}@`) : '' },
-		{ headers: { 'cache-control': 'private, no-store' } }
-	);
+	const orders = await repository.list();
+	return json({ orders }, { headers: { 'cache-control': 'private, no-store' } });
 }
 export const GET: RequestHandler = async ({ locals, platform }) => {
 	const context = await loadMemberContext({ session: locals.session, env: platform?.env });
@@ -28,8 +25,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	if (!body || typeof body !== 'object') error(400, 'Invalid request.');
 	const repository = new RetailRepository(platform!.env.DB);
-	if (body.action === 'inbox') await repository.enableInbox();
-	else if (body.action === 'create') {
+	if (body.action === 'create') {
 		const title = typeof body.title === 'string' ? body.title.trim() : '';
 		const number =
 			typeof body.orderNumber === 'string' ? body.orderNumber.trim().toUpperCase() : '';

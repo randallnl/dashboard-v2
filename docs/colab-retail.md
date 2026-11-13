@@ -8,13 +8,12 @@ Every order has five reversible checklist steps: receive/check shipment, Shopify
 
 1. Apply migration `0039_retail_orders.sql` to the dashboard D1 database before deploying either the app or email worker.
 2. Deploy the app and `project-email-ingest` worker using the existing deployment scripts.
-3. As an administrator, open CoLab → Retail → Forward Faire emails and generate a private address.
-4. In Cloudflare Email Routing for `nhsolidarityecosystem.com`, route the exact generated `retail+TOKEN@nhsolidarityecosystem.com` address to `project-email-ingest`. This does not require changing the existing project addresses. No rule is created by the app.
-5. Forward a sample Faire order confirmation and confirm one order with five unchecked steps appears. Forward it again and confirm the existing order and progress remain intact.
+3. In Cloudflare Email Routing for `nhsolidarityecosystem.com`, route the exact `retail@nhsolidarityecosystem.com` address to `project-email-ingest`. This does not require changing the existing project addresses. No rule is created by the app.
+4. Forward a sample Faire order confirmation and confirm one order with five unchecked steps appears. Forward it again and confirm the existing order and progress remain intact.
 
 ## Intake behavior
 
-The private inbox token authorizes email intake. Keep it private. Emails above 5 MB are rejected. Email text is stored (maximum 20,000 characters); attachments are not saved. Treat extracted order numbers as provisional until checked against the original confirmation.
+The dedicated retail inbox accepts Faire order emails. Emails above 5 MB are rejected. Email text is stored (maximum 20,000 characters); attachments are not saved. Treat extracted order numbers as provisional until checked against the original confirmation.
 
 A detected order number deduplicates against both manual and email orders. Existing records and checklist progress are preserved. Without an identifiable order number, the email Message-ID (or raw-message hash) prevents delivery retries from duplicating an order; a separately forwarded message with no order number can still create another record. Send one order confirmation per email. Shipment update emails do not update an existing order's details.
 
