@@ -13,8 +13,8 @@ Every order has five reversible checklist steps: receive/check shipment, Shopify
 
 ## Intake behavior
 
-The dedicated retail inbox accepts Faire order emails. Emails above 5 MB are rejected. Email text is stored (maximum 20,000 characters); attachments are not saved. Treat extracted order numbers as provisional until checked against the original confirmation.
+The dedicated retail inbox accepts Faire order emails. Emails above 5 MB are rejected. Email text is stored (maximum 20,000 characters); attachments are not saved. Personalized Faire links are removed before saving the email text. Treat extracted order numbers as provisional until checked against the original confirmation.
 
-A detected order number deduplicates against both manual and email orders. Existing records and checklist progress are preserved. Without an identifiable order number, the email Message-ID (or raw-message hash) prevents delivery retries from duplicating an order; a separately forwarded message with no order number can still create another record. Send one order confirmation per email. Shipment update emails do not update an existing order's details.
+A detected order number deduplicates against both manual and email orders. Existing records and checklist progress are preserved. The order summary supplies the brand, total, item count, and product lines; HTTPS thumbnails are shown only when they are present in the confirmation and match a product name. Without an identifiable order number, the email Message-ID (or raw-message hash) prevents delivery retries from duplicating an order; a separately forwarded message with no order number can still create another record. Send one order confirmation per email. Shipment update emails do not update an existing order's details.
 
 The current first version does not extract product line items, support partial shipments, assign tasks, or edit/delete order metadata. Manual entry requires the Faire order number. Original email text is available under each order for review.

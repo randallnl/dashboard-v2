@@ -1,5 +1,10 @@
 import PostalMime from 'postal-mime';
-import { RETAIL_INBOX, faireOrderNumber } from '$lib/retail/orders';
+import {
+	RETAIL_INBOX,
+	faireOrderNumber,
+	parseFaireOrder,
+	savedFaireEmailText
+} from '$lib/retail/orders';
 import { RetailRepository } from '$lib/server/db/retail-repository';
 
 export async function processRetailEmail(
@@ -16,14 +21,20 @@ export async function processRetailEmail(
 	const parsed = await PostalMime.parse(raw);
 	const subject = parsed.subject?.trim() || 'Faire order — review details';
 	const text = parsed.text || (parsed.html || '').replace(/<[^>]*>/gu, ' ');
+	const details = parseFaireOrder({ text, html: parsed.html });
 	const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', raw)), (byte) =>
 		byte.toString(16).padStart(2, '0')
 	).join('');
 	await new RetailRepository(db).create({
-		title: subject.slice(0, 200),
-		orderNumber: faireOrderNumber(`${subject}\n${text}`),
-		notes: `Forwarded by: ${message.from}\n\n${text}`.slice(0, 20000),
-		messageId: parsed.messageId || hash
+		title: (details.brand || subject).slice(0, 200),
+		orderNumber: details.orderNumber || faireOrderNumber(`${subject}\n${text}`),
+		notes: savedFaireEmailText(`Forwarded by: ${message.from}\n\n${text}`).slice(0, 20000),
+		messageId: parsed.messageId || hash,
+		brand: details.brand,
+		itemCount: details.itemCount,
+		total: details.total,
+		products: details.products,
+		enrich: true
 	});
 	return true;
 }

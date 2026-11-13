@@ -49,10 +49,11 @@ describe('retail email intake', () => {
 		expect(db.batch).toHaveBeenCalledOnce();
 		expect(statements[0].sql).toContain('INSERT OR IGNORE');
 		expect(statements[0].values[1]).toBe('faire:AB12345');
-		expect(statements.slice(1)).toHaveLength(5);
-		expect(statements.slice(1).every((statement) => statement.values[1] === 'faire:AB12345')).toBe(
-			true
-		);
+		expect(statements.slice(1, 6)).toHaveLength(5);
+		expect(
+			statements.slice(1, 6).every((statement) => statement.values[1] === 'faire:AB12345')
+		).toBe(true);
+		expect(statements[6].sql).toContain('UPDATE retail_orders');
 	});
 	it('does not guess an order number from ordinary prose', () => {
 		expect(faireOrderNumber('Your order has shipped')).toBe('');

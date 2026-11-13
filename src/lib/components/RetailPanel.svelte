@@ -130,7 +130,20 @@
 		{#each visible as order (order.id)}
 			<article class="retail-card">
 				<div class="retail-list-heading">
-					<h3>{order.title}</h3>
+					<div>
+						<h3>{order.brand || order.title}</h3>
+						{#if order.item_count || order.total}
+							<p class="order-summary">
+								{#if order.item_count}{order.item_count} item{order.item_count === 1
+										? ''
+										: 's'}{/if}
+								{#if order.item_count && order.total}
+									·
+								{/if}
+								{order.total}
+							</p>
+						{/if}
+					</div>
 					<span
 						>{RETAIL_STEPS.filter((step) => order.steps[step.id]).length} / {RETAIL_STEPS.length} complete</span
 					>
@@ -142,6 +155,26 @@
 						order.created_at
 					).toLocaleDateString()}
 				</p>
+				{#if order.products.length}
+					<div class="product-grid" aria-label={`Products in ${order.brand || order.title}`}>
+						{#each order.products as product (`${product.name}-${product.unit_price}`)}
+							<article class="product-card">
+								{#if product.thumbnail_url}
+									<img
+										src={product.thumbnail_url}
+										alt={product.name}
+										loading="lazy"
+										referrerpolicy="no-referrer"
+									/>
+								{:else}
+									<div class="product-placeholder" aria-hidden="true">✦</div>
+								{/if}
+								<strong>{product.name}</strong>
+								<small>{product.unit_price} · Qty: {product.quantity}</small>
+							</article>
+						{/each}
+					</div>
+				{/if}
 				<div class="steps">
 					{#each RETAIL_STEPS as step (step.id)}
 						<label class="check"
@@ -243,6 +276,52 @@
 	.muted,
 	small {
 		color: #596351;
+	}
+	.order-summary {
+		margin: 0.25rem 0 0;
+		color: #596351;
+		font-size: 0.9rem;
+	}
+	.product-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+		gap: 0.65rem;
+		margin-top: 1rem;
+	}
+	.product-card {
+		display: grid;
+		gap: 0.4rem;
+		min-width: 0;
+		padding: 0.65rem;
+		border: 1px solid #e1e5dd;
+		border-radius: 10px;
+		background: #fbfcf9;
+	}
+	.product-card img,
+	.product-placeholder {
+		width: 100%;
+		aspect-ratio: 1;
+		border-radius: 7px;
+		object-fit: cover;
+		background: #edf1e9;
+	}
+	.product-placeholder {
+		display: grid;
+		place-items: center;
+		color: #83907e;
+		font-size: 1.4rem;
+	}
+	.product-card strong {
+		display: -webkit-box;
+		overflow: hidden;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		font-size: 0.83rem;
+		line-height: 1.3;
+	}
+	.product-card small {
+		font-size: 0.76rem;
 	}
 	pre {
 		white-space: pre-wrap;
