@@ -145,6 +145,7 @@
 	let savingQuickLink = $state(false);
 	let quickLinkMessage = $state('');
 	const quickLinkUrl = $derived(safeUrl(recordFields.registrationUrl));
+	const publicLinkImageUrl = $derived(safeUrl(recordFields.posterUrl));
 	const projectStatusOptions = $derived(
 		[
 			...new Map(
@@ -977,7 +978,48 @@
 									>Create social draft →</a
 								>
 								<!-- eslint-enable svelte/no-navigation-without-resolve -->
-								{#if data.record.source === 'project'}
+							</div>
+						{/if}
+					</div>
+					{#if data.record.source === 'project'}
+						<section class="public-link-reference" aria-labelledby="public-link-reference-title">
+							<div class="public-link-reference-heading">
+								<p class="eyebrow">Queerlective links</p>
+								<h2 id="public-link-reference-title">Public-facing details</h2>
+								<p>Check these exact values before publishing this project on Links.</p>
+							</div>
+							<div class="public-link-reference-preview">
+								<div class="public-link-reference-image">
+									<span>Image</span>
+									{#if publicLinkImageUrl}
+										<img src={publicLinkImageUrl} alt={`Public image for ${recordTitle}`} />
+									{:else}
+										<div class="public-link-reference-image-empty">No public image set</div>
+									{/if}
+								</div>
+								<dl>
+									<div>
+										<dt>Title</dt>
+										<dd>{recordTitle}</dd>
+									</div>
+									<div>
+										<dt>Link</dt>
+										<dd>
+											{#if quickLinkUrl}
+												<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+												<a href={quickLinkUrl} target="_blank" rel="noreferrer">{quickLinkUrl}</a>
+											{:else}
+												<span class="public-link-reference-missing">Not set</span>
+											{/if}
+										</dd>
+									</div>
+								</dl>
+							</div>
+							<div class="public-link-reference-actions">
+								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+								<a href={resolve('/links')} target="_blank" rel="noreferrer">Preview Links page ↗</a
+								>
+								{#if data.canEdit}
 									<button
 										type="button"
 										class:included={quickLinkIncluded}
@@ -993,11 +1035,11 @@
 									</button>
 								{/if}
 							</div>
-						{/if}
-					</div>
-					{#if quickLinkMessage}<p class="project-quick-link-message" role="status">
-							{quickLinkMessage}
-						</p>{/if}
+							{#if quickLinkMessage}<p class="project-quick-link-message" role="status">
+									{quickLinkMessage}
+								</p>{/if}
+						</section>
+					{/if}
 					<div class="project-pills item-dashboard-pills" aria-label="Project attributes">
 						{#if recordStatus}
 							<span class="project-pill pill-status">Status · {recordStatus}</span>

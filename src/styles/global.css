@@ -6744,6 +6744,141 @@ h2 {
 	font-size: 0.76rem;
 }
 
+.public-link-reference {
+	display: grid;
+	gap: 0.8rem;
+	margin-top: 0.9rem;
+	padding: 0.85rem;
+	border: 1px solid #c8d9cc;
+	border-radius: 0.8rem;
+	background: #f5faf6;
+}
+
+.public-link-reference-heading h2,
+.public-link-reference-heading p {
+	margin: 0;
+}
+
+.public-link-reference-heading h2 {
+	margin-top: 0.12rem;
+	font-size: 0.95rem;
+}
+
+.public-link-reference-heading > p:last-child {
+	margin-top: 0.32rem;
+	color: #51655a;
+	font-size: 0.76rem;
+	line-height: 1.35;
+}
+
+.public-link-reference-preview {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	gap: 0.8rem;
+	align-items: center;
+}
+
+.public-link-reference-image {
+	display: grid;
+	gap: 0.3rem;
+}
+
+.public-link-reference-image > span,
+.public-link-reference dt {
+	color: #5a7061;
+	font-size: 0.6rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.public-link-reference-image img,
+.public-link-reference-image-empty {
+	display: grid;
+	width: 4.6rem;
+	height: 4.6rem;
+	place-items: center;
+	overflow: hidden;
+	border: 1px solid #b6cdbb;
+	border-radius: 0.58rem;
+	background: #e7f0e9;
+}
+
+.public-link-reference-image img {
+	object-fit: cover;
+}
+
+.public-link-reference-image-empty {
+	padding: 0.4rem;
+	color: #657b6b;
+	font-size: 0.64rem;
+	font-weight: 700;
+	line-height: 1.25;
+	text-align: center;
+}
+
+.public-link-reference dl {
+	display: grid;
+	gap: 0.55rem;
+	min-width: 0;
+	margin: 0;
+}
+
+.public-link-reference dl > div {
+	display: grid;
+	gap: 0.12rem;
+}
+
+.public-link-reference dd {
+	min-width: 0;
+	margin: 0;
+	color: #1a4130;
+	font-size: 0.82rem;
+	font-weight: 720;
+}
+
+.public-link-reference dd a {
+	display: block;
+	overflow: hidden;
+	color: #194639;
+	font-weight: 650;
+	text-decoration: underline;
+	text-overflow: ellipsis;
+	text-underline-offset: 0.16em;
+	white-space: nowrap;
+}
+
+.public-link-reference-missing {
+	color: #8a6531;
+	font-weight: 650;
+}
+
+.public-link-reference-actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+}
+
+.public-link-reference-actions > a,
+.public-link-reference-actions .project-quick-link-action {
+	margin: 0;
+	padding: 0.52rem 0.7rem;
+	border: 1px solid #75937e;
+	border-radius: 0.58rem;
+	background: #fff;
+	color: #194639;
+	font-size: 0.74rem;
+	font-weight: 800;
+	text-decoration: none;
+}
+
+.public-link-reference-actions > a:hover,
+.public-link-reference-actions > a:focus-visible {
+	border-color: #194639;
+	background: #e1ece2;
+}
+
 .item-dashboard-pills {
 	margin-top: 0.65rem;
 }
@@ -6836,6 +6971,10 @@ h2 {
 	.project-header-photo-more {
 		width: 4rem;
 		height: 4rem;
+	}
+
+	.public-link-reference-preview {
+		align-items: start;
 	}
 }
 
