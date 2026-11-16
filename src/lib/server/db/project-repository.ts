@@ -51,6 +51,9 @@ function changeSummary(previous: ProjectEventRecord, next: ProjectEventRecord): 
 			changes.push(field[1]);
 		}
 	}
+	// Location changes are useful on the project itself, but are too low-signal for the
+	// dashboard-wide activity feed and can be caused by a source-column remap.
+	if (changes.length === 1 && changes[0] === 'location') return '';
 	if (!changes.length) return '';
 	if (changes.length === 1) return `Updated ${changes[0]}.`;
 	if (changes.length === 2) return `Updated ${changes[0]} and ${changes[1]}.`;

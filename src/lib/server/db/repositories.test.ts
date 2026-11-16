@@ -413,6 +413,43 @@ describe('ProjectEventRepository', () => {
 		);
 	});
 
+	it('does not create dashboard activity for a location-only sync change', async () => {
+		const mock = createDatabaseMock({
+			first: {
+				id: 'event-1',
+				source: 'project',
+				title: 'Open studio',
+				date_value: '2026-08-01',
+				end_date_value: '',
+				status: 'Scheduled',
+				location: 'Old location field',
+				owner: 'Queerlective',
+				admin_only: 0,
+				record_json: '{}',
+				synced_at: '2026-07-24T12:00:00.000Z'
+			}
+		});
+		const repository = new ProjectEventRepository(mock.db);
+
+		await repository.upsert({
+			id: 'event-1',
+			source: 'project',
+			title: 'Open studio',
+			dateValue: '2026-08-01',
+			endDateValue: '',
+			status: 'Scheduled',
+			location: 'New location field',
+			owner: 'Queerlective',
+			adminOnly: false,
+			record: {},
+			syncedAt: '2026-07-24T12:30:00.000Z'
+		});
+
+		expect(
+			mock.prepare.mock.calls.some(([query]) => String(query).includes('project_event_change_log'))
+		).toBe(false);
+	});
+
 	it('applies search, date, and pagination filters in D1', async () => {
 		const mock = createDatabaseMock();
 		const repository = new ProjectEventRepository(mock.db);
