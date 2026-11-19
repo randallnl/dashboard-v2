@@ -3,9 +3,9 @@ import type { Database } from './types';
 export type InstagramConnection = {
 	instagramAccountId: string;
 	instagramUsername: string;
-	facebookPageId: string;
-	facebookPageName: string;
-	encryptedPageAccessToken: string;
+	connectionSourceId: string;
+	connectionSourceName: string;
+	encryptedAccessToken: string;
 	connectedByMemberId: string;
 	connectedAt: string;
 	updatedAt: string;
@@ -15,11 +15,11 @@ export type InstagramConnection = {
 
 export type InstagramConnectionCandidate = {
 	selectionId: string;
-	facebookPageId: string;
-	facebookPageName: string;
+	accountId: string;
+	accountLabel: string;
 	instagramAccountId: string;
 	instagramUsername: string;
-	encryptedPageAccessToken: string;
+	encryptedAccessToken: string;
 	createdByMemberId: string;
 	expiresAt: string;
 	createdAt: string;
@@ -54,9 +54,9 @@ function mapConnection(row: InstagramConnectionRow): InstagramConnection {
 	return {
 		instagramAccountId: row.instagram_account_id,
 		instagramUsername: row.instagram_username,
-		facebookPageId: row.facebook_page_id,
-		facebookPageName: row.facebook_page_name,
-		encryptedPageAccessToken: row.encrypted_page_access_token,
+		connectionSourceId: row.facebook_page_id,
+		connectionSourceName: row.facebook_page_name,
+		encryptedAccessToken: row.encrypted_page_access_token,
 		connectedByMemberId: row.connected_by_member_id,
 		connectedAt: row.connected_at,
 		updatedAt: row.updated_at,
@@ -68,11 +68,11 @@ function mapConnection(row: InstagramConnectionRow): InstagramConnection {
 function mapCandidate(row: InstagramConnectionCandidateRow): InstagramConnectionCandidate {
 	return {
 		selectionId: row.selection_id,
-		facebookPageId: row.facebook_page_id,
-		facebookPageName: row.facebook_page_name,
+		accountId: row.facebook_page_id,
+		accountLabel: row.facebook_page_name,
 		instagramAccountId: row.instagram_account_id,
 		instagramUsername: row.instagram_username,
-		encryptedPageAccessToken: row.encrypted_page_access_token,
+		encryptedAccessToken: row.encrypted_page_access_token,
 		createdByMemberId: row.created_by_member_id,
 		expiresAt: row.expires_at,
 		createdAt: row.created_at
@@ -129,9 +129,9 @@ export class SocialPlatformConnectionRepository {
 	async saveInstagramConnection(input: {
 		instagramAccountId: string;
 		instagramUsername: string;
-		facebookPageId: string;
-		facebookPageName: string;
-		encryptedPageAccessToken: string;
+		connectionSourceId: string;
+		connectionSourceName: string;
+		encryptedAccessToken: string;
 		connectedByMemberId: string;
 		now: string;
 	}): Promise<void> {
@@ -156,9 +156,9 @@ export class SocialPlatformConnectionRepository {
 			.bind(
 				input.instagramAccountId,
 				input.instagramUsername,
-				input.facebookPageId,
-				input.facebookPageName,
-				input.encryptedPageAccessToken,
+				input.connectionSourceId,
+				input.connectionSourceName,
+				input.encryptedAccessToken,
 				input.connectedByMemberId,
 				input.now
 			)
@@ -194,11 +194,11 @@ export class SocialPlatformConnectionRepository {
 					)
 					.bind(
 						input.selectionId,
-						candidate.facebookPageId,
-						candidate.facebookPageName,
+						candidate.accountId,
+						candidate.accountLabel,
 						candidate.instagramAccountId,
 						candidate.instagramUsername,
-						candidate.encryptedPageAccessToken,
+						candidate.encryptedAccessToken,
 						input.createdByMemberId,
 						input.expiresAt,
 						input.createdAt
@@ -230,7 +230,7 @@ export class SocialPlatformConnectionRepository {
 
 	async consumeInstagramCandidate(input: {
 		selectionId: string;
-		facebookPageId: string;
+		accountId: string;
 		createdByMemberId: string;
 		now: string;
 	}): Promise<InstagramConnectionCandidate | null> {
@@ -242,7 +242,7 @@ export class SocialPlatformConnectionRepository {
 				 WHERE selection_id = ?1 AND facebook_page_id = ?2 AND created_by_member_id = ?3
 				 LIMIT 1`
 			)
-			.bind(input.selectionId, input.facebookPageId, input.createdByMemberId)
+			.bind(input.selectionId, input.accountId, input.createdByMemberId)
 			.first<InstagramConnectionCandidateRow>();
 		await this.db
 			.prepare('DELETE FROM social_instagram_connection_candidates WHERE selection_id = ?1')

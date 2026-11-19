@@ -194,7 +194,6 @@
 			<NotificationCenter
 				shifts={upcomingMemberShifts}
 				projects={upcomingProjects}
-				availableShifts={initialAvailableShifts}
 				canVote={capabilities.canVote}
 				readOnly={isViewingAs}
 			/>
@@ -252,12 +251,6 @@
 						<h3>Commitments this week</h3>
 						<a href={colabScheduleHref}>See your schedule →</a>
 					</article>
-					<article class="overview-focus-card">
-						<p class="eyebrow">Ways to help</p>
-						<strong>{initialAvailableShifts.length}</strong>
-						<h3>Open CoLab shifts</h3>
-						<a href={colabScheduleHref}>View and sign up →</a>
-					</article>
 				</div>
 				<div class="overview-shortcuts" aria-label="CoLab shortcuts">
 					<a href={colabScheduleHref}>Schedule</a>
@@ -305,7 +298,6 @@
 			<UpcomingMemberPanel
 				shifts={upcomingMemberShifts}
 				projects={upcomingProjects}
-				availableShifts={initialAvailableShifts}
 				readOnly={isViewingAs}
 			/>
 		{/if}

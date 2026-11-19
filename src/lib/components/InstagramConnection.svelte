@@ -3,7 +3,7 @@
 
 	type Connection = {
 		instagramUsername: string;
-		facebookPageName: string;
+		connectionSourceName: string;
 		connectedAt: string;
 		updatedAt: string;
 		lastVerifiedAt: string;
@@ -12,8 +12,8 @@
 
 	type Candidate = {
 		selectionId: string;
-		facebookPageId: string;
-		facebookPageName: string;
+		accountId: string;
+		accountLabel: string;
 		instagramUsername: string;
 	};
 
@@ -34,7 +34,7 @@
 	let connection = $state<Connection | null>(null);
 	let candidates = $state<Candidate[]>([]);
 	let loading = $state(true);
-	let selectingPageId = $state('');
+	let selectingAccountId = $state('');
 	let message = $state('');
 	let failed = $state(false);
 	let callbackUrl = $state('');
@@ -60,7 +60,7 @@
 	}
 
 	async function chooseAccount(candidate: Candidate) {
-		selectingPageId = candidate.facebookPageId;
+		selectingAccountId = candidate.accountId;
 		message = '';
 		try {
 			const response = await fetch('/api/social/instagram/select-account', {
@@ -68,7 +68,7 @@
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
 					selectionId: candidate.selectionId,
-					facebookPageId: candidate.facebookPageId
+					accountId: candidate.accountId
 				})
 			});
 			const result = (await response.json()) as { message?: string };
@@ -82,7 +82,7 @@
 			message =
 				cause instanceof Error ? cause.message : 'Could not connect that Instagram account.';
 		} finally {
-			selectingPageId = '';
+			selectingAccountId = '';
 		}
 	}
 
@@ -127,8 +127,8 @@
 		<div class="social-instagram-setup">
 			<strong>Meta app credentials needed</strong>
 			<p>
-				Add the Meta app ID, app secret, and token-encryption key in Cloudflare before connecting
-				the account.
+				Add the Meta app ID, app secret, Unified Login configuration ID, and token-encryption key in
+				Cloudflare before connecting the account.
 			</p>
 			{#if callbackUrl}
 				<code>{callbackUrl}</code>
@@ -138,10 +138,10 @@
 		<div class="social-instagram-setup">
 			<strong>Choose the account to publish from</strong>
 			<div class="social-instagram-account-list">
-				{#each candidates as candidate (candidate.facebookPageId)}
+				{#each candidates as candidate (candidate.accountId)}
 					<button
 						type="button"
-						disabled={Boolean(selectingPageId)}
+						disabled={Boolean(selectingAccountId)}
 						onclick={() => void chooseAccount(candidate)}
 					>
 						<span
@@ -149,8 +149,8 @@
 								? `@${candidate.instagramUsername}`
 								: 'Instagram account'}</span
 						>
-						<small>{candidate.facebookPageName}</small>
-						{#if selectingPageId === candidate.facebookPageId}<em>Connecting…</em>{/if}
+						<small>{candidate.accountLabel}</small>
+						{#if selectingAccountId === candidate.accountId}<em>Connecting…</em>{/if}
 					</button>
 				{/each}
 			</div>
@@ -163,7 +163,7 @@
 					: 'Instagram account'}</strong
 			>
 			<p>
-				{connection.facebookPageName || 'Linked Facebook Page'} · connected {dateLabel(
+				{connection.connectionSourceName || 'Meta Unified Login'} · connected {dateLabel(
 					connection.connectedAt
 				)}
 			</p>
@@ -176,8 +176,8 @@
 		<div class="social-instagram-setup">
 			<strong>Ready to connect</strong>
 			<p>
-				Use a Meta administrator login for the Facebook Page linked to your Instagram professional
-				account.
+				Use a Meta administrator login with access to the business portfolio and Instagram
+				professional account selected in Unified Login.
 			</p>
 			<a class="social-instagram-connect" href="/api/social/instagram/connect">Connect Instagram</a>
 		</div>

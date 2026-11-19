@@ -203,7 +203,14 @@ export class SocialPostRepository {
 	async deleteUnpublished(id: string): Promise<boolean> {
 		const result = await this.db
 			.prepare(
-				"DELETE FROM social_posts WHERE id = ?1 AND status IN ('draft', 'review', 'scheduled')"
+				`DELETE FROM social_posts
+				 WHERE id = ?1
+				 AND status IN ('draft', 'review', 'scheduled')
+				 AND NOT EXISTS (
+					 SELECT 1 FROM social_post_channels
+					 WHERE social_post_channels.post_id = social_posts.id
+					 AND social_post_channels.status = 'published'
+				 )`
 			)
 			.bind(id)
 			.run();
@@ -247,6 +254,14 @@ export class SocialPostRepository {
 		return row ? mapAsset(row) : null;
 	}
 
+	async removeAsset(postId: string, assetId: string): Promise<boolean> {
+		const result = await this.db
+			.prepare('DELETE FROM social_post_assets WHERE id = ?1 AND post_id = ?2')
+			.bind(assetId, postId)
+			.run();
+		return Boolean(result.meta.changes);
+	}
+
 	async addReview(
 		postId: string,
 		review: NewSocialPostReview,
@@ -282,6 +297,42 @@ export class SocialPostRepository {
 		]);
 		if (!postResult.meta.changes) return null;
 		return this.find(postId);
+	}
+
+	async markChannelPublished(input: {
+		postId: string;
+		platform: SocialPlatform;
+		publishedAt: string;
+		publishedUrl: string;
+	}): Promise<SocialPost | null> {
+		const channelResult = await this.db
+			.prepare(
+				`UPDATE social_post_channels
+				 SET status = 'published', published_at = ?3, published_url = ?4
+				 WHERE post_id = ?1 AND platform = ?2 AND status != 'published'`
+			)
+			.bind(input.postId, input.platform, input.publishedAt, input.publishedUrl)
+			.run();
+		if (!channelResult.meta.changes) return null;
+		const post = await this.find(input.postId);
+		if (!post) return null;
+		const allChannelsPublished =
+			post.channels.length > 0 && post.channels.every((channel) => channel.status === 'published');
+		await this.db
+			.prepare(
+				`UPDATE social_posts
+				 SET status = ?2, published_at = ?3, published_url = ?4, updated_at = ?5
+				 WHERE id = ?1`
+			)
+			.bind(
+				post.id,
+				allChannelsPublished ? 'published' : post.status,
+				allChannelsPublished ? input.publishedAt : post.publishedAt,
+				allChannelsPublished ? input.publishedUrl : post.publishedUrl,
+				input.publishedAt
+			)
+			.run();
+		return this.find(input.postId);
 	}
 
 	private async hydrate(post: SocialPost): Promise<SocialPost> {

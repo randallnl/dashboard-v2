@@ -258,7 +258,8 @@ describe('Monday event mapping', () => {
 			endDateValue: '2026-08-11',
 			status: 'Scheduled',
 			location: 'CoLab',
-			description: 'Updated details'
+			description: 'Updated details',
+			registrationUrl: 'https://example.com/register'
 		});
 
 		expect(request).toHaveBeenCalledWith(
@@ -269,6 +270,9 @@ describe('Monday event mapping', () => {
 				columnValues: expect.stringContaining('"name":"Updated studio night"')
 			})
 		);
+		expect(JSON.parse(request.mock.calls[0][1].columnValues)).toMatchObject({
+			link_mkppdhq5: { url: 'https://example.com/register', text: '' }
+		});
 	});
 
 	it('clears optional project dates in Monday when they are removed', async () => {
@@ -281,7 +285,8 @@ describe('Monday event mapping', () => {
 			endDateValue: '',
 			status: 'Ongoing',
 			location: 'CoLab',
-			description: 'No fixed dates.'
+			description: 'No fixed dates.',
+			registrationUrl: ''
 		});
 
 		expect(request).toHaveBeenCalledWith(
@@ -290,6 +295,9 @@ describe('Monday event mapping', () => {
 			columnValues: expect.stringContaining('"date_mkns6cak":{}')
 			})
 		);
+		expect(JSON.parse(request.mock.calls[0][1].columnValues)).toMatchObject({
+			link_mkppdhq5: null
+		});
 	});
 
 	it('writes normalized attendee emails to the project dropdown', async () => {

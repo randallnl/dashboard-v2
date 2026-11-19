@@ -6,19 +6,16 @@
 	let {
 		shifts,
 		projects,
-		availableShifts,
 		readOnly = false
 	}: {
 		shifts: Shift[];
 		projects: UpcomingProjectAssignment[];
-		availableShifts: Shift[];
 		readOnly?: boolean;
 	} = $props();
 
 	const visibleShifts = $derived(shifts.slice(0, 3));
 	let showAllProjects = $state(false);
 	const visibleProjects = $derived(showAllProjects ? projects : projects.slice(0, 3));
-	const visibleOpenShifts = $derived(availableShifts.slice(0, 3));
 	let switchRequests = $state<ShiftSwitchRequest[]>([]);
 	let selectedShift = $state<Shift | null>(null);
 	let replacement = $state<{ id: string; label: string } | null>(null);
@@ -136,13 +133,12 @@
 			<p class="eyebrow">Your week</p>
 			<h2 id="coming-up-title">What’s next</h2>
 		</div>
-		<p>Your commitments and the next ways to participate.</p>
+		<p>Your upcoming commitments and projects.</p>
 	</div>
 
 	<div class="upcoming-summary" aria-label="Upcoming summary">
 		<div><strong>{shifts.length}</strong><span>Assigned shifts</span></div>
 		<div><strong>{projects.length}</strong><span>Projects and events</span></div>
-		<div><strong>{availableShifts.length}</strong><span>Open shifts</span></div>
 	</div>
 	{#if switchMessage}<p class="shift-message" role="status">{switchMessage}</p>{/if}
 	{#if switchRequests.length}
@@ -252,28 +248,6 @@
 			{/if}
 		</div>
 
-		<div class="upcoming-group upcoming-action-group">
-			<div class="upcoming-group-heading">
-				<h3>Ways to help</h3>
-				<a href="#available-shifts-title">See all</a>
-			</div>
-			{#if visibleOpenShifts.length}
-				<div class="upcoming-open-shift-list">
-					{#each visibleOpenShifts as shift (shift.id)}
-						<a href="#available-shifts-title">
-							<div>
-								<time datetime={shift.dateValue}>{dateLabel(shift.dateValue)}</time>
-								<strong>{shift.title}</strong>
-								<span>{shift.timeLabel || shift.dateLabel}</span>
-							</div>
-							<span class="upcoming-action-label">View & sign up</span>
-						</a>
-					{/each}
-				</div>
-			{:else}
-				<p class="upcoming-empty">All currently listed shifts are covered.</p>
-			{/if}
-		</div>
 	</div>
 
 	{#if selectedShift}

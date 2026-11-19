@@ -12,6 +12,15 @@ import type { RequestHandler } from './$types';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 
+function httpUrl(value: string): string {
+	try {
+		const url = new URL(value);
+		return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+	} catch {
+		return '';
+	}
+}
+
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const env = platform!.env;
 	const context = await loadMemberContext({ session: locals.session, env });
@@ -25,6 +34,12 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	const repository = new ProjectEventRepository(env.DB);
 	const existing = await repository.findById(source, eventId);
 	if (!existing) error(404, 'Project or event not found.');
+	const existingRegistrationUrl =
+		typeof existing.record.registrationUrl === 'string' ? existing.record.registrationUrl : '';
+	const requestedRegistrationUrl =
+		typeof body?.registrationUrl === 'string'
+			? body.registrationUrl.trim()
+			: existingRegistrationUrl;
 
 	const update: ProjectEventUpdate = {
 		title: typeof body?.title === 'string' ? body.title.trim() : '',
@@ -32,7 +47,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		endDateValue: typeof body?.endDateValue === 'string' ? body.endDateValue.trim() : '',
 		status: typeof body?.status === 'string' ? body.status.trim() : '',
 		location: typeof body?.location === 'string' ? body.location.trim() : '',
-		description: typeof body?.description === 'string' ? body.description.trim() : ''
+		description: typeof body?.description === 'string' ? body.description.trim() : '',
+		registrationUrl: source === 'project' ? httpUrl(requestedRegistrationUrl) : ''
 	};
 	const hasValidStartDate = DATE.test(update.dateValue);
 	if (
@@ -41,9 +57,10 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		(source === 'community' && !hasValidStartDate) ||
 		(source === 'project' && update.dateValue && !hasValidStartDate) ||
 		(update.endDateValue && !DATE.test(update.endDateValue)) ||
-		update.description.length > 10_000
+		update.description.length > 10_000 ||
+		(source === 'project' && requestedRegistrationUrl && !update.registrationUrl)
 	) {
-		error(400, 'Enter a title, valid dates, and a description under 10,000 characters.');
+		error(400, 'Enter a title, valid dates, a valid registration link, and a description under 10,000 characters.');
 	}
 	if (update.endDateValue && (!update.dateValue || update.endDateValue < update.dateValue)) {
 		error(400, 'The end date cannot be before the start date.');
@@ -61,7 +78,11 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		endDateValue: source === 'project' ? update.endDateValue : '',
 		status: update.status,
 		location: source === 'project' ? update.location : existing.location,
-		record: { ...existing.record, description: update.description },
+		record: {
+			...existing.record,
+			description: update.description,
+			...(source === 'project' ? { registrationUrl: update.registrationUrl } : {})
+		},
 		syncedAt: new Date().toISOString()
 	};
 	await repository.upsert(record);

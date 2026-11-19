@@ -36,8 +36,8 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 	const repository = new SocialPostRepository(env!.DB);
 	const post = await repository.find(params.id);
 	if (!post) error(404, 'Social post not found.');
-	if (post.status === 'published') {
-		error(409, 'Published posts cannot be deleted.');
+	if (post.status === 'published' || post.channels.some((channel) => channel.status === 'published')) {
+		error(409, 'Posts with a published channel cannot be deleted.');
 	}
 	if (!(await repository.deleteUnpublished(post.id))) {
 		error(409, 'This post is already published or has been deleted.');

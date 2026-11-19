@@ -65,6 +65,7 @@ export type ProjectEventUpdate = {
 	status: string;
 	location: string;
 	description: string;
+	registrationUrl: string;
 };
 
 type FileValue = {
@@ -523,6 +524,9 @@ export class EventDirectory {
 		if (source === 'project') {
 			columnValues[PROJECT_COLUMNS.end] = update.endDateValue ? { date: update.endDateValue } : {};
 			columnValues[PROJECT_COLUMNS.location] = update.location;
+			columnValues[PROJECT_COLUMNS.registration] = update.registrationUrl
+				? { url: update.registrationUrl, text: '' }
+				: null;
 		}
 		await this.monday.request(UPDATE_ITEM, {
 			boardId,

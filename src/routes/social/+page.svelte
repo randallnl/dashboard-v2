@@ -79,6 +79,9 @@
 	let loadError = $state('');
 	let saving = $state(false);
 	let deleting = $state(false);
+	let publishingInstagram = $state(false);
+	let managingAssetId = $state('');
+	let convertingAssetId = $state('');
 	let message = $state('');
 	let failed = $state(false);
 	let selectedId = $state('');
@@ -99,6 +102,7 @@
 	let mediaInput = $state<HTMLInputElement>();
 	let libraryAssets = $state<SocialLibraryAsset[]>(untrack(() => data.libraryAssets));
 	let selectedLibraryAssetIds = $state<string[]>([]);
+	let instagramAssetId = $state('');
 	let librarySearch = $state('');
 	let libraryFile = $state<File | null>(null);
 	let libraryFileInput = $state<HTMLInputElement>();
@@ -113,6 +117,16 @@
 	let calendarWeekOffset = $state(0);
 
 	const selectedPost = $derived(posts.find((post) => post.id === selectedId) ?? null);
+	const instagramChannel = $derived(
+		selectedPost?.channels.find((channel) => channel.platform === 'instagram') ?? null
+	);
+	const instagramPublishableAsset = $derived(
+		selectedPost?.assets.find(
+			(asset) => asset.id === instagramAssetId && hasInstagramPublishableImage(asset)
+		) ??
+			selectedPost?.assets.find(hasInstagramPublishableImage) ??
+			null
+	);
 	const formHeading = $derived(selectedPost ? 'Edit content' : 'New content');
 	const formLabel = $derived(selectedPost ? 'Save changes' : 'Save draft');
 	const projectGraphics = $derived(project?.assets ?? []);
@@ -213,6 +227,30 @@
 
 	function isVideo(asset: SocialPostAsset): boolean {
 		return asset.contentType.startsWith('video/') || /\.(mp4|mov)$/iu.test(asset.filename);
+	}
+
+	function isImage(asset: SocialPostAsset): boolean {
+		return asset.contentType.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/iu.test(asset.filename);
+	}
+
+	function hasInstagramPublishableImage(asset: SocialPostAsset): boolean {
+		return (
+			asset.storage === 'r2' &&
+			(asset.contentType.toLocaleLowerCase() === 'image/jpeg' || /\.jpe?g$/iu.test(asset.filename))
+		);
+	}
+
+	function canConvertAssetToJpeg(asset: SocialPostAsset): boolean {
+		return asset.storage === 'r2' && isImage(asset) && !hasInstagramPublishableImage(asset);
+	}
+
+	function canManagePostAssets(post: SocialPost): boolean {
+		return !post.channels.some((channel) => channel.status === 'published');
+	}
+
+	function jpegFilename(filename: string): string {
+		const stem = filename.replace(/\.[^.]+$/u, '').trim() || 'instagram-image';
+		return `${stem.slice(0, 240)}.jpg`;
 	}
 
 	function postPreviewAsset(post: SocialPost): SocialPostAsset | undefined {
@@ -358,11 +396,14 @@
 		selectedProjectAssetUrls = [];
 		mediaFiles = [];
 		selectedLibraryAssetIds = [];
+		instagramAssetId = '';
 		projectPicker = '';
 		if (mediaInput) mediaInput.value = '';
 		reviewNote = '';
 		message = '';
 		failed = false;
+		managingAssetId = '';
+		convertingAssetId = '';
 	}
 
 	function hasEditorContent(): boolean {
@@ -449,10 +490,13 @@
 			.map((asset) => asset.sourceUrl);
 		syncLibrarySelection(post);
 		mediaFiles = [];
+		instagramAssetId = post.assets.find(hasInstagramPublishableImage)?.id ?? '';
 		if (mediaInput) mediaInput.value = '';
 		reviewNote = '';
 		message = '';
 		failed = false;
+		managingAssetId = '';
+		convertingAssetId = '';
 	}
 
 	function selectMedia(event: Event) {
@@ -630,7 +674,9 @@
 	}
 
 	function canDeletePost(post: SocialPost | null): post is SocialPost {
-		return Boolean(post && post.status !== 'published');
+		return Boolean(
+			post && post.status !== 'published' && !post.channels.some((channel) => channel.status === 'published')
+		);
 	}
 
 	async function deleteUnpublishedPost() {
@@ -664,6 +710,127 @@
 			message = cause instanceof Error ? cause.message : 'Could not delete this draft.';
 		} finally {
 			deleting = false;
+		}
+	}
+
+	async function removePostAsset(asset: SocialPostAsset) {
+		const post = selectedPost;
+		if (!post || !canManagePostAssets(post)) return;
+		if (
+			!window.confirm(
+				`Remove “${asset.filename}” from “${post.title}”? The original shared library file will be kept.`
+			)
+		) {
+			return;
+		}
+		managingAssetId = asset.id;
+		failed = false;
+		message = '';
+		try {
+			const response = await fetch(`/api/social/posts/${post.id}/assets/${asset.id}`, {
+				method: 'DELETE'
+			});
+			const result = (await response.json()) as { post?: SocialPost; message?: string };
+			if (!response.ok || !result.post) {
+				throw new Error(result.message || 'Could not remove this attachment.');
+			}
+			posts = [result.post, ...posts.filter((candidate) => candidate.id !== result.post!.id)];
+			openPost(result.post);
+			message = result.message || 'Attachment removed from this post.';
+		} catch (cause) {
+			failed = true;
+			message = cause instanceof Error ? cause.message : 'Could not remove this attachment.';
+		} finally {
+			managingAssetId = '';
+		}
+	}
+
+	async function convertAssetToJpeg(asset: SocialPostAsset) {
+		const post = selectedPost;
+		if (!post || !canConvertAssetToJpeg(asset) || !canManagePostAssets(post)) return;
+		convertingAssetId = asset.id;
+		failed = false;
+		message = '';
+		try {
+			const sourceResponse = await fetch(assetUrl(asset));
+			if (!sourceResponse.ok) throw new Error('Could not load this visual for conversion.');
+			const bitmap = await createImageBitmap(await sourceResponse.blob());
+			try {
+				const canvas = document.createElement('canvas');
+				canvas.width = bitmap.width;
+				canvas.height = bitmap.height;
+				const drawingContext = canvas.getContext('2d');
+				if (!drawingContext) throw new Error('Your browser could not prepare this visual.');
+				drawingContext.fillStyle = '#ffffff';
+				drawingContext.fillRect(0, 0, canvas.width, canvas.height);
+				drawingContext.drawImage(bitmap, 0, 0);
+				const jpeg = await new Promise<Blob>((resolve, reject) => {
+					canvas.toBlob(
+						(blob) => (blob ? resolve(blob) : reject(new Error('Could not create a JPG copy.'))),
+						'image/jpeg',
+						0.92
+					);
+				});
+				const form = new FormData();
+				form.append(
+					'asset',
+					new File([jpeg], jpegFilename(asset.filename), { type: 'image/jpeg' })
+				);
+				const response = await fetch(`/api/social/posts/${post.id}/assets`, {
+					method: 'POST',
+					body: form
+				});
+				const result = (await response.json()) as { post?: SocialPost; message?: string };
+				if (!response.ok || !result.post) {
+					throw new Error(result.message || 'Could not add the JPG copy to this post.');
+				}
+				posts = [result.post, ...posts.filter((candidate) => candidate.id !== result.post!.id)];
+				openPost(result.post);
+				message = 'JPG copy added and selected for Instagram. The original visual is still attached.';
+			} finally {
+				bitmap.close();
+			}
+		} catch (cause) {
+			failed = true;
+			message =
+				cause instanceof Error ? cause.message : 'Could not make a JPG copy of this attachment.';
+		} finally {
+			convertingAssetId = '';
+		}
+	}
+
+	async function publishToInstagram() {
+		const post = selectedPost;
+		if (!post || !instagramChannel || !instagramPublishableAsset) return;
+		if (instagramChannel.status === 'published') return;
+		if (
+			!window.confirm(
+				`Publish “${post.title}” to Instagram now? The selected JPG and Instagram caption will be posted publicly right away.`
+			)
+		) {
+			return;
+		}
+		publishingInstagram = true;
+		failed = false;
+		message = '';
+		try {
+			const response = await fetch(`/api/social/posts/${post.id}/publish/instagram`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ assetId: instagramPublishableAsset.id })
+			});
+			const result = (await response.json()) as { post?: SocialPost; message?: string };
+			if (!response.ok || !result.post) {
+				throw new Error(result.message || 'Instagram could not publish this post.');
+			}
+			posts = [result.post, ...posts.filter((candidate) => candidate.id !== result.post!.id)];
+			openPost(result.post);
+			message = result.message || 'Published to Instagram.';
+		} catch (cause) {
+			failed = true;
+			message = cause instanceof Error ? cause.message : 'Instagram could not publish this post.';
+		} finally {
+			publishingInstagram = false;
 		}
 	}
 
@@ -1083,7 +1250,7 @@
 						{/if}
 
 						<label class="social-media-input">
-							<span>Visuals</span>
+							<span>{selectedPost ? 'Add or replace visuals' : 'Visuals'}</span>
 							<input
 								bind:this={mediaInput}
 								type="file"
@@ -1098,6 +1265,105 @@
 						</label>
 
 						{#if selectedPost}
+							<section class="social-attached-assets" aria-labelledby="attached-assets-title">
+								<header>
+									<div>
+										<p class="eyebrow">Post media</p>
+										<h3 id="attached-assets-title">Attached visuals</h3>
+									</div>
+									<span>{selectedPost.assets.length}</span>
+								</header>
+								{#if selectedPost.assets.length}
+									<div class="social-attached-asset-grid">
+										{#each selectedPost.assets as asset (asset.id)}
+											<article class:instagram-selected={instagramPublishableAsset?.id === asset.id}>
+												<div class="social-attached-asset-preview">
+													{#if isVideo(asset)}
+														<span aria-label="Video attachment">▶</span>
+													{:else}
+														<img src={assetUrl(asset)} alt={asset.filename} />
+													{/if}
+												</div>
+												<div class="social-attached-asset-body">
+													<strong title={asset.filename}>{asset.filename}</strong>
+													<small>{asset.contentType || 'Attached file'}</small>
+													{#if instagramChannel && hasInstagramPublishableImage(asset)}
+														<label class="social-instagram-asset-choice">
+															<input
+																type="radio"
+																name="instagram-asset"
+																checked={instagramPublishableAsset?.id === asset.id}
+																onchange={() => (instagramAssetId = asset.id)}
+															/>
+															<span>Use for Instagram</span>
+														</label>
+													{/if}
+													<div class="social-attached-asset-actions">
+														{#if canConvertAssetToJpeg(asset) && canManagePostAssets(selectedPost)}
+															<button
+																type="button"
+																onclick={() => void convertAssetToJpeg(asset)}
+																disabled={Boolean(convertingAssetId || managingAssetId)}
+															>{convertingAssetId === asset.id
+																? 'Making JPG…'
+																: 'Make a JPG copy'}</button
+															>
+														{/if}
+														{#if canManagePostAssets(selectedPost)}
+															<button
+																type="button"
+																class="text-button social-attachment-remove"
+																onclick={() => void removePostAsset(asset)}
+																disabled={Boolean(convertingAssetId || managingAssetId)}
+															>{managingAssetId === asset.id ? 'Removing…' : 'Remove'}</button
+															>
+														{/if}
+													</div>
+												</div>
+											</article>
+										{/each}
+									</div>
+								{:else}
+									<p class="social-attached-assets-empty">
+										No visuals attached yet. Add one above or choose from the shared asset library below.
+									</p>
+								{/if}
+							</section>
+							{#if instagramChannel}
+								<section class="social-instagram-publish" aria-labelledby="instagram-publish-title">
+									<div>
+										<p class="eyebrow">Connected channel</p>
+										<h3 id="instagram-publish-title">Publish to Instagram</h3>
+									</div>
+									{#if instagramChannel.status === 'published'}
+										<div class="social-instagram-published">
+											<strong>Published {dateLabel(instagramChannel.publishedAt)}</strong>
+											{#if instagramChannel.publishedUrl}
+												<a href={instagramChannel.publishedUrl} target="_blank" rel="noreferrer"
+													>View live post <span aria-hidden="true">↗</span></a
+												>
+											{/if}
+										</div>
+									{:else if instagramPublishableAsset}
+										<p>
+											Uses <strong>{instagramPublishableAsset.filename}</strong> and this channel’s caption.
+											Publishing is immediate.
+										</p>
+										<button
+											type="button"
+											class="instagram-publish-action"
+											onclick={() => void publishToInstagram()}
+											disabled={publishingInstagram || saving || deleting}
+										>{publishingInstagram ? 'Publishing to Instagram…' : 'Publish to Instagram now'}</button
+										>
+									{:else}
+										<p>
+											Choose a JPG from the attached visuals, or use “Make a JPG copy” on a PNG,
+											GIF, or WebP before publishing.
+										</p>
+									{/if}
+								</section>
+							{/if}
 							<section class="social-review-workflow" aria-labelledby="review-workflow-title">
 								<div class="social-review-heading">
 									<div>
@@ -1168,21 +1434,21 @@
 						{/if}
 
 						<div class="social-editor-actions">
-							<button type="submit" disabled={saving || deleting}
+							<button type="submit" disabled={saving || deleting || publishingInstagram}
 								>{saving ? 'Saving…' : formLabel}</button
 							>
 							<button
 								type="button"
 								class="secondary-action"
 								onclick={copyToClipboard}
-								disabled={!copy.trim() || deleting}>Copy text</button
+								disabled={!copy.trim() || deleting || publishingInstagram}>Copy text</button
 							>
 							{#if canDeletePost(selectedPost)}
 								<button
 									type="button"
 									class="danger-action"
 									onclick={() => void deleteUnpublishedPost()}
-									disabled={saving || deleting}
+									disabled={saving || deleting || publishingInstagram}
 									>{deleting
 										? 'Deleting…'
 										: selectedPost.status === 'scheduled'
@@ -1201,8 +1467,8 @@
 								{message}
 							</p>{/if}
 						<p class="social-integration-note">
-							Scheduled posts stay in this shared queue. Direct publishing will become available
-							after each social account is connected.
+							Scheduled posts stay in this shared queue. Instagram publishing is available for a
+							saved post with Instagram selected and a JPG visual attached.
 						</p>
 					</form>
 				</section>

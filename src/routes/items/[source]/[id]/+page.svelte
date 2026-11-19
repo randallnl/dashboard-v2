@@ -57,6 +57,9 @@
 	let editDescription = $state(
 		untrack(() => (typeof recordFields.description === 'string' ? recordFields.description : ''))
 	);
+	let editRegistrationUrl = $state(
+		untrack(() => (typeof recordFields.registrationUrl === 'string' ? recordFields.registrationUrl : ''))
+	);
 	let savingDetails = $state(false);
 	let editMessage = $state('');
 	let editingDetails = $state(false);
@@ -145,6 +148,7 @@
 	let savingQuickLink = $state(false);
 	let quickLinkMessage = $state('');
 	const quickLinkUrl = $derived(safeUrl(recordFields.registrationUrl));
+	const publicEventDescription = $derived(field('description').trim());
 	const publicLinkImageUrl = $derived(safeUrl(recordFields.posterUrl));
 	const projectStatusOptions = $derived(
 		[
@@ -584,7 +588,8 @@
 					endDateValue: editEndDate,
 					status: editStatus,
 					location: editLocation,
-					description: editDescription
+					description: editDescription,
+					registrationUrl: editRegistrationUrl
 				})
 			});
 			const result = (await response.json()) as { record?: UpdatedProjectRecord; message?: string };
@@ -639,7 +644,8 @@
 					endDateValue: dateEndDraft,
 					status: recordStatus,
 					location: recordLocation,
-					description: field('description')
+					description: field('description'),
+					registrationUrl: field('registrationUrl')
 				})
 			});
 			const result = (await response.json()) as { record?: UpdatedProjectRecord; message?: string };
@@ -672,6 +678,8 @@
 		editLocation = record.location;
 		editDescription =
 			typeof record.record.description === 'string' ? record.record.description : '';
+		editRegistrationUrl =
+			typeof record.record.registrationUrl === 'string' ? record.record.registrationUrl : '';
 		statusDraft = record.status;
 	}
 
@@ -693,7 +701,8 @@
 					endDateValue: recordEndDate,
 					status: statusDraft.trim(),
 					location: recordLocation,
-					description: field('description')
+					description: field('description'),
+					registrationUrl: field('registrationUrl')
 				})
 			});
 			const result = (await response.json()) as { record?: UpdatedProjectRecord; message?: string };
@@ -1002,8 +1011,25 @@
 										<dt>Title</dt>
 										<dd>{recordTitle}</dd>
 									</div>
-									<div>
-										<dt>Link</dt>
+								<div class="public-link-reference-description">
+									<dt>Event description</dt>
+									<dd>
+										{#if publicEventDescription}
+											{#each descriptionParts(publicEventDescription) as part, index (index)}
+												{#if part.url}
+													<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+													<a href={part.url} target="_blank" rel="noreferrer">{part.text}</a>
+												{:else}
+													{part.text}
+												{/if}
+											{/each}
+										{:else}
+											<span class="public-link-reference-missing">Not set</span>
+										{/if}
+									</dd>
+								</div>
+								<div>
+									<dt>Registration link</dt>
 										<dd>
 											{#if quickLinkUrl}
 												<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
@@ -1151,6 +1177,17 @@
 								<span>Description</span>
 								<textarea bind:value={editDescription} rows="5" maxlength="10000"></textarea>
 							</label>
+							{#if data.record.source === 'project'}
+								<label>
+									<span>Registration link</span>
+									<input
+										bind:value={editRegistrationUrl}
+										type="url"
+										placeholder="https://…"
+									/>
+									<small>Leave blank to remove the link.</small>
+								</label>
+							{/if}
 							<div class="inline-editor-actions">
 								<button type="submit" disabled={savingDetails}>
 									{savingDetails ? 'Saving to Monday…' : 'Save changes'}

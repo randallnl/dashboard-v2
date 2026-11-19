@@ -59,7 +59,8 @@ export async function resolveExpiredCommunityConsentVotes(
 				endDateValue: record.endDateValue,
 				status: 'Approved',
 				location: record.location,
-				description: typeof record.record.description === 'string' ? record.record.description : ''
+				description: typeof record.record.description === 'string' ? record.record.description : '',
+				registrationUrl: ''
 			});
 			await repository.upsert({ ...record, status: 'Approved', syncedAt: now.toISOString() });
 			approved += 1;

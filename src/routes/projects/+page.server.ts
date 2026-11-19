@@ -40,6 +40,7 @@ export const load: PageServerLoad = async ({ parent, platform }) => {
 		member: layout.member,
 		capabilities: layout.capabilities,
 		viewerCapabilities: layout.viewerCapabilities,
+		projects: records,
 		ongoingProjects,
 		highPriorityProjects
 	};

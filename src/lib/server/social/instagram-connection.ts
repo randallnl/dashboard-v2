@@ -6,18 +6,13 @@ import {
 const META_AUTHORIZE_URL = 'https://www.facebook.com/dialog/oauth';
 const META_GRAPH_URL = 'https://graph.facebook.com';
 const TOKEN_KEY_BYTES = 32;
-const DEFAULT_SCOPES = [
-	'pages_show_list',
-	'pages_read_engagement',
-	'instagram_basic',
-	'instagram_content_publish'
-];
 
 export type InstagramConnectionEnv = {
 	DB: D1Database;
 	DASHBOARD_URL: string;
 	META_APP_ID?: string;
 	META_APP_SECRET?: string;
+	META_UNIFIED_LOGIN_CONFIG_ID?: string;
 	SOCIAL_TOKEN_ENCRYPTION_KEY?: string;
 };
 
@@ -25,15 +20,13 @@ type MetaTokenResponse = {
 	access_token?: string;
 };
 
-type MetaPage = {
+type MetaInstagramAccount = {
 	id?: string;
-	name?: string;
-	access_token?: string;
-	instagram_business_account?: { id?: string; username?: string };
+	username?: string;
 };
 
-type MetaPagesResponse = {
-	data?: MetaPage[];
+type MetaInstagramAccountsResponse = {
+	data?: MetaInstagramAccount[];
 };
 
 function base64UrlEncode(value: ArrayBuffer | Uint8Array): string {
@@ -75,7 +68,7 @@ async function encryptionKey(env: InstagramConnectionEnv): Promise<CryptoKey> {
 	]);
 }
 
-async function encryptPageAccessToken(value: string, env: InstagramConnectionEnv): Promise<string> {
+async function encryptAccessToken(value: string, env: InstagramConnectionEnv): Promise<string> {
 	const iv = crypto.getRandomValues(new Uint8Array(12));
 	const cipher = await crypto.subtle.encrypt(
 		{ name: 'AES-GCM', iv: copyArrayBuffer(iv) },
@@ -85,19 +78,47 @@ async function encryptPageAccessToken(value: string, env: InstagramConnectionEnv
 	return `${base64UrlEncode(iv)}.${base64UrlEncode(cipher)}`;
 }
 
-function requiredConfig(env: InstagramConnectionEnv): { appId: string; appSecret: string } {
+export async function decryptInstagramAccessToken(
+	value: string,
+	env: InstagramConnectionEnv
+): Promise<string> {
+	const [encodedIv, encodedCiphertext, unexpectedPart] = value.split('.');
+	if (!encodedIv || !encodedCiphertext || unexpectedPart) {
+		throw new Error('The saved Instagram connection is invalid. Connect the account again.');
+	}
+	try {
+		const plaintext = await crypto.subtle.decrypt(
+			{ name: 'AES-GCM', iv: copyArrayBuffer(base64UrlDecode(encodedIv)) },
+			await encryptionKey(env),
+			copyArrayBuffer(base64UrlDecode(encodedCiphertext))
+		);
+		const token = new TextDecoder().decode(plaintext).trim();
+		if (!token) throw new Error('Empty token');
+		return token;
+	} catch {
+		throw new Error('The saved Instagram connection could not be read. Connect the account again.');
+	}
+}
+
+function requiredConfig(env: InstagramConnectionEnv): {
+	appId: string;
+	appSecret: string;
+	configurationId: string;
+} {
 	const appId = env.META_APP_ID?.trim() || '';
 	const appSecret = env.META_APP_SECRET?.trim() || '';
-	if (!appId || !appSecret || !env.SOCIAL_TOKEN_ENCRYPTION_KEY?.trim()) {
+	const configurationId = env.META_UNIFIED_LOGIN_CONFIG_ID?.trim() || '';
+	if (!appId || !appSecret || !configurationId || !env.SOCIAL_TOKEN_ENCRYPTION_KEY?.trim()) {
 		throw new Error('Instagram publishing connection is not configured.');
 	}
-	return { appId, appSecret };
+	return { appId, appSecret, configurationId };
 }
 
 export function instagramOAuthConfigured(env: InstagramConnectionEnv): boolean {
 	return Boolean(
 		env.META_APP_ID?.trim() &&
 		env.META_APP_SECRET?.trim() &&
+		env.META_UNIFIED_LOGIN_CONFIG_ID?.trim() &&
 		env.SOCIAL_TOKEN_ENCRYPTION_KEY?.trim()
 	);
 }
@@ -110,7 +131,7 @@ export async function createInstagramAuthorizationUrl(
 	env: InstagramConnectionEnv,
 	memberId: string
 ): Promise<string> {
-	const { appId } = requiredConfig(env);
+	const { appId, configurationId } = requiredConfig(env);
 	const state = crypto.randomUUID();
 	const now = new Date();
 	await new SocialPlatformConnectionRepository(env.DB).createInstagramOAuthState({
@@ -122,10 +143,13 @@ export async function createInstagramAuthorizationUrl(
 	const url = new URL(META_AUTHORIZE_URL);
 	url.search = new URLSearchParams({
 		client_id: appId,
+		config_id: configurationId,
+		display: 'popup',
+		override_default_response_type: 'true',
 		redirect_uri: instagramRedirectUri(env),
 		response_type: 'code',
 		state,
-		scope: DEFAULT_SCOPES.join(',')
+		prompt: 'login'
 	}).toString();
 	return url.toString();
 }
@@ -159,39 +183,38 @@ async function exchangeAuthorizationCode(
 	return payload.access_token;
 }
 
-async function listInstagramPageCandidates(
+async function listAssignedInstagramAccountCandidates(
 	env: InstagramConnectionEnv,
-	userAccessToken: string
+	systemUserAccessToken: string
 ): Promise<
 	Array<
 		Pick<
 			InstagramConnectionCandidate,
-			| 'facebookPageId'
-			| 'facebookPageName'
+			| 'accountId'
+			| 'accountLabel'
 			| 'instagramAccountId'
 			| 'instagramUsername'
-			| 'encryptedPageAccessToken'
+			| 'encryptedAccessToken'
 		>
 	>
 > {
-	const url = new URL('/me/accounts', META_GRAPH_URL);
+	const url = new URL('/me/assigned_instagram_accounts', META_GRAPH_URL);
 	url.search = new URLSearchParams({
-		fields: 'id,name,access_token,instagram_business_account{id,username}',
-		access_token: userAccessToken
+		fields: 'id,username',
+		access_token: systemUserAccessToken
 	}).toString();
 	const response = await fetch(url, { headers: { accept: 'application/json' } });
-	if (!response.ok) throw new Error(`Meta Page lookup failed (${response.status}).`);
-	const payload = (await response.json()) as MetaPagesResponse;
+	if (!response.ok) throw new Error(`Meta Instagram account lookup failed (${response.status}).`);
+	const payload = (await response.json()) as MetaInstagramAccountsResponse;
 	const candidates = await Promise.all(
-		(payload.data ?? []).map(async (page) => {
-			const instagram = page.instagram_business_account;
-			if (!page.id || !page.access_token || !instagram?.id) return null;
+		(payload.data ?? []).map(async (instagram) => {
+			if (!instagram.id) return null;
 			return {
-				facebookPageId: page.id,
-				facebookPageName: page.name?.trim() || 'Facebook Page',
+				accountId: instagram.id,
+				accountLabel: 'Meta Unified Login',
 				instagramAccountId: instagram.id,
 				instagramUsername: instagram.username?.trim() || '',
-				encryptedPageAccessToken: await encryptPageAccessToken(page.access_token, env)
+				encryptedAccessToken: await encryptAccessToken(systemUserAccessToken, env)
 			};
 		})
 	);
@@ -200,11 +223,11 @@ async function listInstagramPageCandidates(
 			candidate
 		): candidate is Pick<
 			InstagramConnectionCandidate,
-			| 'facebookPageId'
-			| 'facebookPageName'
+			| 'accountId'
+			| 'accountLabel'
 			| 'instagramAccountId'
 			| 'instagramUsername'
-			| 'encryptedPageAccessToken'
+			| 'encryptedAccessToken'
 		> => candidate !== null
 	);
 }
@@ -213,11 +236,11 @@ export async function completeInstagramAuthorization(
 	env: InstagramConnectionEnv,
 	input: { code: string; memberId: string }
 ): Promise<{ connected: boolean }> {
-	const userAccessToken = await exchangeAuthorizationCode(env, input.code);
-	const candidates = await listInstagramPageCandidates(env, userAccessToken);
+	const systemUserAccessToken = await exchangeAuthorizationCode(env, input.code);
+	const candidates = await listAssignedInstagramAccountCandidates(env, systemUserAccessToken);
 	if (!candidates.length) {
 		throw new Error(
-			'Meta did not return a Facebook Page linked to an Instagram professional account. Link the account to a Page, then try again.'
+			'Meta did not return an Instagram account assigned to the Unified Login configuration. Check the business portfolio, account selection, and business-management permission, then try again.'
 		);
 	}
 	const now = new Date();
@@ -225,7 +248,11 @@ export async function completeInstagramAuthorization(
 	if (candidates.length === 1) {
 		const candidate = candidates[0];
 		await repository.saveInstagramConnection({
-			...candidate,
+			instagramAccountId: candidate.instagramAccountId,
+			instagramUsername: candidate.instagramUsername,
+			connectionSourceId: candidate.accountId,
+			connectionSourceName: candidate.accountLabel,
+			encryptedAccessToken: candidate.encryptedAccessToken,
 			connectedByMemberId: input.memberId,
 			now: now.toISOString()
 		});
@@ -243,11 +270,11 @@ export async function completeInstagramAuthorization(
 
 export async function selectInstagramConnectionCandidate(
 	env: InstagramConnectionEnv,
-	input: { selectionId: string; facebookPageId: string; memberId: string }
+	input: { selectionId: string; accountId: string; memberId: string }
 ): Promise<boolean> {
 	const candidate = await new SocialPlatformConnectionRepository(env.DB).consumeInstagramCandidate({
 		selectionId: input.selectionId,
-		facebookPageId: input.facebookPageId,
+		accountId: input.accountId,
 		createdByMemberId: input.memberId,
 		now: new Date().toISOString()
 	});
@@ -255,9 +282,9 @@ export async function selectInstagramConnectionCandidate(
 	await new SocialPlatformConnectionRepository(env.DB).saveInstagramConnection({
 		instagramAccountId: candidate.instagramAccountId,
 		instagramUsername: candidate.instagramUsername,
-		facebookPageId: candidate.facebookPageId,
-		facebookPageName: candidate.facebookPageName,
-		encryptedPageAccessToken: candidate.encryptedPageAccessToken,
+		connectionSourceId: candidate.accountId,
+		connectionSourceName: candidate.accountLabel,
+		encryptedAccessToken: candidate.encryptedAccessToken,
 		connectedByMemberId: input.memberId,
 		now: new Date().toISOString()
 	});

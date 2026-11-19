@@ -19,6 +19,7 @@ declare global {
 		QBO_TOKEN_ENCRYPTION_KEY?: string;
 		META_APP_ID?: string;
 		META_APP_SECRET?: string;
+		META_UNIFIED_LOGIN_CONFIG_ID?: string;
 		SOCIAL_TOKEN_ENCRYPTION_KEY?: string;
 		SHOPIFY_CALENDAR_URL?: string;
 		MONDAY_PROJECT_WEBHOOK_SECRET?: string;

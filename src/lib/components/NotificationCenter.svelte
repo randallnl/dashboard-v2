@@ -5,7 +5,7 @@
 	type EligibleVote = Vote & { hasVoted: boolean };
 	type Notice = {
 		id: string;
-		kind: 'vote' | 'shift' | 'project' | 'opportunity';
+	kind: 'vote' | 'shift' | 'project';
 		title: string;
 		detail: string;
 		href: string;
@@ -15,13 +15,11 @@
 	let {
 		shifts,
 		projects,
-		availableShifts,
 		canVote,
 		readOnly = false
 	}: {
 		shifts: Shift[];
 		projects: UpcomingProjectAssignment[];
-		availableShifts: Shift[];
 		canVote: boolean;
 		readOnly?: boolean;
 	} = $props();
@@ -69,16 +67,6 @@
 				detail: `${role} · ${dateLabel(assignment.record.dateValue)}`,
 				href: `/items/${assignment.record.source}/${assignment.record.id}`,
 				action: assignment.roles.includes('Host') ? 'Manage' : 'View'
-			});
-		}
-		if (availableShifts[0]) {
-			items.push({
-				id: `opportunity:${availableShifts[0].id}`,
-				kind: 'opportunity',
-				title: `${availableShifts.length} open shift${availableShifts.length === 1 ? '' : 's'}`,
-				detail: `Next opening ${dateLabel(availableShifts[0].dateValue)}`,
-				href: '#available-shifts-title',
-				action: 'Sign up'
 			});
 		}
 		return items;

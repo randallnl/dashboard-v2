@@ -19,7 +19,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 			connection: connection
 				? {
 						instagramUsername: connection.instagramUsername,
-						facebookPageName: connection.facebookPageName,
+						connectionSourceName: connection.connectionSourceName,
 						connectedAt: connection.connectedAt,
 						updatedAt: connection.updatedAt,
 						lastVerifiedAt: connection.lastVerifiedAt,
@@ -28,8 +28,8 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 				: null,
 			candidates: candidates.map((candidate) => ({
 				selectionId: candidate.selectionId,
-				facebookPageId: candidate.facebookPageId,
-				facebookPageName: candidate.facebookPageName,
+				accountId: candidate.accountId,
+				accountLabel: candidate.accountLabel,
 				instagramUsername: candidate.instagramUsername
 			}))
 		},
