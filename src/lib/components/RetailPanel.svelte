@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { RETAIL_INBOX, RETAIL_STEPS, type RetailOrder } from '$lib/retail/orders';
+	import {
+		RETAIL_INBOX,
+		RETAIL_STEPS,
+		type RetailOrder,
+		type RetailWorkInstruction
+	} from '$lib/retail/orders';
 	let { canManage }: { canManage: boolean } = $props();
 	let orders = $state<RetailOrder[]>([]);
+	let instructions = $state<Record<string, RetailWorkInstruction[]>>({});
 	let loading = $state(true);
 	let busy = $state(false);
 	let error = $state('');
@@ -11,6 +17,10 @@
 	let orderNumber = $state('');
 	let notes = $state('');
 	let showCompleted = $state(false);
+	let editingInstructionStep = $state('');
+	let editingInstructionId = $state<number | null>(null);
+	let instructionUrl = $state('');
+	let instructionLabel = $state('');
 	const completed = (order: RetailOrder) => RETAIL_STEPS.every((step) => order.steps[step.id]);
 	const visible = $derived(orders.filter((order) => showCompleted || !completed(order)));
 	async function request(body?: Record<string, unknown>) {
@@ -29,10 +39,18 @@
 			);
 			const data = (await response.json()) as {
 				orders: RetailOrder[];
+				instructions: RetailWorkInstruction[];
 				message?: string;
 			};
 			if (!response.ok) throw new Error(data.message || 'Unable to load retail orders.');
 			orders = data.orders;
+			instructions = (data.instructions ?? []).reduce<Record<string, RetailWorkInstruction[]>>(
+				(grouped, instruction) => {
+					(grouped[instruction.stepId] ??= []).push(instruction);
+					return grouped;
+				},
+				{}
+			);
 			return true;
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : 'Unable to save changes. Try again.';
@@ -61,6 +79,35 @@
 		)
 			return;
 		await request({ action: 'delete', id: order.id });
+	}
+	function editInstruction(
+		step: (typeof RETAIL_STEPS)[number],
+		instruction: RetailWorkInstruction | null = null
+	) {
+		editingInstructionStep = step.id;
+		editingInstructionId = instruction?.id ?? null;
+		instructionUrl = instruction?.url ?? '';
+		instructionLabel = instruction?.label ?? '';
+	}
+	function closeInstructionEditor() {
+		editingInstructionStep = '';
+		editingInstructionId = null;
+		instructionUrl = '';
+		instructionLabel = '';
+	}
+	async function saveInstruction(event: SubmitEvent) {
+		event.preventDefault();
+		if (!editingInstructionStep) return;
+		if (
+			await request({
+				action: 'instruction',
+				...(editingInstructionId ? { instructionId: editingInstructionId } : {}),
+				step: editingInstructionStep,
+				url: instructionUrl,
+				label: instructionLabel
+			})
+		)
+			closeInstructionEditor();
 	}
 </script>
 
@@ -119,6 +166,35 @@
 				<small>Inventory updates remain manual checklist steps.</small>
 			</article>
 		</div>
+		{#if editingInstructionStep}
+			{@const step = RETAIL_STEPS.find((candidate) => candidate.id === editingInstructionStep)}
+			<article class="retail-card retail-instruction-editor">
+				<h3>Instructions for {step?.label}</h3>
+				<p>Use a Drive document, checklist, or other shared work reference.</p>
+				<form onsubmit={saveInstruction}>
+					<label
+						>Instruction link<input
+							bind:value={instructionUrl}
+							type="url"
+							placeholder="https://…"
+						/></label
+					>
+					<label
+						>Link label <small>(optional)</small><input
+							bind:value={instructionLabel}
+							maxlength="120"
+							placeholder="Open receiving checklist"
+						/></label
+					>
+					<div class="retail-instruction-actions">
+						<button disabled={busy}>{instructionUrl ? 'Save instruction link' : 'Remove instruction link'}</button>
+						<button type="button" class="retail-cancel" disabled={busy} onclick={closeInstructionEditor}
+							>Cancel</button
+						>
+					</div>
+				</form>
+			</article>
+		{/if}
 		<div class="retail-list-heading">
 			<h3>
 				Wholesale orders <span>({orders.filter((order) => !completed(order)).length} open)</span>
@@ -189,20 +265,38 @@
 				{/if}
 				<div class="steps">
 					{#each RETAIL_STEPS as step (step.id)}
-						<label class="check"
-							><input
-								type="checkbox"
-								checked={Boolean(order.steps[step.id])}
-								disabled={busy}
-								onchange={(event) => {
-									const complete = event.currentTarget.checked;
-									event.currentTarget.checked = Boolean(order.steps[step.id]);
-									void request({ action: 'step', id: order.id, step: step.id, complete });
-								}}
-							/><span>{step.label}</span>{#if order.steps[step.id]}<small
-									>{new Date(order.steps[step.id]).toLocaleDateString()}</small
-								>{/if}</label
-						>
+						{@const stepInstructions = instructions[step.id] ?? []}
+						<div class="retail-step">
+							<label class="check"
+								><input
+									type="checkbox"
+									checked={Boolean(order.steps[step.id])}
+									disabled={busy}
+									onchange={(event) => {
+										const complete = event.currentTarget.checked;
+										event.currentTarget.checked = Boolean(order.steps[step.id]);
+										void request({ action: 'step', id: order.id, step: step.id, complete });
+									}}
+								/><span>{step.label}</span>{#if order.steps[step.id]}<small
+										>{new Date(order.steps[step.id]).toLocaleDateString()}</small
+									>{/if}</label
+							>
+							<div class="retail-step-actions">
+								{#each stepInstructions as instruction (instruction.id)}
+									<a href={instruction.url} target="_blank" rel="noreferrer"
+										>{instruction.label || 'Work instructions'} ↗</a
+									>
+									<button
+										type="button"
+										disabled={busy}
+										onclick={() => editInstruction(step, instruction)}>Edit</button
+									>
+								{/each}
+								<button type="button" disabled={busy} onclick={() => editInstruction(step)}
+									>Add instruction</button
+								>
+							</div>
+						</div>
 					{/each}
 				</div>
 				{#if order.notes}<details>
@@ -273,6 +367,61 @@
 	}
 	.check small {
 		margin-left: auto;
+	}
+	.retail-step {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.6rem 0.7rem;
+		border: 1px solid #e1e5dd;
+		border-radius: 9px;
+		background: #fbfcf9;
+	}
+	.retail-step .check {
+		min-width: 0;
+		flex: 1;
+	}
+	.retail-step .check span {
+		min-width: 0;
+	}
+	.retail-step-actions,
+	.retail-instruction-actions {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+	}
+	.retail-step-actions a,
+	.retail-step-actions button,
+	.retail-instruction-actions button {
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: #244f38;
+		font: inherit;
+		font-size: 0.78rem;
+		font-weight: 650;
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 0.18em;
+		cursor: pointer;
+	}
+	.retail-step-actions button:disabled,
+	.retail-instruction-actions button:disabled {
+		cursor: wait;
+		opacity: 0.6;
+	}
+	.retail-instruction-editor {
+		border-color: #b9cdbc;
+		background: #f7fbf6;
+	}
+	.retail-instruction-editor h3,
+	.retail-instruction-editor p {
+		margin-top: 0;
+	}
+	.retail-cancel {
+		color: #596351 !important;
 	}
 	.retail-list-heading {
 		display: flex;
@@ -364,6 +513,10 @@
 	@media (max-width: 700px) {
 		.retail-tools {
 			grid-template-columns: 1fr;
+		}
+		.retail-step {
+			align-items: start;
+			flex-direction: column;
 		}
 	}
 </style>

@@ -1,11 +1,90 @@
-import { RETAIL_STEPS, type RetailOrder, type RetailProduct } from '$lib/retail/orders';
+import {
+	RETAIL_STEPS,
+	type RetailOrder,
+	type RetailProduct,
+	type RetailWorkInstruction
+} from '$lib/retail/orders';
 import type { Database } from './types';
 
 type RetailOrderRow = Omit<RetailOrder, 'products' | 'steps'>;
 type RetailProductRow = RetailProduct & { order_id: string };
+type RetailWorkInstructionRow = {
+	id: number;
+	step_id: string;
+	url: string;
+	label: string;
+	updated_by: string;
+	updated_at: string;
+};
+
+function instructionFromRow(row: RetailWorkInstructionRow): RetailWorkInstruction {
+	return {
+		id: row.id,
+		stepId: row.step_id,
+		url: row.url,
+		label: row.label,
+		updatedBy: row.updated_by,
+		updatedAt: row.updated_at
+	};
+}
 
 export class RetailRepository {
 	constructor(private readonly db: Database) {}
+	async listInstructions(): Promise<RetailWorkInstruction[]> {
+		const result = await this.db
+			.prepare(
+				`SELECT id, step_id, url, label, updated_by, updated_at
+				 FROM retail_work_instructions
+				 ORDER BY step_id ASC, id ASC`
+			)
+			.all<RetailWorkInstructionRow>();
+		return result.results.map(instructionFromRow);
+	}
+	async setInstruction(input: {
+		id?: number;
+		stepId: string;
+		url: string;
+		label: string;
+		updatedBy: string;
+	}): Promise<void> {
+		if (!input.url) {
+			if (!input.id) return;
+			await this.db
+				.prepare('DELETE FROM retail_work_instructions WHERE id = ?1 AND step_id = ?2')
+				.bind(input.id, input.stepId)
+				.run();
+			return;
+		}
+		if (input.id) {
+			await this.db
+				.prepare(
+					`UPDATE retail_work_instructions
+					 SET url = ?1, label = ?2, updated_by = ?3, updated_at = ?4
+					 WHERE id = ?5 AND step_id = ?6`
+				)
+				.bind(
+					input.url,
+					input.label,
+					input.updatedBy,
+					new Date().toISOString(),
+					input.id,
+					input.stepId
+				)
+				.run();
+			return;
+		}
+		await this.db
+			.prepare(
+				`INSERT INTO retail_work_instructions (step_id, url, label, updated_by, updated_at)
+				 VALUES (?1, ?2, ?3, ?4, ?5)
+				 ON CONFLICT(step_id, url) DO UPDATE SET
+					label = excluded.label,
+					updated_by = excluded.updated_by,
+					updated_at = excluded.updated_at`
+			)
+			.bind(input.stepId, input.url, input.label, input.updatedBy, new Date().toISOString())
+			.run();
+	}
 	async list(): Promise<RetailOrder[]> {
 		const [orders, steps, products] = await Promise.all([
 			this.db

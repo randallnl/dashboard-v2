@@ -6,6 +6,7 @@ import {
 	ProjectEventRepository,
 	ProjectDriveRepository,
 	QuickLinkRepository,
+	ShopifyEventPostRepository,
 	VolunteerRepository
 } from '$lib/server/db';
 import { attendeeEmails } from '$lib/server/monday/events';
@@ -79,6 +80,10 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		source === 'project' && canEdit
 			? (await new QuickLinkRepository(db).listProjectIds()).includes(record.id)
 			: false;
+	const shopifyEventPost =
+		source === 'project' && canEdit
+			? await new ShopifyEventPostRepository(db).findByProjectId(record.id)
+			: null;
 	const host = await new HostRepository(db).find(record.source, record.id);
 	const memberRepository = new MemberRepository(db);
 	const driveRepository = new ProjectDriveRepository(db);
@@ -183,6 +188,7 @@ export const load: PageServerLoad = async ({ params, parent, platform }) => {
 		isViewingAs: layout.isViewingAs,
 		readOnly: layout.isViewingAs,
 		quickLinkIncluded,
+		shopifyEventPost,
 		projectStatusOptions,
 		projectDriveFolder,
 		projectDriveFiles,

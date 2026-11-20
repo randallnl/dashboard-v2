@@ -8,9 +8,19 @@ import { RetailRepository } from '$lib/server/db/retail-repository';
 import { RETAIL_STEPS } from '$lib/retail/orders';
 import type { RequestHandler } from './$types';
 
+function httpUrl(value: unknown): string {
+	if (typeof value !== 'string') return '';
+	try {
+		const url = new URL(value.trim());
+		return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+	} catch {
+		return '';
+	}
+}
+
 async function payload(repository: RetailRepository) {
-	const orders = await repository.list();
-	return json({ orders }, { headers: { 'cache-control': 'private, no-store' } });
+	const [orders, instructions] = await Promise.all([repository.list(), repository.listInstructions()]);
+	return json({ orders, instructions }, { headers: { 'cache-control': 'private, no-store' } });
 }
 export const GET: RequestHandler = async ({ locals, platform }) => {
 	const context = await loadMemberContext({ session: locals.session, env: platform?.env });
@@ -43,6 +53,25 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			error(400, 'Invalid checklist update.');
 		if (!(await repository.setStep(body.id, body.step, body.complete, context.viewer.id)))
 			error(404, 'Order step not found.');
+	} else if (body.action === 'instruction') {
+		const instructionId =
+			typeof body.instructionId === 'number' && Number.isSafeInteger(body.instructionId)
+				? body.instructionId
+				: undefined;
+		const stepId = typeof body.step === 'string' ? body.step : '';
+		const requestedUrl = typeof body.url === 'string' ? body.url.trim() : '';
+		const url = requestedUrl ? httpUrl(requestedUrl) : '';
+		const label = typeof body.label === 'string' ? body.label.trim() : '';
+		if (!RETAIL_STEPS.some((step) => step.id === stepId)) error(400, 'Invalid retail step.');
+		if ((requestedUrl && !url) || url.length > 2000 || label.length > 120)
+			error(400, 'Enter a valid instruction link and a label under 120 characters.');
+		await repository.setInstruction({
+			id: instructionId,
+			stepId,
+			url,
+			label,
+			updatedBy: context.viewer.id
+		});
 	} else if (body.action === 'delete') {
 		if (typeof body.id !== 'string' || !/^[a-f0-9-]{36}$/iu.test(body.id))
 			error(400, 'Invalid retail order.');

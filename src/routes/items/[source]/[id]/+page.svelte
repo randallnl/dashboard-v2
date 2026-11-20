@@ -147,6 +147,9 @@
 	let quickLinkIncluded = $state(untrack(() => data.quickLinkIncluded));
 	let savingQuickLink = $state(false);
 	let quickLinkMessage = $state('');
+	let shopifyEventPost = $state(untrack(() => data.shopifyEventPost));
+	let savingShopifyEventPost = $state(false);
+	let shopifyEventPostMessage = $state('');
 	const quickLinkUrl = $derived(safeUrl(recordFields.registrationUrl));
 	const publicEventDescription = $derived(field('description').trim());
 	const publicLinkImageUrl = $derived(safeUrl(recordFields.posterUrl));
@@ -835,6 +838,34 @@
 			savingQuickLink = false;
 		}
 	}
+
+	async function publishShopifyEventPost() {
+		const action = shopifyEventPost ? 'Update the Shopify event post' : 'Create and publish a Shopify event post';
+		if (!window.confirm(`${action} using the public-facing project details?`)) return;
+		savingShopifyEventPost = true;
+		shopifyEventPostMessage = '';
+		try {
+			const response = await fetch('/api/admin/shopify/event-posts', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ projectId: data.record.id })
+			});
+			const result = (await response.json()) as {
+				post?: typeof shopifyEventPost;
+				message?: string;
+			};
+			if (!response.ok || !result.post) {
+				throw new Error(result.message || 'Could not save the Shopify event post.');
+			}
+			shopifyEventPost = result.post;
+			shopifyEventPostMessage = result.message || 'Event post saved in Shopify.';
+		} catch (cause) {
+			shopifyEventPostMessage =
+				cause instanceof Error ? cause.message : 'Could not save the Shopify event post.';
+		} finally {
+			savingShopifyEventPost = false;
+		}
+	}
 </script>
 
 <svelte:head><title>{recordTitle} · CoLab</title></svelte:head>
@@ -1045,6 +1076,11 @@
 								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 								<a href={resolve('/links')} target="_blank" rel="noreferrer">Preview Links page ↗</a
 								>
+								<a
+									href="https://queerlective.com/blogs/upcoming-events"
+									target="_blank"
+									rel="noreferrer">Preview events blog ↗</a
+								>
 								{#if data.canEdit}
 									<button
 										type="button"
@@ -1059,10 +1095,31 @@
 												? 'Remove from Queerlective links'
 												: 'Add to Queerlective links'}
 									</button>
+									<button
+										type="button"
+										class="project-quick-link-action"
+										onclick={publishShopifyEventPost}
+										disabled={savingShopifyEventPost}
+									>
+										{savingShopifyEventPost
+											? 'Saving…'
+											: shopifyEventPost
+												? 'Update Shopify event post'
+												: 'Publish to Shopify events'}
+									</button>
+								{/if}
+								{#if shopifyEventPost}
+									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+									<a href={shopifyEventPost.publicUrl} target="_blank" rel="noreferrer"
+										>Open Shopify event post ↗</a
+									>
 								{/if}
 							</div>
 							{#if quickLinkMessage}<p class="project-quick-link-message" role="status">
 									{quickLinkMessage}
+								</p>{/if}
+							{#if shopifyEventPostMessage}<p class="project-quick-link-message" role="status">
+									{shopifyEventPostMessage}
 								</p>{/if}
 						</section>
 					{/if}

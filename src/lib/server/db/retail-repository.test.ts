@@ -28,3 +28,74 @@ describe('RetailRepository.remove', () => {
 		]);
 	});
 });
+
+describe('RetailRepository.setInstruction', () => {
+	it('upserts the shared work-instruction link for a retail step', async () => {
+		const statements: Array<{ sql: string; values: unknown[] }> = [];
+		const run = vi.fn(async () => ({ meta: { changes: 1 } }));
+		const db = {
+			prepare(sql: string) {
+				const statement = {
+					sql,
+					values: [] as unknown[],
+					bind(...values: unknown[]) {
+						this.values = values;
+						return this;
+					},
+					run
+				};
+				statements.push(statement);
+				return statement;
+			}
+		} as unknown as D1Database;
+
+		await new RetailRepository(db).setInstruction({
+			stepId: 'received',
+			url: 'https://drive.google.com/receiving-checklist',
+			label: 'Open receiving checklist',
+			updatedBy: 'member-1'
+		});
+
+		expect(statements[0].sql).toContain('ON CONFLICT(step_id, url) DO UPDATE');
+		expect(statements[0].values).toEqual([
+			'received',
+			'https://drive.google.com/receiving-checklist',
+			'Open receiving checklist',
+			'member-1',
+			expect.any(String)
+		]);
+	});
+
+	it('removes a shared instruction link when no URL remains', async () => {
+		const statements: Array<{ sql: string; values: unknown[] }> = [];
+		const run = vi.fn(async () => ({ meta: { changes: 1 } }));
+		const db = {
+			prepare(sql: string) {
+				const statement = {
+					sql,
+					values: [] as unknown[],
+					bind(...values: unknown[]) {
+						this.values = values;
+						return this;
+					},
+					run
+				};
+				statements.push(statement);
+				return statement;
+			}
+		} as unknown as D1Database;
+
+		await new RetailRepository(db).setInstruction({
+			id: 9,
+			stepId: 'display',
+			url: '',
+			label: '',
+			updatedBy: 'member-1'
+		});
+
+		expect(statements[0]).toMatchObject({
+			sql: 'DELETE FROM retail_work_instructions WHERE id = ?1 AND step_id = ?2',
+			values: [9, 'display']
+		});
+	});
+});

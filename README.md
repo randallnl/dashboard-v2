@@ -47,6 +47,18 @@ Required production bindings:
 - `LOGIN_FROM_EMAIL`: non-secret environment variable
 - `LOGIN_FROM_NAME`: non-secret environment variable
 
+### Shopify event publishing
+
+The project-details page can publish or update an event post in the Shopify
+`upcoming-events` blog. Create a Shopify custom app for the Queerlective store,
+give it the `read_content` and `write_content` Admin API scopes, install it, and
+save its Admin API access token as the Worker secret
+`SHOPIFY_ADMIN_ACCESS_TOKEN`. The dashboard defaults to
+`queerlective.myshopify.com`, `upcoming-events`, and
+`https://queerlective.com`; override those with the optional
+`SHOPIFY_STORE_DOMAIN`, `SHOPIFY_EVENTS_BLOG_HANDLE`, and
+`SHOPIFY_STOREFRONT_URL` variables if needed.
+
 After changing the binding configuration, regenerate types:
 
 ```sh

@@ -14,6 +14,15 @@ export type RetailProduct = {
 	thumbnail_url: string;
 };
 
+export type RetailWorkInstruction = {
+	id: number;
+	stepId: string;
+	url: string;
+	label: string;
+	updatedBy: string;
+	updatedAt: string;
+};
+
 export type RetailOrder = {
 	id: string;
 	title: string;

@@ -31,6 +31,8 @@ export { ProjectActivityRepository } from './project-activity-repository';
 export { ProjectDriveRepository } from './project-drive-repository';
 export { QuickLinkRepository } from './quick-link-repository';
 export { QuickBooksFinanceRepository } from './quickbooks-finance-repository';
+export { ShopifyEventPostRepository } from './shopify-event-post-repository';
+export type { ShopifyEventPost } from './shopify-event-post-repository';
 export type {
 	FinanceQuickBooksAccount,
 	FinanceQuickBooksSnapshot,
